@@ -27,6 +27,7 @@ class TwoDimMoving:
     wl = attrib(0)
     controller = attrib(Factory(Controller)) # type: Controller
     data = attrib(None)
+
     binned_data = attrib(None)
     sigScanFinished = attrib(Factory(Signal))
 
@@ -44,12 +45,13 @@ class TwoDimMoving:
         self.t_bins = 0
 
     def make_step_gen(self):
+        c = self.controller()
         while True:
             self.start_recording()
             self.save_raw()
             self.bin_scan()
             self.save_result()
-            self.return_position()
+
             self.scans += 1
             yield
 
@@ -69,7 +71,7 @@ class TwoDimMoving:
         c.fringe_counter.clear()
         c.cam.read_cam()
         self.last_read = c.last_read
-        
+
     def save_result(self):
         pass
 

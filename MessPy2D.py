@@ -1,5 +1,5 @@
 from functools import partial
-
+from Config import config
 from qtconsole.inprocess import QtInProcessKernelManager
 from qtconsole.rich_jupyter_widget import RichJupyterWidget
 from qtpy.QtCore import QTimer, Qt
@@ -8,13 +8,13 @@ from qtpy.QtWidgets import (QMainWindow, QApplication, QWidget, QDockWidget,
                             QToolBar, QCheckBox)
 
 import qtawesome as qta
-from Plans import pump_probe_starter
+from Plans import *
 from QtHelpers import dark_palette, ControlFactory, make_groupbox, \
     ObserverPlot, ValueLabels
 from ControlClasses import Controller
 
-HAS_SECOND_DELAYLINE = False
-HAS_ROTATION_STAGE = False
+HAS_SECOND_DELAYLINE = config.has_second_delay
+HAS_ROTATION_STAGE = config.has_rot_stage
 
 
 
@@ -35,7 +35,8 @@ class MainWindow(QMainWindow):
 
         self.timer = QTimer(parent=self)
         self.timer.timeout.connect(controller.loop)
-        self.timer.start(20)
+        self.timer.timeout.connect(QApplication.processEvents)
+        self.timer.start(10)
         lr = controller.last_read
         op = ObserverPlot([(lr, 'probe_mean'), (lr, 'reference_mean')],
                           self.timer.timeout)
@@ -75,12 +76,21 @@ class MainWindow(QMainWindow):
         self.setCentralWidget(cm)
         self.show()
 
-
     def setup_toolbar(self):
         self.tb = self.addToolBar('Begin Plan')
         tb = self.tb
+
+        def start_pp():
+            plan, ok = TwoDStarter.start_plan(self.controller)
+            if ok:
+                self.toggle_run(False)
+                controller.plan = plan
+                self.toggle_run(True)
+
         asl_icon = qta.icon('ei.graph', color='white')
         pp = QPushButton('Pump-probe', icon=asl_icon)
+        pp.clicked.connect(start_pp)
+
         tb.addWidget(pp)
         asl_icon = qta.icon('ei.barcode', color='white')
         pp = QPushButton('Scan Spectrum', icon=asl_icon)
@@ -94,6 +104,11 @@ class MainWindow(QMainWindow):
             self.timer.start(20)
         else:
             self.timer.stop()
+
+    def closeEvent(self, *args, **kwargs):
+        config.write()
+        super(MainWindow, self).closeEvent(*args, **kwargs)
+
 
 
 class HardwareRegistry:
@@ -181,13 +196,9 @@ if __name__ == '__main__':
     import numpy as np
 
     sys._excepthook = sys.excepthook
-
-
     def exception_hook(exctype, value, traceback):
         sys._excepthook(exctype, value, traceback)
         sys.exit(1)
-
-
     sys.excepthook = exception_hook
 
 
@@ -208,10 +219,10 @@ if __name__ == '__main__':
     from Plans.PumpProbe import PumpProbePlan
 
     pp = PumpProbePlan(name='BlaBlub', controller=controller)
-    controller.plan = pp
+    controller.plan = None
     pp.t_list = np.arange(-2, 5, 0.1)
     pp.center_wl_list = [300, 600]
-    ppi = PumpProbeViewer(pp)
-    ppi.show()
+    #pi = PumpProbeViewer(pp)
+    #ppi.show()
     mw.show()
     app.exec_()

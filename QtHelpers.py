@@ -3,9 +3,12 @@ from itertools import cycle
 from qtpy.QtGui import QPalette, QColor
 from qtpy.QtCore import Qt
 from qtpy.QtWidgets import (QWidget, QLineEdit, QLabel, QPushButton, QHBoxLayout,
-                            QFormLayout, QGroupBox, QVBoxLayout,)
+                            QFormLayout, QGroupBox, QVBoxLayout, QDialog, QStyleFactory)
 import pyqtgraph as pg
+import pyqtgraph.parametertree as pt
 import math
+from Config import config
+import yaml
 import numpy as np
 import attr
 
@@ -44,7 +47,7 @@ def make_palette():
     palette.setColor(QPalette.Button, QColor(53, 53, 53))
     palette.setColor(QPalette.ButtonText, Qt.white)
     palette.setColor(QPalette.BrightText, Qt.red)
-    palette.setColor(QPalette.Highlight, QColor(142, 45, 197).lighter())
+    palette.setColor(QPalette.Highlight, QColor(242, 15, 97).lighter())
     palette.setColor(QPalette.HighlightedText, Qt.white)
     palette.setColor(QPalette.Disabled, QPalette.Text, Qt.darkGray)
     palette.setColor(QPalette.Disabled, QPalette.ButtonText, Qt.darkGray)
@@ -124,11 +127,78 @@ class ControlFactory(QWidget):
         self._layout.addRow(hlay)
 
 
+class PlanStartDialog(QDialog):
+    title = ''
+
+    def __init__(self, *args, **kwargs):
+        super(PlanStartDialog, self).__init__(*args, **kwargs)
+        self.setWindowTitle(self.title)
+        self.treeview = pt.ParameterTree()
+        start_button = QPushButton('Start Plan')
+        start_button.clicked.connect(self.accept)
+        cancel_button = QPushButton('Cancel')
+        cancel_button.clicked.connect(self.reject)
+        self.setLayout(vlay([self.treeview,
+                             hlay([start_button, cancel_button])]))
+        self.setup_paras()
+        self.load_defaults()
+        self.treeview.setParameters(self.paras)
+        self.treeview.setPalette(self.style().standardPalette())
+        self.treeview.setStyle(QStyleFactory.create('Fusion'))
+        self.treeview.setStyleSheet("")
+        n = len(self.treeview.listAllItems())
+
+        self.resize(350, n*40 + 100 )
+        for i in self.treeview.listAllItems():
+            if isinstance(i, pt.types.GroupParameterItem):
+                i.updateDepth(0)
+
+    def setup_paras(self):
+        raise NotImplemented
+
+    def create_plan(self):
+        raise NotImplemented
+
+    def load_defaults(self, fname=None):
+        if fname is not None:
+            f = open(fname, 'r')
+            d = yaml.load(f)
+        else:
+            d = config._data
+        for group in self.paras:
+            for para in group:
+                try:
+                    para.setValue(d[group.name()][para.name()])
+                except KeyError:
+                    pass
+
+    def save_defaults(self, fname=None):
+        if fname is not None:
+            d = {}
+        else:
+            d = config._data
+
+        for group in self.paras:
+            for para in group:
+                d.setdefault(group.name(), {})[para.name()] = para.value()
+        if fname is not None:
+            f = open(fname, 'x')
+            yaml.dump(d, f)
+        else:
+            config.write()
+
+    def closeEvent(self, *args, **kwargs):
+        self.save_defaults()
+        super().closeEvent(*args, **kwargs)
 
 
-#class ObservedLine:
-#    obs_attr = attrib()
-#    line_color = attrib()
+
+    @classmethod
+    def start_plan(cls, controller, parent=None):
+        dialog = cls(parent=parent)
+        result = dialog.exec_()
+        plan = dialog.create_plan(controller)
+        return plan, result == QDialog.Accepted
 
 
 class ObserverPlot(pg.PlotWidget):
