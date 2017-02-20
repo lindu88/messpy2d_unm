@@ -3,6 +3,7 @@ from Config import config
 from qtconsole.inprocess import QtInProcessKernelManager
 from qtconsole.rich_jupyter_widget import RichJupyterWidget
 from qtpy.QtCore import QTimer, Qt
+from qtpy.QtGui import QFont
 from qtpy.QtWidgets import (QMainWindow, QApplication, QWidget, QDockWidget,
                             QPushButton, QLabel, QVBoxLayout, QSizePolicy,
                             QToolBar, QCheckBox)
@@ -13,9 +14,8 @@ from QtHelpers import dark_palette, ControlFactory, make_groupbox, \
     ObserverPlot, ValueLabels
 from ControlClasses import Controller
 
-HAS_SECOND_DELAYLINE = config.has_second_delay
+HAS_SECOND_DELAYLINE = True
 HAS_ROTATION_STAGE = config.has_rot_stage
-
 
 
 class SelectPlan(QWidget):
@@ -80,16 +80,19 @@ class MainWindow(QMainWindow):
         self.tb = self.addToolBar('Begin Plan')
         tb = self.tb
 
-        def start_pp():
-            plan, ok = TwoDStarter.start_plan(self.controller)
-            if ok:
-                self.toggle_run(False)
-                controller.plan = plan
-                self.toggle_run(True)
+        def plan_starter(PlanClass):
+            def f():
+                plan, ok = PlanClass.start_plan(self.controller)
+                if ok:
+                    print('ok')
+                    self.toggle_run(False)
+                    self.controller.plan = plan
+                    self.toggle_run(True)
+            return f
 
         asl_icon = qta.icon('ei.graph', color='white')
         pp = QPushButton('Pump-probe', icon=asl_icon)
-        pp.clicked.connect(start_pp)
+        pp.clicked.connect(plan_starter(TwoDStarter))
 
         tb.addWidget(pp)
         asl_icon = qta.icon('ei.barcode', color='white')
@@ -156,11 +159,12 @@ class CommandMenu(QWidget):
 
         dls = [dl1c]
         if HAS_SECOND_DELAYLINE:
-            dl2 = controller.delayline_2
-            dl2c = ControlFactory('Delay 2', print, format_str='%.1f fs',
+            dl2 = controller.delay_line_second
+            dl2c = ControlFactory('Delay 2', dl2.set_pos, format_str='%.1f fs',
                                   extra_buttons=[("Set Home", dl2.set_pos)],
                                   )
             dls.append(dl2c)
+            dl2.sigPosChanged.connect(dl2c.update_value)
         gb = make_groupbox(dls, "Delay")
         self._layout.addWidget(gb)
 
@@ -202,18 +206,23 @@ if __name__ == '__main__':
     sys.excepthook = exception_hook
 
 
-
     controller = Controller()
 
     app = QApplication([])
+    font = QFont()
+
     app.setStyle('Fusion')
+    app.setAttribute(Qt.AA_EnableHighDpiScaling)
     app.setPalette(dark_palette)
     ss = """
+        QMainWindow { font-size: 20pt;}
         QToolTip { color: #ffffff; background-color: #2a82da;
                        border: 1px solid white; }
     """
     app.setStyleSheet(ss)
-
+    font.setPointSize(11)
+    font.setStyleStrategy(QFont.PreferQuality)
+    app.setFont(font)
     mw = MainWindow(controller=controller)
     from Plans.PumpProbeViewer import PumpProbeViewer
     from Plans.PumpProbe import PumpProbePlan

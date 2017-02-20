@@ -4,22 +4,25 @@ from ControlClasses import Controller, Signal
 
 speed_of_light = 299792458.0
 
+def bins_and_borders(lower, upper, num_bins):
+    both = np.linspace(lower, upper, 2*num_bins+1)
+    bins = both[1::2]
+    bin_borders = both[::2]
+    return bins, bin_borders
+
 def calc_params(t_range, num_bins, shots=4000, shots_per_sec=2000):
     total_range = (t_range[1] - t_range[0])
     speed = total_range / (shots/shots_per_sec)
-    bins = np.linspace(t_range[0], t_range[1], 2*num_bins+1)[1::2]
-    bin_borders = np.linspace(t_range[0], t_range[1], 2 * num_bins + 1)[::2]
-
+    bins, bin_borders = bins_and_borders(*t_range, num_bins)
     out = make_class('Params', ['speed', 'bin_borders', 'bins',
                                 'freqs_cm'])
     out(speed=speed, bins=bins, bin_borders=bin_borders)
-
-
-
+    return out
 
 @attrs
 class TwoDimMoving:
     name = attrib('')
+    sample_info = attrib(Factory(dict))
     t_range = attrib((-3, 3))
     num_bins = attrib(2048)
     shots = attrib(4000)
@@ -27,15 +30,12 @@ class TwoDimMoving:
     wl = attrib(0)
     controller = attrib(Factory(Controller)) # type: Controller
     data = attrib(None)
-
     binned_data = attrib(None)
     sigScanFinished = attrib(Factory(Signal))
-
 
     def __attrs_post_init__(self):
         gen = self.make_step_gen()
         self.make_step = lambda: next(gen)
-
         N = self.controller.cam.num_ch
         self.data = np.zeros((N, self.num_bins))
         self.shots_per_bin = np.zeros_like(self.wl)
@@ -46,12 +46,13 @@ class TwoDimMoving:
 
     def make_step_gen(self):
         c = self.controller()
+
         while True:
+            print('j')
             self.start_recording()
             self.save_raw()
             self.bin_scan()
             self.save_result()
-
             self.scans += 1
             yield
 
@@ -67,6 +68,7 @@ class TwoDimMoving:
 
     def start_recording(self):
         c = self.controller
+        c.delay_line_second
         c.delay_line_second.set_speed()
         c.fringe_counter.clear()
         c.cam.read_cam()

@@ -11,18 +11,18 @@ import numpy as np
 from Plans.TwoDPlan import TwoDimMoving
 
 class TwoDViewer(QWidget):
+    """Viewer for the two D plan"""
     def __init__(self, plan: TwoDimMoving, **kwargs):
         self.plan = plan
         super().__init__(**kwargs)
         self.setWindowTitle(plan.name)
         self.setMinimumSize(1200, 600)
-
         self.info_wid = QLabel()
         self.lines = {}
         self.setup_plots()
         self.setup_info()
         self.layout_widget()
-        self.plan.sigScanFinished.connect(self.update)
+        self.plan.sigScanFinished.connect(self.refresh)
 
     def setup_info(self):
         self.info_wid.setAlignment(Qt.AlignTop)
@@ -37,14 +37,13 @@ class TwoDViewer(QWidget):
             self.lines[i] = self.trans_plot.plot()
         self.lines['pyro'] = self.trans_plot.plot()
 
-
     def layout_widget(self):
         lay = hlay([self.trans_plot,
                     vlay([self.bin_plot, self.map_plot]),
                     self.info_wid])
         self.setLayout(lay)
 
-    def update(self):
+    def refresh(self):
         p = self.plan
         lr = p.last_read
         offsets = np.ptp(lr.probe, axis=1)
@@ -83,14 +82,13 @@ class TwoDStarter(PlanStartDialog):
 
     def create_plan(self, controller):
         p = self.paras.child('2D Settings')
+        s = self.paras.child('Sample')
         TwoDimMoving(
             name=p['Filename'],
             t_range=(p['min. Tau 2'], p['max. Tau 2']),
             shots=p['Shots'],
             controller=controller,
         )
-
-
 
 if __name__ == '__main__':
     import sys

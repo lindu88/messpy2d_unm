@@ -1,17 +1,16 @@
+import math
 from functools import partial
 from itertools import cycle
-from qtpy.QtGui import QPalette, QColor
-from qtpy.QtCore import Qt
-from qtpy.QtWidgets import (QWidget, QLineEdit, QLabel, QPushButton, QHBoxLayout,
-                            QFormLayout, QGroupBox, QVBoxLayout, QDialog, QStyleFactory)
+
 import pyqtgraph as pg
 import pyqtgraph.parametertree as pt
-import math
-from Config import config
 import yaml
-import numpy as np
-import attr
+from qtpy.QtCore import Qt
+from qtpy.QtGui import QPalette, QColor
+from qtpy.QtWidgets import (QWidget, QLineEdit, QLabel, QPushButton, QHBoxLayout,
+                            QFormLayout, QGroupBox, QVBoxLayout, QDialog, QStyleFactory)
 
+from Config import config
 
 VEGA_COLORS = {
     'blue': '#1f77b4',
@@ -190,8 +189,6 @@ class PlanStartDialog(QDialog):
     def closeEvent(self, *args, **kwargs):
         self.save_defaults()
         super().closeEvent(*args, **kwargs)
-
-
 
     @classmethod
     def start_plan(cls, controller, parent=None):
