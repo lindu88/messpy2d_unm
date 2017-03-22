@@ -23,39 +23,39 @@ class TriaxSpectrometer(object):
         self.port = port
         self.lines_grating = 100.
         self.write(" ")
-        port.timeout = 10
+        port.timeout = 1
         out = port.read(1)
         print(out)
         if len(out) == 0:
             print("Can't connect to Triax Spectrometer")
             raise IOError
 
-        if out=='B':
+        if out==b'B':
 
             self.write('O2000'+chr(0))
             out = port.read(1)
-            if len(out) == 0 or out=='F':
+            if len(out) == 0 or out==b'F':
                 print("Can't connect to Triax Spectrometer")
                 raise IOError
 
             self.write(" ")
 
             out = port.read(1)
-            if len(out) == 0 or out=='F':
+            if len(out) == 0 or out==b'F':
                 print("Can't connect to Triax Spectrometer")
                 raise IOError
 
             self.write("A")
 
             out = port.read(1)
-            if out!='o':
+            if out!=b'o':
                 print("Init of Triax Spectrometer failed")
                 raise IOError
 
 
             self.write("i,0,0,0\r")
             out = port.read(1)
-            if out!='o':
+            if out!=b'o':
                 print("Init of Triax Spectrometer failed")
                 raise IOError
 
@@ -64,6 +64,7 @@ class TriaxSpectrometer(object):
         self.get_slit()
 
     def write(self, bstring):
+        bstring = bstring.encode()
         self.port.flush()
         if DEBUG:
             print('WRITE "%s"'%str(bstring))
@@ -82,7 +83,7 @@ class TriaxSpectrometer(object):
         port = self.port
         wl = wl / 1200. * self.lines_grating
         self.write("Z61,1,"+str(round(wl,2))+"\r")
-        if port.read(1)!="o":
+        if port.read(1)!=b"o":
             print("Setting wl failed")
             raise IOError
 
@@ -100,11 +101,11 @@ class TriaxSpectrometer(object):
         self.write("Z62,1\r")
         out = port.read(1)
         print(out)
-        if out == "b":
+        if out == b"b":
             out = port.read(1)
-        if out == "F":
+        if out == b"F":
             out = port.read(1)
-        if out == "o":
+        if out == b"o":
             o = readline(port)
             print(o)
             read_wl = float(o[:-1])
@@ -117,15 +118,9 @@ class TriaxSpectrometer(object):
             print("Getting wl failed")
             raise IOError
 
-    def read_until(self, terminator='\r'):
-        l = []
-        while True:
-            r = self.port.read(1)
-            print("r ", r)
-            if r == terminator:
-                break
-            l.append(r)
-        return "".join(l)
+    def read_until(self, terminator=b'\r'):
+        ans = self.port.read_until()
+        return ans
 
     def get_slit(self):
         "Get slit setting in micrometer."
@@ -134,7 +129,7 @@ class TriaxSpectrometer(object):
 
         out = port.read(1)
         print(out)
-        if out != "o":
+        if out != b"o":
             print("Getting slitpos failed")
             raise IOError
         else:
@@ -150,12 +145,12 @@ class TriaxSpectrometer(object):
         cur_slit_width = self.get_slit()
         change = int((slit_width - cur_slit_width) /2)
         self.write("k0,0," + str(change) + "\r")
-        if port.read(1)!="o":
+        if port.read(1) != b"o":
             print("Setting slit failed")
             raise IOError
 
-        out = 'q'
-        while out=="q":
+        out = b'q'
+        while out == b"q":
             self.write("E")
             out = port.read(1)
             out = port.read(1)
@@ -185,11 +180,8 @@ class TriaxSpectrometer(object):
         return 1e7/WavelengthChannel
 
 
-def readline(port, eol='\r'):
-    out = list(port.read(1))
-    while out[-1] != eol:
-        out.append(port.read(1))
-    return "".join(out)
+def readline(port, eol=b'\r'):
+    return port.read_until(eol)
 
 
 spec = TriaxSpectrometer('COM2')
