@@ -41,6 +41,7 @@ class FringeCounter(object):
 
 
         self.port = serial.Serial(port=com_port, baudrate=115200)
+        self.port.timeout = 1
 
     def send_cmd(self, cmd):
         '''
@@ -129,11 +130,12 @@ if __name__ == '__main__':
     #print(a.get_counter_value())
     time.sleep(0.01)
     
-    a.set_target_counts(100)
+    a.set_target_counts(1000)
     
     for i in range(3):
         b = a.get_counter_table()
         #print(a.get_target_counts())
         time.sleep(0.2)
     print(b[1][:-2])
-    print(struct.unpack('100h', b[1][:-2]))
+    print(struct.unpack('1000h', b[1][:-2]))
+    a.port.close()
