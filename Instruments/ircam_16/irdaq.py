@@ -16,8 +16,10 @@ import numpy as np
 import PyDAQmx, struct
 from PyDAQmx.DAQmxTypes import *
 from PyDAQmx.DAQmxConstants import *
-from PyQt4.QtCore import QThread
-from PyQt4.Qt import QApplication
+
+from qtpy.QtCore import QThread, QTimer, QMutex
+from threading import Thread, Lock
+from qtpy.QtWidgets import  QApplication
 import time
 sleep = time.sleep
 import threading
@@ -104,7 +106,7 @@ def calc_delay_ns(steps):
 class InfraAD(object):
     has_external = True
     def __init__(self):
-        print "Init cam...",
+        print("Init cam...")
         self.shots = 100
 
         self.read_task = PyDAQmx.Task()
@@ -128,7 +130,7 @@ class InfraAD(object):
         task.CreateDIChan('dev1/port0_32', 'data',
                                    PyDAQmx.DAQmx_Val_ChanForAllLines)
         task.CfgBurstHandshakingTimingExportClock(PyDAQmx.DAQmx_Val_FiniteSamps,
-                                               self.shots*256,
+                                               self.shots*128,
                                                2e7,
                                                'PFI4',
                                                DAQmx_Val_ActiveLow,
@@ -136,14 +138,11 @@ class InfraAD(object):
                                                DAQmx_Val_ActiveHigh)
         self.transfer_task = task
 
+        self.runner = None
+        self.lock = Lock()
 
-        class Runner(QThread):
-            def run(s):
-                self.transfer_data()
-
-        self.runner = Runner()
 #        self.reset()
-        print "Done!"
+
     def write_out(self, val):
         written = int32()
         val = int_to_bool_array(val).copy()
@@ -208,18 +207,23 @@ class InfraAD(object):
 
 
 
-    def transfer_data(self):
+    def transfer_data(self, shots, dat):
+
         read = int32()
-        shots_to_read = self.shots
+        shots_to_read = shots
         nout = np.zeros(shots_to_read * 128, dtype=np.uint32)
-        tt = self.transfer_task
+
+        tt = PyDAQmx.Task()
+        tt.CreateDIChan('dev1/port0_32', 'data',
+                                   PyDAQmx.DAQmx_Val_ChanForAllLines)
+
         tt.CfgBurstHandshakingTimingExportClock(PyDAQmx.DAQmx_Val_FiniteSamps,
-                                               shots_to_read * 128, 1e7, 'PFI4',
+                                               shots_to_read * 128,10e6, 'PFI4',
                                                DAQmx_Val_ActiveLow,
                                                DAQmx_Val_High,
                                                DAQmx_Val_ActiveHigh)
-        tt.ReadDigitalU32(-1, shots_to_read*2/2088., PyDAQmx.DAQmx_Val_GroupByScanNumber,
-                                          nout, nout.size,   byref(read),  None)
+        tt.ReadDigitalU32(-1, 10., PyDAQmx.DAQmx_Val_GroupByScanNumber,
+                          nout, nout.size,   byref(read),  None)
         tt.WaitUntilTaskDone(10)
 
         ar = np.roll(nout, -1)
@@ -229,25 +233,35 @@ class InfraAD(object):
 
 
         out = ar.view(np.uint16)
-        out = out.reshape(self.shots, 256)
+        out = out.reshape(shots_to_read, 256)
         self.dat = out[:, idx_array]/13107.
+
         return self.dat
 
 
     def read_cam(self):
-
+        """
+        Returns deta, detb, chopper, ext
+        """
+        #self.lock.acquire()
+        self.dat = 0
+        self.runner = Thread(target=self.transfer_data, args=(self.shots, self.dat))
         self.runner.start()
-        while self.runner.isRunning():
+        while self.runner.is_alive():
            QApplication.processEvents()
-
         #self.transfer_data()
+        self.runner.join()
         a = self.dat
 
         d = a.T
+        #self.lock.release()
         return d[:16, :], d[16:32, :], a[:, 32+8]>3., d[:, [32, 33, 34]].T
 
     def set_shots(self, shots):
-        self.shots = shots
+        self.lock.acquire()
+        self.shots = int(shots)
+
+        self.lock.release()
 
     def check_ready(self):
         read = int32()
@@ -269,7 +283,7 @@ cam = InfraAD()
 if __name__ == "__main__":
 
     import pyqtgraph as pg
-    from PyQt4 import QtGui, QtCore
+
     app = QApplication([])
     pw = pg.PlotWindow()
     plot = pw.plotItem.plot()
@@ -289,13 +303,13 @@ if __name__ == "__main__":
             timer.stop()
             raise
         #print a.shape
-        #plot.setData(a.mean(1))
-        plot2.setData(c)
+        plot.setData(a.mean(1))
+        #plot2.setData(c)
         #plot2.setData((a[:, :].std(1)/a[:, :].mean(1))*100)
 
 
     pw.show()
-    timer = QtCore.QTimer()
+    timer = QTimer()
     timer.timeout.connect(update)
     timer.start(0)
     app.exec_()
