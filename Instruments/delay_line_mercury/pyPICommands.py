@@ -117,7 +117,7 @@ class pyPICommands(object):
         return None
 
     def __QueryStringOnInt__(self, cmd, ID, bufsize=300):
-        RetString = C.create_string_buffer("", bufsize)
+        RetString = C.create_string_buffer(b"", bufsize)
         if (self.__GetFunc__(cmd)(ID, RetString, bufsize - 1) == 0):
             raise Exception(cmd + ' failed. bufsize:' + str(bufsize))
         return RetString.value
@@ -131,7 +131,7 @@ class pyPICommands(object):
     def __create_axes_buffer__(self, axes_list):
         if (self.__gcs1):
             return C.create_string_buffer(''.join(axes_list))
-        return C.create_string_buffer(' '.join(axes_list))
+        return C.create_string_buffer((''.join(axes_list)).encode())
 
     def ____create_axes_buffer___str__(self, axes_str):
         if (type(axes_str) == 'str'):
@@ -142,7 +142,7 @@ class pyPICommands(object):
 
     def __SetDoublesOfAxes__(self, cmd, axesvaluesdict):
         if (self.__ID >= 0):
-            axis_buff = self.__create_axes_buffer__(list(axesvaluesdict.keys()))
+            axis_buff = self.__create_axes_buffer__([str(i) for i in axesvaluesdict])
             inBuff = (C.c_double * len(axesvaluesdict))()
             inBuff[:] = list(map(axesvaluesdict.get, list(axesvaluesdict.keys())))
             return self.__GetFunc__(cmd)(self.__ID, axis_buff, inBuff)

@@ -1,6 +1,7 @@
 from .pyPICommands import pyPICommands as gcs
-import time
-CMDS = gcs(dllname='PI_GCS2_DLL')
+import time, os
+C = os.path.abspath(os.path.dirname(__file__))
+CMDS = gcs(dllname=C+'\\PI_GCS2_DLL_x64.dll', funcprefix='PI_')
 
 CONNECTED_AXES = ['1']
 
@@ -27,14 +28,14 @@ def init_axes(cmds):
 
     axes_are_referencing = True
     while axes_are_referencing:
-        sleep(0.1)
+        time.sleep(0.1)
         ref = cmds.IsMoving(' '.join(CONNECTED_AXES))
         axes_are_referencing = sum(ref.values()) > 0
 
 
 class DelayLine:
     def __init__(self):
-        USB_devs = CMDS.EnumerateUSB('')
+        USB_devs = CMDS.EnumerateUSB(b'')
         CMDS.ConnectUSB(USB_devs[0])
         init_axes(CMDS)
         print('connected to ', CMDS.qIDN())
@@ -44,8 +45,8 @@ class DelayLine:
 
     def move_mm(self, mm):
         CMDS.MOV({1: mm})
-        while CMDS.IsMoving(CONNECTED_AXES):
-            time.sleep(0.2)
+        #while CMDS.IsMoving(CONNECTED_AXES):
+        #   time.sleep(0.2)
     
     def wait_unil(self, pos):
         start_pos  = self.get_pos_mm(self)
@@ -57,6 +58,9 @@ class DelayLine:
             diff = (pos - start_pos)
             if sign*diff > 0:
                 break
+
+dl = DelayLine()
+dl.move_mm(2.)
                       
         
         
