@@ -255,7 +255,7 @@ class InfraAD(object):
 
         d = a.T
         #self.lock.release()
-        return d[:16, :], d[16:32, :], a[:, 32+8]>3., d[:, [32, 33, 34]].T
+        return d[:16, :]-self.back_a[:, None], d[16:32, :]-self.back_a[:, None], a[:, 32+8]>3., d[:, [32, 33, 34]].T
 
     def set_shots(self, shots):
         self.lock.acquire()
@@ -277,6 +277,9 @@ class InfraAD(object):
             return False
 
 cam = InfraAD()
+cam.back_a = np.load('back_a.npy')
+cam.back_b = np.load('back_b.npy')
+
 #cam.reset()
 #cam.set_int(180, direct=True)
 #cam.set_delay(255, direct=True)
@@ -289,7 +292,7 @@ if __name__ == "__main__":
     plot = pw.plotItem.plot()
     plot2 = pw.plotItem.plot(pen=pg.mkPen(color='r'))
 
-    cam.set_shots(100)
+    cam.set_shots(1000)
     import time
 
     def update():
@@ -307,7 +310,8 @@ if __name__ == "__main__":
         #plot2.setData(c)
         #plot2.setData((a[:, :].std(1)/a[:, :].mean(1))*100)
 
-
+        np.save('back_a.npy', a.mean(-1) )
+        np.save('back_b.npy', b.mean(-1))
     pw.show()
     timer = QTimer()
     timer.timeout.connect(update)

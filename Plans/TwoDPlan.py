@@ -66,7 +66,7 @@ class TwoDimMoving:
                               self.tc.last_read.fringe_count)
         self.bin_counts[idx] += 1
         self.bin_total[idx, :] += c.last_read.probe[idx, :]
-        self.bin_means = self.bin_total / self.bin_counts
+        self.bin_means[:] = self.bin_total / self.bin_counts
 
 
 

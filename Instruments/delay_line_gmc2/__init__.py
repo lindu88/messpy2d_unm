@@ -10,7 +10,13 @@ Created on Tue Sep 03 14:24:02 2013
 #ffi = cffi.FFI()
 #ffi.cdef(
 from ctypes import *
+old_csb = create_string_buffer
+def create_string_buffer(s, size=None):
+    if isinstance(s, str):
+        s = s.encode()
+    return old_csb(s, size)
 import time
+
 cstr = """
 
 /////////////////////////////////////////////////////////////////////////////

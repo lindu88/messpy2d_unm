@@ -2,6 +2,7 @@ import numpy as np
 from attr import attrs, attrib, Factory, make_class
 from Config import config
 import threading
+from Config import _cam, _dl
 
 
 @attrs
@@ -42,6 +43,7 @@ class Signal:
             raise ValueError("Can't disconnect %s from signal. Not found."%cb)
 
 
+
 @attrs
 class Cam:
     shots = attrib(100)
@@ -49,17 +51,16 @@ class Cam:
     num_ch = attrib(16)
 
     def set_shots(self, shots):
-        self.shots = shots
+        _cam.set_shots(shots)
         self.sigShotsChanged.emit(shots)
 
     def read_cam(self):
-        rand = np.random.randn(self.shots, 16, 3)*0.1
-        spec = np.exp(-np.arange(-8, 8)**2/10)+1
+        a,b, chopper, ext = _cam.read_cam()
         rd = ReadData(shots=self.shots,
-                      det_a=spec+rand[:, :, 0],
-                      det_b=0.9*spec**2+rand[:, :, 1],
-                      ext=rand[3],
-                      chopper=(rand[3][9] > 3))
+                      det_a=a.T,
+                      det_b=b.T,
+                      ext=ext.T,
+                      chopper=chopper)
         return rd
 
 
@@ -80,15 +81,16 @@ class Spectrometer:
 class Delayline():
     sigPosChanged = attrib(Factory(Signal))
 
-    pos = attrib(0)
+    pos = attrib(_dl.get_pos_fs())
 
     def set_pos(self, pos_fs):
         "Set pos in femtoseconds"
-        self.pos = pos_fs
+        _dl.move_fs(pos_fs)
+        pos_fs = _dl.get_pos_fs()
         self.sigPosChanged.emit(pos_fs)
 
     def get_pos(self):
-        return self.pos
+        return _dl.get_pos_fs()
 
     def set_speed(self, ps_per_sec):
         pass
@@ -159,7 +161,7 @@ class Controller:
             self.last_read.update()
         else:
             self.plan.make_step()
-        #print(time.time()-t)
+        print(time.time()-t)
 
 
 

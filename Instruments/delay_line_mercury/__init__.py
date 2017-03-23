@@ -1,9 +1,57 @@
-from .pyPICommands import pyPICommands as gcs
-import time, os
-C = os.path.abspath(os.path.dirname(__file__))
-CMDS = gcs(dllname=C+'\\PI_GCS2_DLL_x64.dll', funcprefix='PI_')
+import time
+import os.path as osp
+import ctypes as ct
+import cffi
+import time
+#ct.WinDLL('PI_GCS_DLL_x64')
 
-CONNECTED_AXES = ['1']
+#header = ''.join(open('PI_GCS2_DLL.h').readlines()[126:-3])
+p = osp.dirname(__file__)
+header = ''.join(open(p+'/PI_GCS2_DLL.h').readlines()[126:300])
+header = header.replace('PI_FUNC_DECL', '')
+header = header.replace('__int64', 'int64_t')
+
+
+
+ffi = cffi.FFI()
+ax = b'1'
+
+bool_out = ffi.new('int[1]')
+double_out = ffi.new('double[1]')
+
+def on_target():
+    a.PI_qONT(i, ax, bool_out)
+    print(bool_out)
+    return bool(bool_out[0])
+
+
+
+def is_moving():
+    a.PI_IsMoving(i, ax, bool_out)
+    return bool(bool_out[0])
+
+def qSVO():
+    a.PI_qSVO(i, ax, bool_out)
+    return bool(bool_out[0])
+
+def qFRF():
+    a.PI_qSVO(i, ax, bool_out)
+    return bool(bool_out[0])
+
+def qPos():
+    a.PI_qPOS(i, ax, double_out)
+    return double_out[0]
+
+
+#ffi.cdef("int PI_ConnectUSB(const char* szDescription);")
+ffi.cdef(header)
+a = ffi.dlopen(p +'/PI_GCS2_DLL_x64.dll')
+i = a.PI_ConnectUSB(b'0145500652')
+print(i)
+
+
+
+
 
 def mm_to_fs(pos_in_mm):
     "converts mm to femtoseconds"
@@ -17,36 +65,35 @@ def fs_to_mm(t_fs):
     pos_m = speed_of_light * t_fs * 1e-15
     return pos_m * 1000.
 
-def init_axes(cmds):
-    """references the axes"""
-    ref_ok = cmds.qFRF(' '.join(CONNECTED_AXES))
-    for axis_to_ref in CONNECTED_AXES:
-        cmds.SVO({axis_to_ref:1})        # switch on servo
-        if ref_ok[axis_to_ref] != 1:
-            print('referencing axis ' + axis_to_ref)
-            cmds.FNL(axis_to_ref)
-
-    axes_are_referencing = True
-    while axes_are_referencing:
-        time.sleep(0.1)
-        ref = cmds.IsMoving(' '.join(CONNECTED_AXES))
-        axes_are_referencing = sum(ref.values()) > 0
 
 
 class DelayLine:
     def __init__(self):
-        USB_devs = CMDS.EnumerateUSB(b'')
-        CMDS.ConnectUSB(USB_devs[0])
-        init_axes(CMDS)
-        print('connected to ', CMDS.qIDN())
+        print(a.PI_INI(i, ax))
+        if not qSVO():
+            print(a.PI_SVO(i, ax, [1]))
+        if not qFRF():
+            print(a.PI_FNL(i, ax))
+            while is_moving():
+                print('ref ing')
+                time.sleep(0.1)
+        self.homepos = 0
     
     def get_pos_mm(self):
-        return CMDS.qPOS(CONNECTED_AXES)[0]
+        return qPos()
+
+    def get_pos_fs(self):
+        return mm_to_fs((self.get_pos_mm()-self.homepos)*2.)
 
     def move_mm(self, mm):
-        CMDS.MOV({1: mm})
-        #while CMDS.IsMoving(CONNECTED_AXES):
-        #   time.sleep(0.2)
+        a.PI_MOV(i, ax, [mm])
+        while is_moving():
+            print('mov ing')
+            time.sleep(0.1)
+
+    def move_fs(self, fs):
+        mm = fs_to_mm(fs)
+        self.move_mm((mm-self.homepos)/2.)
     
     def wait_unil(self, pos):
         start_pos  = self.get_pos_mm(self)
@@ -60,9 +107,5 @@ class DelayLine:
                 break
 
 dl = DelayLine()
-dl.move_mm(2.)
-                      
-        
-        
 
 
