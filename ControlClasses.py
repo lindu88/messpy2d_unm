@@ -2,7 +2,7 @@ import numpy as np
 from attr import attrs, attrib, Factory, make_class
 from Config import config
 import threading
-from Config import _cam, _dl
+from Config import _cam, _dl, _fc
 
 
 @attrs
@@ -46,22 +46,31 @@ class Signal:
 
 @attrs
 class Cam:
-    shots = attrib(100)
+    shots = attrib(200)
     sigShotsChanged = attrib(Factory(Signal))
     num_ch = attrib(16)
 
     def set_shots(self, shots):
+        self.shots = shots
+
         _cam.set_shots(shots)
         self.sigShotsChanged.emit(shots)
 
     def read_cam(self):
+        #_fc.prime_fc(self.shots)
+        _cam.fc = _fc
         a,b, chopper, ext = _cam.read_cam()
+
+        print(_fc.get_values())
         rd = ReadData(shots=self.shots,
                       det_a=a.T,
                       det_b=b.T,
                       ext=ext.T,
                       chopper=chopper)
         return rd
+
+    def get_bg(self):
+        pass
 
 
 @attrs
@@ -85,6 +94,10 @@ class Delayline():
 
     def set_pos(self, pos_fs):
         "Set pos in femtoseconds"
+        try:
+            pos_fs = float(pos_fs)
+        except:
+            raise
         _dl.move_fs(pos_fs)
         pos_fs = _dl.get_pos_fs()
         self.sigPosChanged.emit(pos_fs)

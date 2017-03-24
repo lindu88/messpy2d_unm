@@ -6,6 +6,8 @@ This is a temporary script file.
 """
 
 import types
+import time
+import numpy
 import serial
 
 DEBUG = True
@@ -40,8 +42,8 @@ class FringeCounter(object):
             self.make_command(*c)
 
 
-        self.port = serial.Serial(port=com_port, baudrate=115200)
-        self.port.timeout = 1
+        self.port = serial.Serial(port=com_port, baudrate=115200*5)
+        self.port.timeout = 4
 
     def send_cmd(self, cmd):
         '''
@@ -105,15 +107,48 @@ class FringeCounter(object):
                 
             #getter = types.MethodType(getter, self, FringeCounter)
             setattr(self,   name, func)
-        
 
+    def prime_fc(self, shots):
+        "primes the fringe counter to record shots-counter values"
+        self.shots = shots
+        self.port.flushInput()
+        self.set_target_counts(shots)
+        self.time = time.time()
+
+    def get_ct(self):
+        self.port.write('g12 0\r\n')
+        ans = self.port.read_until(CRLF)
+        ans[]
+
+    def get_values(self):
+        print('time:', time.time() - self.time)
+        while True:
+            tc = self.get_target_counts()
+            print(tc)
+            time.sleep(0.1)
+            if tc  ==  0:
+                break
+
+
+        b = self.get_counter_table()
+
+        print(b[0], len(b[1]))
+        return numpy.frombuffer(b[1][:-2], 'h')
+
+    def set_counter(self, value=0):
+        self.set_counter_value(32000)
+
+
+
+
+fc = FringeCounter()
 
 
 
 if __name__ == '__main__':
     import time
     import struct
-    a = FringeCounter()
+    a = fc
     print(dir(a))
 #    print(a.get_pd1_offset())
 #    print(a.get_pd2_offset())
@@ -134,7 +169,7 @@ if __name__ == '__main__':
     
     for i in range(3):
         b = a.get_counter_table()
-        #print(a.get_target_counts())
+        print(a.get_target_counts())
         time.sleep(0.2)
     print(b[1][:])
     print(struct.unpack('1000h', b[1][:-2]))

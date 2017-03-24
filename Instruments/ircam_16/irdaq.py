@@ -20,9 +20,11 @@ from PyDAQmx.DAQmxConstants import *
 from qtpy.QtCore import QThread, QTimer, QMutex
 from threading import Thread, Lock
 from qtpy.QtWidgets import  QApplication
-import time
+import time, os
 sleep = time.sleep
 import threading
+
+cur_dir = os.path.dirname(__file__)
 
 """
 Initialize the PCI-6533 for Burst – Mode buffered data transfer of the Most
@@ -222,6 +224,9 @@ class InfraAD(object):
                                                DAQmx_Val_ActiveLow,
                                                DAQmx_Val_High,
                                                DAQmx_Val_ActiveHigh)
+
+        if self.fc is not None:
+            self.fc.prime_fc(shots)
         tt.ReadDigitalU32(-1, 10., PyDAQmx.DAQmx_Val_GroupByScanNumber,
                           nout, nout.size,   byref(read),  None)
         tt.WaitUntilTaskDone(10)
@@ -276,9 +281,12 @@ class InfraAD(object):
         else:
             return False
 
+    def get_bg(self):
+        pass
+
 cam = InfraAD()
-cam.back_a = np.load('back_a.npy')
-cam.back_b = np.load('back_b.npy')
+cam.back_a = np.load(cur_dir + '/back_a.npy')*0
+cam.back_b = np.load(cur_dir + '/back_b.npy')*0
 
 #cam.reset()
 #cam.set_int(180, direct=True)

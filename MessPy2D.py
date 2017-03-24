@@ -114,10 +114,6 @@ class MainWindow(QMainWindow):
 
 
 
-class HardwareRegistry:
-    pass
-
-
 class CommandMenu(QWidget):
     def __init__(self, parent=None):
         super(CommandMenu, self).__init__(parent=parent)
@@ -142,7 +138,8 @@ class CommandMenu(QWidget):
 
         sc = ControlFactory('Shots', c.cam.set_shots, format_str='%d',
                             presets=[50, 200, 500, 1000])
-
+        get_bg_button = QPushButton('Record Background')
+        get_bg_button.clicked.connect(c.cam.get_bg)
         c.cam.sigShotsChanged.connect(sc.update_value)
         gb = make_groupbox([sc], "ADC")
         self._layout.addWidget(gb)
