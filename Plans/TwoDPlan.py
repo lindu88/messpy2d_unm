@@ -45,23 +45,23 @@ class TwoDimMoving:
         self.bin_counts = np.zeros(self.bin_paras.bins.size, dtype='int')
         self.bin_total = np.zeros((self.bin_paras.bins.size, N))
         self.bin_means = np.zeros_like(self.bin_total)
-
+        self.controller.cam.set_shots(self.shots)
 
     def make_step_gen(self):
-        c = self.controller()
+        c = self.controller
 
         while True:
             print('j')
             self.start_recording()
             self.save_raw()
-            self.bin_scan()
+            #self.bin_scan()
             self.sigScanFinished.emit()
-            self.save_result()
+            #self.save_result()
             self.scans += 1
             yield
 
     def bin_scan(self):
-        c = self.controller()
+        c = self.controller
         idx = np.searchsorted(self.bin_paras.bin_borders,
                               self.tc.last_read.fringe_count)
         self.bin_counts[idx] += 1
@@ -72,17 +72,22 @@ class TwoDimMoving:
 
     def save_raw(self):
         "Save raw data, the format is 16xprobe, 16xref, chopper, fringe"
-        lr = self.controller.last_read
-        out = np.column_stack((lr.probe, lr.ref, lr.chopper, lr.fringe))
-        np.savetxt("%s_%d.txt"%(self.name, self.scans))
+        lr = self.lr
+        print(lr.ext.shape)
+        out = np.column_stack((lr.det_a, lr.det_b,  lr.ext))
+        np.savetxt("%s_%d.txt"%(self.name, self.scans), out)
 
     def start_recording(self):
         c = self.controller
-        c.delay_line_second
-        c.delay_line_second.set_speed()
-        c.fringe_counter.clear()
-        c.cam.read_cam()
-        self.last_read = c.last_read
+        c.delay_line_second.set_speed(1.)
+
+        c.delay_line.set_pos(self.t_range[0]*1000-500)
+        print('pos bevor', c.delay_line.get_pos())
+        c.delay_line_second.set_speed(0.25)
+        c.delay_line.set_pos(self.t_range[1]*1000+500, do_wait=False)
+        self. lr = c.cam.read_cam()
+        print('pos after',  c.delay_line.get_pos())
+
 
 
     def save_result(self):

@@ -77,7 +77,7 @@ class DelayLine:
             while is_moving():
                 print('ref ing')
                 time.sleep(0.1)
-        self.homepos = 0
+        self.homepos = 9.0
     
     def get_pos_mm(self):
         return qPos()
@@ -85,15 +85,21 @@ class DelayLine:
     def get_pos_fs(self):
         return mm_to_fs((self.get_pos_mm()-self.homepos)*2.)
 
-    def move_mm(self, mm):
+    def move_mm(self, mm, do_wait=True):
         a.PI_MOV(i, ax, [mm])
-        while is_moving():
-            print('mov ing')
-            time.sleep(0.1)
+        if do_wait:
+            while is_moving():
+                print('mov ing')
+                time.sleep(0.1)
 
-    def move_fs(self, fs):
+    def move_fs(self, fs, do_wait=True):
         mm = fs_to_mm(fs)
-        self.move_mm((mm-self.homepos)/2.)
+        print('mm', mm+self.homepos)
+        self.move_mm(mm/2.+self.homepos, do_wait=do_wait)
+
+    def set_speed(self, speed):
+        speed = float(speed)
+        a.PI_VEL(i, ax, [speed])
     
     def wait_unil(self, pos):
         start_pos  = self.get_pos_mm(self)
@@ -107,5 +113,4 @@ class DelayLine:
                 break
 
 dl = DelayLine()
-
-
+dl.set_speed(1.0)

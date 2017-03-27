@@ -2,7 +2,7 @@ import numpy as np
 from attr import attrs, attrib, Factory, make_class
 from Config import config
 import threading
-from Config import _cam, _dl, _fc
+from Config import _cam, _dl
 
 
 @attrs
@@ -58,10 +58,9 @@ class Cam:
 
     def read_cam(self):
         #_fc.prime_fc(self.shots)
-        _cam.fc = _fc
         a,b, chopper, ext = _cam.read_cam()
 
-        print(_fc.get_values())
+        #print(_fc.get_values())
         rd = ReadData(shots=self.shots,
                       det_a=a.T,
                       det_b=b.T,
@@ -92,13 +91,13 @@ class Delayline():
 
     pos = attrib(_dl.get_pos_fs())
 
-    def set_pos(self, pos_fs):
+    def set_pos(self, pos_fs, do_wait=True):
         "Set pos in femtoseconds"
         try:
             pos_fs = float(pos_fs)
         except:
             raise
-        _dl.move_fs(pos_fs)
+        _dl.move_fs(pos_fs, do_wait=do_wait)
         pos_fs = _dl.get_pos_fs()
         self.sigPosChanged.emit(pos_fs)
 
@@ -106,7 +105,7 @@ class Delayline():
         return _dl.get_pos_fs()
 
     def set_speed(self, ps_per_sec):
-        pass
+        _dl.set_speed(ps_per_sec)
 
 
 
@@ -129,6 +128,7 @@ class LastRead:
     fringe_count = attrib(None)  # type np.array
     probe_back = attrib(0) # type np.array
     ref_back = attrib(0) # type np.array
+    chopper = attrib(None)
 
     def update(self):
         dr = self.cam.read_cam()
@@ -142,7 +142,7 @@ class LastRead:
         self.reference_mean = self.reference.mean(0)
         self.reference_std = np.nan_to_num(self.reference.std(0) / abs(self.reference_mean) * 100)
 
-        self.ext_channel_mean[1] = 2 + np.random.rand(1)*0.05
+        self.ext_channel_mean = 2 + np.random.rand(1)*0.05
         self.probe_signal = np.log10(self.probe_mean/self.reference_mean)
 
 import time

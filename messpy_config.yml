@@ -1,9 +1,9 @@
 2D Settings:
-  Filename: ''
-  Shots: 0
+  Filename: bla
+  Shots: 6000
   delay 1: 0.0
-  max. Tau 2: 0.0
-  min. Tau 2: 0.0
+  max. Tau 2: 3.0
+  min. Tau 2: -3.0
 Sample:
   Annotations: ''
   Excitation: ''

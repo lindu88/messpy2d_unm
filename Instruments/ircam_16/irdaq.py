@@ -225,8 +225,6 @@ class InfraAD(object):
                                                DAQmx_Val_High,
                                                DAQmx_Val_ActiveHigh)
 
-        if self.fc is not None:
-            self.fc.prime_fc(shots)
         tt.ReadDigitalU32(-1, 10., PyDAQmx.DAQmx_Val_GroupByScanNumber,
                           nout, nout.size,   byref(read),  None)
         tt.WaitUntilTaskDone(10)
@@ -260,7 +258,7 @@ class InfraAD(object):
 
         d = a.T
         #self.lock.release()
-        return d[:16, :]-self.back_a[:, None], d[16:32, :]-self.back_a[:, None], a[:, 32+8]>3., d[:, [32, 33, 34]].T
+        return d[:16, :]-self.back_a[:, None], d[16:32, :]-self.back_a[:, None], a[:, 32+8]>3., d[[48-3, 48-2, 48-1], : ]
 
     def set_shots(self, shots):
         self.lock.acquire()

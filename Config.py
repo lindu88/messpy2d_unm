@@ -20,8 +20,9 @@ if platform.node() == '2dir-PC':
     hp = config.__dict__.get('Delay 1 Home Pos.', 8.80)
     _dl.home_pos = hp
 
-    from Instruments.FringeCounter import fc
-    _fc = fc
+
+    #from Instruments.FringeCounter import fc
+    #_fc = fc
 
 else:
     CamBase = object

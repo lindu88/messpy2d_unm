@@ -33,9 +33,11 @@ class TwoDViewer(QWidget):
         self.trans_plot = pg.PlotWidget(parent=self)
         self.map_plot = pg.PlotWidget(parent=self)
         self.lines['bins'] = self.bin_plot.plotItem.plot()
-        for i in range(16):
+        for i in list(range(0)) + ['pyro']:
             self.lines[i] = self.trans_plot.plot()
-        self.lines['pyro'] = self.trans_plot.plot()
+
+        self.lines['pd1'] = self.bin_plot.plot(pen=pg.mkPen('r', width=1))
+        self.lines['pd2'] = self.bin_plot.plot(pen=pg.mkPen('g', width=1))
 
     def layout_widget(self):
         lay = hlay([self.trans_plot,
@@ -45,13 +47,17 @@ class TwoDViewer(QWidget):
 
     def refresh(self):
         p = self.plan
-        lr = p.last_read
-        offsets = np.ptp(lr.probe, axis=1)
-        mins = np.min(lr.probe, axis=1)
-        x = lr.fringe
-        for i in range(16):
-            self.lines[i].setData(x, lr[i, :]+offsets)
-        self.lines['bins'].setData(x, lr.ext[:, 3])
+        lr = p.lr
+        #offsets = np.ptp(lr.probe, axis=1)
+        #mins = np.min(lr.probe, axis=1)
+
+        #for i in range(16):
+        #    self.lines[i].setData(x, lr[i, :]+offsets)
+
+        self.lines['pyro'].setData(lr.ext[:, -1])
+        self.lines['pd1'].setData(lr.ext[:, -2])
+        self.lines['pd2'].setData(lr.ext[:, -3])
+
 
 
 class TwoDStarter(PlanStartDialog):
@@ -70,10 +76,9 @@ class TwoDStarter(PlanStartDialog):
                 'step': 500},
                {'name': 'delay 1', 'type': 'float'},
                {'name': 'max. Tau 2', 'type': 'float', 'dec': True,
-                'step': 0.1, 'siPrefix': False, 'suffix': ' ps'},
+                'step': 0.1, 'siPrefix': False, 'suffix': ' ps', 'default': 3},
                {'name': 'min. Tau 2', 'type': 'float', 'dec': True,
-                'step': 0.1, 'siPrefix': False, 'suffix': ' ps', 'default': -1},
-
+                'step': 0.1, 'siPrefix': False, 'suffix': ' ps', 'default': -3},
                ]
         two_d = {'name': '2D Settings', 'type': 'group', 'children': tmp}
 
@@ -83,12 +88,13 @@ class TwoDStarter(PlanStartDialog):
     def create_plan(self, controller):
         p = self.paras.child('2D Settings')
         s = self.paras.child('Sample')
-        TwoDimMoving(
+        p = TwoDimMoving(
             name=p['Filename'],
             t_range=(p['min. Tau 2'], p['max. Tau 2']),
             shots=p['Shots'],
             controller=controller,
         )
+        return p
 
 if __name__ == '__main__':
     import sys

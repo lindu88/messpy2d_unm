@@ -87,6 +87,8 @@ class MainWindow(QMainWindow):
                     print('ok')
                     self.toggle_run(False)
                     self.controller.plan = plan
+                    self.viewer = TwoDViewer(plan)
+                    self.viewer.show()
                     self.toggle_run(True)
             return f
 
@@ -185,7 +187,7 @@ class CommandMenu(QWidget):
 
         def get_ext(i):
             lr = controller.last_read
-            return lr.ext_channel_mean[i]
+            return lr.ext[:,]
 
         vl = ValueLabels([('Ext 1', partial(get_ext, 1))])
         self._layout.addWidget(make_groupbox([vl], 'Ext.'))
