@@ -11,32 +11,34 @@ header = ''.join(open(p+'/PI_GCS2_DLL.h').readlines()[126:300])
 header = header.replace('PI_FUNC_DECL', '')
 header = header.replace('__int64', 'int64_t')
 
-
-
 ffi = cffi.FFI()
 ax = b'1'
+ffi.cdef(header)
+a = ffi.dlopen(p +'/PI_GCS2_DLL_x64.dll')
+i = a.PI_ConnectUSB(b'0145500652')
 
 bool_out = ffi.new('int[1]')
 double_out = ffi.new('double[1]')
 
-def on_target():
-    a.PI_qONT(i, ax, bool_out)
-    print(bool_out)
-    return bool(bool_out[0])
+def bool_func(func, con=i, ax=ax, prefix='PI_'):
+    func = getattr(a, prefix + func)
+    def func():
+        func(con, ax, bool_out)
+        return bool(bool_out[0])
+    return func
 
+def double_func(func, con=i, ax=ax, prefix='PI_'):
+    func = getattr(a, prefix + func)
+    def func():
+        func(con, ax, double_out)
+        return double_out[0]
+    return func
 
-
-def is_moving():
-    a.PI_IsMoving(i, ax, bool_out)
-    return bool(bool_out[0])
-
-def qSVO():
-    a.PI_qSVO(i, ax, bool_out)
-    return bool(bool_out[0])
-
-def qFRF():
-    a.PI_qSVO(i, ax, bool_out)
-    return bool(bool_out[0])
+on_target = bool_func('qONT')
+is_moving = bool_func('IsMoving')
+qSVO = bool_func('qSVO')
+qFRF = bool_func('qFRF')
+qPos = double_func('qPOS')
 
 def qPos():
     a.PI_qPOS(i, ax, double_out)
@@ -44,9 +46,7 @@ def qPos():
 
 
 #ffi.cdef("int PI_ConnectUSB(const char* szDescription);")
-ffi.cdef(header)
-a = ffi.dlopen(p +'/PI_GCS2_DLL_x64.dll')
-i = a.PI_ConnectUSB(b'0145500652')
+
 print(i)
 
 
@@ -78,9 +78,9 @@ class DelayLine:
                 print('ref ing')
                 time.sleep(0.1)
         self.homepos = 9.0
-    
+
     def get_pos_mm(self):
-        return qPos()
+        return qPOS()
 
     def get_pos_fs(self):
         return mm_to_fs((self.get_pos_mm()-self.homepos)*2.)
@@ -100,7 +100,7 @@ class DelayLine:
     def set_speed(self, speed):
         speed = float(speed)
         a.PI_VEL(i, ax, [speed])
-    
+
     def wait_unil(self, pos):
         start_pos  = self.get_pos_mm(self)
         diff = (pos - start_pos)
