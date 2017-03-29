@@ -40,11 +40,12 @@ class TwoDimMoving:
     sigTauMinChanged = attrib(Factory(Signal))
     sigTauMaxChanged = attrib(Factory(Signal))
     sigShotsChanged = attrib(Factory(Signal))
+
     def __attrs_post_init__(self):
         gen = self.make_step_gen()
         self.make_step = lambda: next(gen)
         N = self.controller.cam.num_ch
-        self.bin_paras = calc_params(self.t_range, self.num_bins)
+        self.bin_paras = calc_params(self.tau_range, self.num_bins)
         self.bin_counts = np.zeros(self.bin_paras.bins.size, dtype='int')
         self.bin_total = np.zeros((self.bin_paras.bins.size, N))
         self.bin_means = np.zeros_like(self.bin_total)

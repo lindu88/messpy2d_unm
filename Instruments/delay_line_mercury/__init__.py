@@ -83,7 +83,8 @@ def fs_to_mm(t_fs):
 class DelayLine:
     def __init__(self):
         if not INI():
-            raise IOError("Can't init Mercury")
+            #raise IOError("Can't init Mercury")
+            pass
         if not qSVO():
             print(SVO(True))
         if not qFRF():
@@ -130,4 +131,5 @@ class DelayLine:
                 break
 
 dl = DelayLine()
+dl.move_mm(7.)
 dl.set_speed(1.0)
