@@ -6,7 +6,7 @@ from Config import config
 from ControlClasses import Controller
 import pyqtgraph as pg
 from pyqtgraph.parametertree import Parameter, ParameterTree
-from QtHelpers import ObserverPlot, vlay, hlay, PlanStartDialog
+from QtHelpers import ObserverPlot, vlay, hlay, PlanStartDialog, ControlFactory
 import numpy as np
 from Plans.TwoDPlan import TwoDimMoving
 
@@ -18,6 +18,11 @@ class TwoDViewer(QWidget):
         self.setWindowTitle(plan.name)
         self.setMinimumSize(1200, 600)
         self.info_wid = QLabel()
+
+        self.shots = ControlFactory('Shots', plan.set_shots, plan.sigShotsChanged)
+        self.max_tau = ControlFactory('max tau', plan.set_tau_max, plan.sigTauMaxChanged)
+        self.min_tau = ControlFactory('min tau', plan.set_tau_min, plan.sigTauMinChanged)
+
         self.lines = {}
         self.setup_plots()
         self.setup_info()
@@ -40,9 +45,11 @@ class TwoDViewer(QWidget):
         self.lines['pd2'] = self.bin_plot.plot(pen=pg.mkPen('g', width=1))
 
     def layout_widget(self):
+        con = vlay([self.info_wid, self.shots, self.max_tau, self.min_tau])
+
         lay = hlay([self.trans_plot,
                     vlay([self.bin_plot, self.map_plot]),
-                    self.info_wid])
+                    con])
         self.setLayout(lay)
 
     def refresh(self):

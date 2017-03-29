@@ -27,7 +27,7 @@ def calc_params(t_range, num_bins, shots=4000, shots_per_sec=2000):
 class TwoDimMoving:
     name = attrib('')
     sample_info = attrib(Factory(dict))
-    t_range = attrib((-3, 3))
+    tau_range = attrib([-3, 3])
     num_bins = attrib(2048)
     shots = attrib(4000)
     scans = attrib(0)
@@ -35,8 +35,11 @@ class TwoDimMoving:
     controller = attrib(Factory(Controller)) # type: Controller
     data = attrib(None)
     binned_data = attrib(None)
-    sigScanFinished = attrib(Factory(Signal))
 
+    sigScanFinished = attrib(Factory(Signal))
+    sigTauMinChanged = attrib(Factory(Signal))
+    sigTauMaxChanged = attrib(Factory(Signal))
+    sigShotsChanged = attrib(Factory(Signal))
     def __attrs_post_init__(self):
         gen = self.make_step_gen()
         self.make_step = lambda: next(gen)
@@ -46,6 +49,18 @@ class TwoDimMoving:
         self.bin_total = np.zeros((self.bin_paras.bins.size, N))
         self.bin_means = np.zeros_like(self.bin_total)
         self.controller.cam.set_shots(self.shots)
+
+    def set_tau_min(self, tau_min):
+        self.tau_range[0] = tau_min
+        self.sigTauMinChanged.emit(tau_min)
+
+    def set_tau_max(self, tau_max):
+        self.tau_range[1] = tau_max
+        self.sigTauMaxChanged.emit(tau_max)
+
+    def set_shots(self, shots):
+        self.shots = shots
+        self.sigShotsChanged.emit(shots)
 
     def make_step_gen(self):
         c = self.controller
@@ -75,7 +90,7 @@ class TwoDimMoving:
         lr = self.lr
         print(lr.ext.shape)
         out = np.column_stack((lr.det_a, lr.det_b,  lr.ext))
-        np.savetxt("%s_%d.txt"%(self.name, self.scans), out)
+        np.save("%s_%d.npy"%(self.name, self.scans), out)
 
     def start_recording(self):
         c = self.controller

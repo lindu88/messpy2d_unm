@@ -54,7 +54,39 @@ def make_palette():
 
 
 class ControlFactory(QWidget):
-    """Simple widget build of Label, button and LineEdit"""
+    """Simple widget build of Label, button and LineEdit
+
+    Parameters
+    ----------
+    name: str,
+        Shows up in the widget
+
+    apply_fn: function,
+        The function which gets called (with the the textlabel value)
+        after pressing Set.
+
+    update_signal: signal,
+        The signal which is listened to update the label.
+
+    parent: QWidget,
+        Qt-parent widget
+
+    format_str: str,
+        Formatting of the value
+
+    presets: list
+        List of values for which a button is generated. When
+        the button is clicked, call preset_func with the value.
+
+    preset_func: function
+        Gets called with the preset values, is required when using
+        presets
+
+    extra_buttons: list of (str, func)
+        Creates button with the label given by the string
+        and calling the function func.
+
+    """
     def __init__(self, name, apply_fn, update_signal=None, parent=None,
                  format_str='%.1f', presets=None, preset_func=None,extra_buttons=None):
         super(ControlFactory, self).__init__(parent=parent)

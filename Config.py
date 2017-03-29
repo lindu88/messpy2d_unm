@@ -20,13 +20,18 @@ if platform.node() == '2dir-PC':
     hp = config.__dict__.get('Delay 1 Home Pos.', 8.80)
     _dl.home_pos = hp
 
+    from Instruments.delay_line_gmc2 import dl
+    _dl2 = dl
+    hp = config.__dict__.get('Delay 2 Home Pos.', 8.80)
+    _dl2.home_pos = hp
 
     #from Instruments.FringeCounter import fc
     #_fc = fc
-
 else:
     CamBase = object
     DelayBase = object
     SpecBase = object
 
+config.list_of_solvents = ['Toluene', 'THF', 'H20', 'D20', 'DMSO', 'None']
+config.list_of_samples = ['Cyclohexanol', 'Phenylisocyanat', 'TDI']
 

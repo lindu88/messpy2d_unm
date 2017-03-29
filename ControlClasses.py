@@ -2,7 +2,7 @@ import numpy as np
 from attr import attrs, attrib, Factory, make_class
 from Config import config
 import threading
-from Config import _cam, _dl
+from Config import _cam, _dl, _dl2
 
 
 @attrs
@@ -88,8 +88,12 @@ class Spectrometer:
 @attrs
 class Delayline():
     sigPosChanged = attrib(Factory(Signal))
+    pos = attrib(0)
+    _dl = attrib(object)
 
-    pos = attrib(_dl.get_pos_fs())
+    def __attrs_post_init__(self):
+        self.pos = self._dl.get_pos_fs()
+        self.sigPosChanged.emit(self.pos)
 
     def set_pos(self, pos_fs, do_wait=True):
         "Set pos in femtoseconds"
@@ -97,15 +101,19 @@ class Delayline():
             pos_fs = float(pos_fs)
         except:
             raise
-        _dl.move_fs(pos_fs, do_wait=do_wait)
-        pos_fs = _dl.get_pos_fs()
-        self.sigPosChanged.emit(pos_fs)
+        self._dl.move_fs(pos_fs, do_wait=do_wait)
+        self.pos = self._dl.get_pos_fs()
+        self.sigPosChanged.emit(self.pos)
 
     def get_pos(self):
-        return _dl.get_pos_fs()
+        return self._dl.get_pos_fs()
 
     def set_speed(self, ps_per_sec):
-        _dl.set_speed(ps_per_sec)
+        self._dl.set_speed(ps_per_sec)
+
+    def set_home(self):
+        self._dl.homepos = self._dl.get_pos_mm()
+        config['Delay 1 Home Pos.'] = self._dl.get_pos_mm()
 
 
 
@@ -153,8 +161,8 @@ class Controller:
     def __init__(self):
         self.cam = Cam()
         self.cam.read_cam()
-        self.delay_line = Delayline()
-        self.delay_line_second = Delayline()
+        self.delay_line = Delayline(dl=_dl)
+        self.delay_line_second = Delayline(dl=_dl2)
         self.spectrometer = Spectrometer()
         pb, rb = config.probe_back, config.probe_ref
         if pb is None:

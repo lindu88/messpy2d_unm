@@ -208,6 +208,7 @@ if __name__ == '__main__':
     controller = Controller()
 
     app = QApplication([])
+    
     font = QFont()
 
     app.setStyle('Fusion')
