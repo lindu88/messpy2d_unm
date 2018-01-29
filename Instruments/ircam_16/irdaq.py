@@ -109,7 +109,7 @@ class InfraAD(object):
     has_external = True
     def __init__(self):
         print("Init cam...")
-        self.shots = 100
+        self.shots = 1000
 
         self.read_task = PyDAQmx.Task()
         self.read_task.CreateDIChan('dev1/port1/line5', 'scan ready', 0)
@@ -257,8 +257,11 @@ class InfraAD(object):
         a = self.dat
 
         d = a.T
+
+        #np.save('back_a.npy', d[:16, :].mean(-1) )
+        #np.save('back_b.npy', d[16:32, :].mean(-1))
         #self.lock.release()
-        return d[:16, :]-self.back_a[:, None], d[16:32, :]-self.back_a[:, None], a[:, 32+8]>3., d[[48-3, 48-2, 48-1], : ]
+        return d[:16, :]-self.back_a[:, None], d[16:32, :]-self.back_b[:, None], a[:, 32+8]>3., d[32:48, : ]
 
     def set_shots(self, shots):
         self.lock.acquire()
@@ -283,8 +286,8 @@ class InfraAD(object):
         pass
 
 cam = InfraAD()
-cam.back_a = np.load(cur_dir + '/back_a.npy')*0
-cam.back_b = np.load(cur_dir + '/back_b.npy')*0
+cam.back_a = np.load(cur_dir + '/back_a.npy')
+cam.back_b = np.load(cur_dir + '/back_b.npy')
 
 #cam.reset()
 #cam.set_int(180, direct=True)
@@ -313,11 +316,11 @@ if __name__ == "__main__":
             raise
         #print a.shape
         plot.setData(a.mean(1))
+        #plot.setData(d[8,  :])
+        #plot.setData(d[7, :])
         #plot2.setData(c)
         #plot2.setData((a[:, :].std(1)/a[:, :].mean(1))*100)
 
-        np.save('back_a.npy', a.mean(-1) )
-        np.save('back_b.npy', b.mean(-1))
     pw.show()
     timer = QTimer()
     timer.timeout.connect(update)

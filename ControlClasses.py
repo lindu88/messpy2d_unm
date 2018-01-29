@@ -151,7 +151,10 @@ class LastRead:
         self.reference_std = np.nan_to_num(self.reference.std(0) / abs(self.reference_mean) * 100)
 
         self.ext_channel_mean = 2 + np.random.rand(1)*0.05
-        self.probe_signal = np.log10(self.probe_mean/self.reference_mean)
+
+        self.probe_signal = -1000*np.log10(self.probe[::2, :]/self.probe[1::2, :]).mean(0)
+        if dr.chopper[0]:
+            self.probe_signal *= -1
 
 import time
 
@@ -161,8 +164,8 @@ class Controller:
     def __init__(self):
         self.cam = Cam()
         self.cam.read_cam()
-        self.delay_line = Delayline(dl=_dl)
-        self.delay_line_second = Delayline(dl=_dl2)
+        self.delay_line = Delayline(dl=_dl2)
+        self.delay_line_second = Delayline(dl=_dl)
         self.spectrometer = Spectrometer()
         pb, rb = config.probe_back, config.probe_ref
         if pb is None:

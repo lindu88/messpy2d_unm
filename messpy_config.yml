@@ -1,12 +1,24 @@
 2D Settings:
-  Filename: bla
-  Shots: 6000
+  Filename: richtig
+  Shots: 19000
+  Speed: 0.05
   delay 1: 0.0
-  max. Tau 2: 3.0
-  min. Tau 2: -3.0
+  end Tau 2: -4.0
+  start Tau 2: 0.7
 Sample:
-  Annotations: ''
-  Excitation: ''
-  Sample: ''
-  Solvent: ''
-  Thickness: ''
+  Annotations: 1.2 OD
+  Excitation: '2700'
+  Sample: TDI
+  Solvent: THF
+  Thickness: 50mu
+list_of_samples:
+- Cyclohexanol
+- Phenylisocyanat
+- TDI
+list_of_solvents:
+- Toluene
+- THF
+- H20
+- D20
+- DMSO
+- None

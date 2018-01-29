@@ -92,6 +92,7 @@ class DelayLine:
             while is_moving():
                 print('ref ing')
                 time.sleep(0.1)
+        self.set_speed(1.0)
         self.homepos = 9.0
 
     def get_pos_mm(self):
@@ -104,8 +105,8 @@ class DelayLine:
         MOV(mm)
         if do_wait:
             while is_moving():
-                print('mov ing')
-                time.sleep(0.1)
+                #print('mov ing')
+                time.sleep(0.05)
 
     def move_fs(self, fs, do_wait=True):
         mm = fs_to_mm(fs)
@@ -131,5 +132,6 @@ class DelayLine:
                 break
 
 dl = DelayLine()
-dl.move_mm(7.)
-dl.set_speed(1.0)
+#dl.move_mm(15)
+#dl.move_mm(0)
+
