@@ -2,7 +2,7 @@ import numpy as np
 from attr import attrs, attrib, Factory, make_class
 from Config import config
 import threading
-from Config import _cam, _dl, _dl2
+from Config import _cam, _dl
 
 
 @attrs
@@ -30,9 +30,9 @@ class Signal:
             except:
                 raise
 
-    def connect(self, cb, thread=True):
+    def connect(self, cb, do_threaded=True):
         self.callbacks.append(cb)
-        self.do_threaded.append(thread)
+        self.do_threaded.append(do_threaded)
 
     def disconnect(self, cb):
         if cb in self.callbacks:
@@ -46,9 +46,9 @@ class Signal:
 
 @attrs
 class Cam:
-    shots = attrib(200)
-    sigShotsChanged = attrib(Factory(Signal))
-    num_ch = attrib(16)
+    shots = attrib(200, type=int)
+    sigShotsChanged: Signal = attrib(Factory(Signal))
+    num_ch: int = attrib(16)
 
     def set_shots(self, shots):
         self.shots = shots
@@ -162,7 +162,9 @@ class Controller:
         self.cam = Cam()
         self.cam.read_cam()
         self.delay_line = Delayline(dl=_dl)
-        self.delay_line_second = Delayline(dl=_dl2)
+
+        if config.has_second_dl:
+            self.delay_line_second = Delayline(dl=_dl2)
         self.spectrometer = Spectrometer()
         pb, rb = config.probe_back, config.probe_ref
         if pb is None:
@@ -174,14 +176,26 @@ class Controller:
                                   ref_back=rb)  #type: LastRead
         self.plan = None
         self.pause_plan = False
-
+        self.running_step = False
 
     def loop(self):
         t = time.time()
+
         if self.plan is None or self.pause_plan:
             self.last_read.update()
         else:
+            # if self.running_step:
+            #     if self.thread.is_alive():
+            #         return
+            #     else:
+            #         self.running_step = False
+            # else:
+            #     self.thread = threading.Thread(target=self.plan.make_step)
+            #     self.thread.start()
+            #     self.running_step = True
             self.plan.make_step()
+
+
         print(time.time()-t)
 
 

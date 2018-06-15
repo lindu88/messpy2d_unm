@@ -55,21 +55,26 @@ the user, or the LASPEC software.
 
 
 def interleave(a, b):
+    '''Interleave to arrays'''
     out = np.zeros(a.size*2)
     out[::2] = a
     out[1::2] = b
     return out
 
 def mk_idx():
+    '''
+    Generate the indexes used by the ADC of IR systems.
+
+    Converted from the LabView code.
+    '''
     ar = np.arange(256)
     a1, a2 = ar[::2], ar[1::2]
     out = np.zeros_like(ar)
-    for j in range(0, 128, 16):
 
+    for j in range(0, 128, 16):
         a1e = a1[j:j+8]
         a1o = a1[j+8:j+16]
         a1f = interleave(a1e, a1o)
-
 
         a2e = a2[j:j+8]
         a2o = a2[j+8:j+16]

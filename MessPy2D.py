@@ -14,7 +14,7 @@ from QtHelpers import dark_palette, ControlFactory, make_groupbox, \
     ObserverPlot, ValueLabels
 from ControlClasses import Controller
 
-HAS_SECOND_DELAYLINE = True
+HAS_SECOND_DELAYLINE = config.has_second_delaystage
 HAS_ROTATION_STAGE = config.has_rot_stage
 
 
@@ -87,19 +87,25 @@ class MainWindow(QMainWindow):
                     print('ok')
                     self.toggle_run(False)
                     self.controller.plan = plan
-                    self.viewer = TwoDViewer(plan)
+                    self.viewer = PlanClass.viewer(plan)
                     self.viewer.show()
                     self.toggle_run(True)
             return f
 
         asl_icon = qta.icon('ei.graph', color='white')
-        pp = QPushButton('Pump-probe', icon=asl_icon)
+        pp = QPushButton('2D Experiment', icon=asl_icon)
         pp.clicked.connect(plan_starter(TwoDStarter))
-
         tb.addWidget(pp)
+
+        asl_icon = qta.icon('ei.graph', color='white')
+        pp = QPushButton('Pump Probe', icon=asl_icon)
+        pp.clicked.connect(plan_starter(PumpProbeStarter))
+        tb.addWidget(pp)
+
         asl_icon = qta.icon('ei.barcode', color='white')
         pp = QPushButton('Scan Spectrum', icon=asl_icon)
         tb.addWidget(pp)
+
         asl_icon = qta.icon('ei.download', color='white')
         pp = QPushButton('Save current Spec', icon=asl_icon)
         tb.addWidget(pp)
@@ -123,29 +129,61 @@ class CommandMenu(QWidget):
         self._layout = QVBoxLayout(self)
         c = parent.controller # type: Controller
 
+        self.add_plan_controls()
+
+        gb = self.add_loop_control(parent)
+        gb = self.add_cam(c, gb)
+        self._layout.addWidget(gb)
+
+        dls = self.add_delaystages(c)
+        gb = make_groupbox(dls, "Delay")
+        self._layout.addWidget(gb)
+
+        gb = self.add_spec(c, gb)
+        self._layout.addWidget(gb)
+
+        if HAS_ROTATION_STAGE:
+            self.add_rot_stage()
+
+        self.add_ext_view()
+
+    def add_plan_controls(self):
         self.start_but = QPushButton('Start Plan')
         self._sp = SelectPlan(self)
         self.start_but.clicked.connect(lambda: self._sp.show())
         self.plan_label = QLabel('Default loop')
         self.plan_label.setAlignment(Qt.AlignHCenter)
+
+    def add_ext_view(self):
+        def get_ext(i):
+            lr = controller.last_read
+            return lr.ext[:, ]
+
+        vl = ValueLabels([('Ext 1', partial(get_ext, 1))])
+        self._layout.addWidget(make_groupbox([vl], 'Ext.'))
+        self._layout.addStretch(10)
+
+    def add_loop_control(self, parent):
         cb_running = QPushButton('Running',
                                  icon=qta.icon('fa.play', color='white'))
         cb_running.setCheckable(True)
         cb_running.setChecked(True)
         cb_running.toggled.connect(parent.toggle_run)
-
         gb = make_groupbox([self.start_but, cb_running, self.plan_label],
                            'Plans')
         self._layout.addWidget(gb)
+        return gb
 
+    def add_cam(self, c, gb):
         sc = ControlFactory('Shots', c.cam.set_shots, format_str='%d',
                             presets=[50, 200, 500, 1000])
         get_bg_button = QPushButton('Record Background')
         get_bg_button.clicked.connect(c.cam.get_bg)
         c.cam.sigShotsChanged.connect(sc.update_value)
         gb = make_groupbox([sc], "ADC")
-        self._layout.addWidget(gb)
+        return gb
 
+    def add_delaystages(self, c):
         dl = controller.delay_line
         dl1c = ControlFactory('Delay 1', c.delay_line.set_pos, format_str='%.1f fs',
                               extra_buttons=[("Set Home", dl.set_pos)],
@@ -153,9 +191,7 @@ class CommandMenu(QWidget):
                                        50000, 10000, 1001, 50],
                               preset_func=lambda x: dl.set_pos(dl.get_pos() + x),
                               )
-
         c.delay_line.sigPosChanged.connect(dl1c.update_value)
-
         dls = [dl1c]
         if HAS_SECOND_DELAYLINE:
             dl2 = controller.delay_line_second
@@ -164,34 +200,24 @@ class CommandMenu(QWidget):
                                   )
             dls.append(dl2c)
             dl2.sigPosChanged.connect(dl2c.update_value)
-        gb = make_groupbox(dls, "Delay")
+        return dls
+
+    def add_rot_stage(self):
+        rs = ControlFactory('Angle', print,
+                            format_str='%.1f deg')
+        gb = make_groupbox([rs], "Rotation Stage")
         self._layout.addWidget(gb)
 
+    def add_spec(self, c, gb):
         spec = c.spectrometer
         pre_fcn = lambda x: spec.set_wavelength(spec.get_wavelength() + x)
         spec_control = ControlFactory('Wavelength', c.spectrometer.set_wavelength,
                                       format_str='%.1f nm',
                                       presets=[-100, -50, 50, 100],
                                       preset_func=pre_fcn)
-
         c.spectrometer.sigWavelengthChanged.connect(spec_control.update_value)
         gb = make_groupbox([spec_control], "Spectrometer")
-
-        self._layout.addWidget(gb)
-
-        if HAS_ROTATION_STAGE:
-            rs = ControlFactory('Angle', print,
-                                format_str='%.1f deg')
-            gb = make_groupbox([rs], "Rotation Stage")
-            self._layout.addWidget(gb)
-
-        def get_ext(i):
-            lr = controller.last_read
-            return lr.ext[:,]
-
-        vl = ValueLabels([('Ext 1', partial(get_ext, 1))])
-        self._layout.addWidget(make_groupbox([vl], 'Ext.'))
-        self._layout.addStretch(10)
+        return gb
 
 
 if __name__ == '__main__':
@@ -227,10 +253,10 @@ if __name__ == '__main__':
     from Plans.PumpProbeViewer import PumpProbeViewer
     from Plans.PumpProbe import PumpProbePlan
 
-    pp = PumpProbePlan(name='BlaBlub', controller=controller)
+    #pp = PumpProbePlan(name='BlaBlub', controller=controller)
     controller.plan = None
-    pp.t_list = np.arange(-2, 5, 0.1)
-    pp.center_wl_list = [300, 600]
+    #pp.t_list = np.arange(-2, 5, 0.1)
+    #pp.center_wl_list = [300, 600]
     #pi = PumpProbeViewer(pp)
     #ppi.show()
     mw.show()

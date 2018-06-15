@@ -28,9 +28,14 @@ if platform.node() == '2dir-PC':
     #from Instruments.FringeCounter import fc
     #_fc = fc
 else:
+    has_second_delaystage = False
     CamBase = object
+    from Instruments import CamMock, DelayLineMock
+    _cam = CamMock()
+    _dl = DelayLineMock()
     DelayBase = object
     SpecBase = object
+
 
 config.list_of_solvents = ['Toluene', 'THF', 'H20', 'D20', 'DMSO', 'None']
 config.list_of_samples = ['Cyclohexanol', 'Phenylisocyanat', 'TDI']

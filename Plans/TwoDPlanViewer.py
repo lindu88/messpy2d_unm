@@ -86,6 +86,7 @@ class TwoDStarter(PlanStartDialog):
                 'step': 0.1, 'siPrefix': False, 'suffix': ' ps', 'default': 3},
                {'name': 'min. Tau 2', 'type': 'float', 'dec': True,
                 'step': 0.1, 'siPrefix': False, 'suffix': ' ps', 'default': -3},
+               {'name': 'bin width', 'suffix': ' fs', 'default': 3}
                ]
         two_d = {'name': '2D Settings', 'type': 'group', 'children': tmp}
 

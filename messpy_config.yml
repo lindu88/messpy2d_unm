@@ -10,3 +10,14 @@ Sample:
   Sample: ''
   Solvent: ''
   Thickness: ''
+list_of_samples:
+- Cyclohexanol
+- Phenylisocyanat
+- TDI
+list_of_solvents:
+- Toluene
+- THF
+- H20
+- D20
+- DMSO
+- None

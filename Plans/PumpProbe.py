@@ -1,5 +1,5 @@
 import time
-
+from typing import Optional
 import numpy as np
 from attr import attrs, attrib, Factory
 
@@ -9,23 +9,24 @@ from ControlClasses import Controller, Signal
 @attrs
 class PumpProbePlan:
     """Plan used for pump-probe experiments"""
-    controller = attrib(Factory(Controller))
-    name = attrib('')
-    shots = attrib(1000)
-    num_scans = attrib(0)
-    wl_idx = attrib(0)
-    t_idx = attrib(0)
-    center_wl_list = attrib(Factory(list))
-    t_list = attrib(Factory(list))
-    signal_data = attrib(None)
-    rot_stage_angles = attrib(None)
-    sigStepDone = attrib(Factory(Signal))
-    sigWavelengthChanged = attrib(Factory(Signal))
-    time_per_scan = attrib(0)
-    cur_scan = attrib(None)
+    controller: Controller = attrib()
+    t_list: list = attrib()
+    name: str = attrib()
+    shots: int = attrib(1000)
+    num_scans: int = attrib(0)
+    wl_idx: int = attrib(0)
+    t_idx: int = attrib(0)
+    center_wl_list: list = attrib(Factory(list))
+
+    signal_data: object = attrib(None)
+    rot_stage_angles: Optional[list] = attrib(None)
+    sigStepDone: Signal = attrib(Factory(Signal))
+    sigWavelengthChanged: Signal = attrib(Factory(Signal))
+    time_per_scan: float = attrib(0)
+    cur_scan: int = attrib(None)
     old_scans = attrib(None)
     mean_scans = attrib(None)
-    wl = attrib(None)
+    wl: float = attrib(None)
 
     def __attrs_post_init__(self):
         gen = self.make_step_gen()
@@ -42,7 +43,6 @@ class PumpProbePlan:
 
         while True:
             self.pre_scan()
-
 
             start_t = time.time()
             for self.wl_idx, wl in enumerate(self.center_wl_list):

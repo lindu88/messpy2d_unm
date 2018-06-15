@@ -1,11 +1,14 @@
 from collections import defaultdict
+from Config import config
 from qtpy.QtWidgets import *
 from qtpy.QtGui import QPalette, QFont
 from qtpy.QtCore import Qt, QTimer
 from ControlClasses import Controller
 from Plans.PumpProbe import PumpProbePlan
+from pyqtgraph.parametertree import Parameter, ParameterTree
+
 import pyqtgraph as pg
-from QtHelpers import ObserverPlot
+from QtHelpers import ObserverPlot, PlanStartDialog
 import numpy as np
 
 np.seterr('ignore')
@@ -209,8 +212,8 @@ class PumpProbeViewer(QWidget):
 
         if self.do_show_cur.checkState():
             for i in self.inf_lines[pp.wl_idx]:
-                i.trans_line.setData(x=pp.t_list,
-                                     y=pp.cur_scan[pp.wl_idx, :, i.channel])
+                i.trans_line.setData(x=pp.t_list[:pp.t_idx],
+                                     y=pp.cur_scan[pp.wl_idx, :pp.t_idx, i.channel])
 
         if pp.old_scans.shape[3] > 0 and self.do_show_mean.checkState():
             for j in self.inf_lines:
@@ -237,6 +240,55 @@ def pump_probe_starter(controller):
     out = formlayout.fedit(start_form, 'Pump-probe config')
 
     print(out)
+
+
+class PumpProbeStarter(PlanStartDialog):
+    title = "New Pump-probe Experiment"
+    viewer = PumpProbeViewer
+
+    def setup_paras(self):
+        samp = {'name': 'Sample', 'type': 'group', 'children': [
+            dict(name='Sample', type='list', values=config.list_of_samples),
+            dict(name='Solvent', type='list', values=config.list_of_solvents),
+            dict(name='Excitation', type='str'),
+            dict(name='Thickness', type='str'),
+            dict(name='Annotations', type='str')]}
+
+        tmp = [{'name': 'Filename', 'type': 'str', 'value': 'temp'},
+               {'name': 'Shots', 'type': 'int',  'max': 4000, 'decimals': 5,
+                'step': 500, 'value': 100},
+               {'name': 'Linear Range (-)', 'suffix': 'ps', 'type': 'float', 'value': -1},
+               {'name': 'Linear Range (+)', 'suffix': 'ps', 'type': 'float', 'value': 1},
+               {'name': 'Linear Range (step)', 'suffix': 'ps', 'type': 'float', 'min': 0.01},
+               {'name': 'Logarithmic Scan', 'type': 'bool'},
+               {'name': 'Logarithmic End', 'type': 'float', 'suffix': 'ps',
+                'min': 0.},
+               {'name': 'Logarithmic Points',  'type': 'int', 'min': 0}
+               ]
+        two_d = {'name': 'Pump Probe', 'type': 'group', 'children': tmp}
+
+        params = [samp, two_d]
+        self.paras = Parameter.create(name='Pump Probe', type='group', children=params)
+
+    def create_plan(self, controller):
+        p = self.paras.child('Pump Probe')
+        s = self.paras.child('Sample')
+        t_list = np.arange(p['Linear Range (-)'],
+                           p['Linear Range (+)'],
+                           p['Linear Range (step)']).tolist()
+        if p['Logarithmic Scan']:
+            t_list.append(np.geomspace(p['Linear Range (+)'],
+                                       p['Logarithmic End'],
+                                       p['Logarithmic Points']).tolist())
+
+        p = PumpProbePlan(
+            name=p['Filename'],
+            t_list=t_list,
+            shots=p['Shots'],
+            controller=controller,
+            center_wl_list=[0.],
+        )
+        return p
 
 
 if __name__ == '__main__':
