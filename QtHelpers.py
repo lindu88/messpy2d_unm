@@ -120,7 +120,7 @@ class ControlFactory(QWidget):
             self.setup_extra_buttons(extra_buttons)
 
         if update_signal is not None:
-            update_signal.connect(self.update)
+            update_signal.connect(self.update_value)
 
     def update_value(self, value):
         """updates value of the control widget"""

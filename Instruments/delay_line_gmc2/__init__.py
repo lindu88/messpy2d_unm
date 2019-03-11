@@ -73,6 +73,7 @@ def double_out_func(func, con=board_idx, ax=ax, prefix=prefix):
 INI = void_func('INI')
 #INI = lambda: a.C843_INI(i)
 FNL = void_func('FNL')
+FPL = void_func('FPL')
 on_target = bool_out_func('qONT')
 is_moving = bool_out_func('IsMoving')
 is_ref_ok = bool_out_func('IsReferenceOK')
@@ -99,7 +100,7 @@ def fs_to_mm(t_fs):
     return pos_m * 1000.
 
 class DelayLine:
-    def __init__(self, homepos=74.82975):
+    def __init__(self, homepos=129.176):
         a.C843_CST(board_idx, ax, b"M-505.6PD")
         print(INI(), qSVO(), qFRF(), qREF(), is_ref_ok())
         #if not INI():
@@ -107,10 +108,10 @@ class DelayLine:
         if not qSVO():
             print(SVO(True))
         if not is_ref_ok():
-            print(FNL())
-            #while is_moving():
-            #    print('ref ing')
-            #    time.sleep(0.1)
+            print(FPL())
+            while is_moving():
+                print('ref ing')
+                time.sleep(0.1)
         self.homepos = homepos
         self.move_mm(homepos, do_wait=False)
 
@@ -118,17 +119,17 @@ class DelayLine:
         return qPOS()
 
     def get_pos_fs(self):
-        return mm_to_fs((self.get_pos_mm()-self.homepos)*2.)
+        return -mm_to_fs((self.get_pos_mm()-self.homepos)*2.)
 
     def move_mm(self, mm, do_wait=True):
-        MOV(mm)
+        print(MOV(mm))
         if do_wait:
             while is_moving():
                 print('mov ing')
                 time.sleep(0.1)
 
     def move_fs(self, fs, do_wait=True):
-        mm = fs_to_mm(fs)
+        mm = -fs_to_mm(fs)
         print('mm', mm+self.homepos)
         self.move_mm(mm/2.+self.homepos, do_wait=do_wait)
 
@@ -149,8 +150,7 @@ class DelayLine:
             diff = (pos - start_pos)
             if sign*diff > 0:
                 break
-
 dl = DelayLine()
 #dl.set_speed(50.0)
 #dl.move_mm(15.)
-#dl.move_mm(30.)
+#dl.move_mm(150-130.)

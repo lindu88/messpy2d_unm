@@ -22,8 +22,9 @@ if platform.node() == '2dir-PC':
 
     from Instruments.delay_line_gmc2 import dl
     _dl2 = dl
-    hp = config.__dict__.get('Delay 2 Home Pos.', 8.80)
-    _dl2.home_pos = hp
+    #hp = config.__dict__.get('Delay 2 Home Pos.', 8.80)
+    #_dl2.home_pos = hp
+    #_dl2 = None
 
     #from Instruments.FringeCounter import fc
     #_fc = fc

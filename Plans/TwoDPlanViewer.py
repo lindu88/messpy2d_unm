@@ -20,8 +20,9 @@ class TwoDViewer(QWidget):
         self.info_wid = QLabel()
 
         self.shots = ControlFactory('Shots', plan.set_shots, plan.sigShotsChanged)
-        self.max_tau = ControlFactory('max tau', plan.set_tau_max, plan.sigTauMaxChanged)
-        self.min_tau = ControlFactory('min tau', plan.set_tau_min, plan.sigTauMinChanged)
+        self.max_tau = ControlFactory('end tau', plan.set_tau_max, plan.sigTauEndChanged)
+        self.min_tau = ControlFactory('start tau', plan.set_tau_min, plan.sigTauStartChanged)
+        self.speed = ControlFactory('speed', plan.set_speed, plan.sigSpeedChanged)
 
         self.lines = {}
         self.setup_plots()
@@ -38,14 +39,15 @@ class TwoDViewer(QWidget):
         self.trans_plot = pg.PlotWidget(parent=self)
         self.map_plot = pg.PlotWidget(parent=self)
         self.lines['bins'] = self.bin_plot.plotItem.plot()
-        for i in list(range(0)) + ['pyro']:
+        for i in list(range(16)) + ['pyro']:
             self.lines[i] = self.trans_plot.plot()
 
         self.lines['pd1'] = self.bin_plot.plot(pen=pg.mkPen('r', width=1))
         self.lines['pd2'] = self.bin_plot.plot(pen=pg.mkPen('g', width=1))
+        #self.lines['sum_sig'] = self.tra.plot(pen=pg.mkPen('g', width=1))
 
     def layout_widget(self):
-        con = vlay([self.info_wid, self.shots, self.max_tau, self.min_tau])
+        con = vlay([self.info_wid, self.speed, self.shots, self.max_tau, self.min_tau])
 
         lay = hlay([self.trans_plot,
                     vlay([self.bin_plot, self.map_plot]),
@@ -61,10 +63,11 @@ class TwoDViewer(QWidget):
         #for i in range(16):
         #    self.lines[i].setData(x, lr[i, :]+offsets)
 
-        self.lines['pyro'].setData(lr.ext[:, -1])
+        self.lines['pyro'].setData(p.bin_pre[:-1], p.cur_interferogram)
         self.lines['pd1'].setData(lr.ext[:, -2])
         self.lines['pd2'].setData(lr.ext[:, -3])
-
+        for i in range(1):
+            self.lines[i].setData(p.bin_pre[:-1], -p.bin_probe.mean(1))
 
 
 class TwoDStarter(PlanStartDialog):
@@ -79,13 +82,15 @@ class TwoDStarter(PlanStartDialog):
             dict(name='Annotations', type='str')]}
 
         tmp = [{'name': 'Filename', 'type': 'str'},
-               {'name': 'Shots', 'type': 'int',  'max': 4000, 'decimals': 5,
+               {'name': 'Shots', 'type': 'int',  'max': 40000, 'decimals': 5,
                 'step': 500},
                {'name': 'delay 1', 'type': 'float'},
-               {'name': 'max. Tau 2', 'type': 'float', 'dec': True,
+               {'name': 'end Tau 2', 'type': 'float', 'dec': True,
                 'step': 0.1, 'siPrefix': False, 'suffix': ' ps', 'default': 3},
-               {'name': 'min. Tau 2', 'type': 'float', 'dec': True,
+               {'name': 'start Tau 2', 'type': 'float', 'dec': True,
                 'step': 0.1, 'siPrefix': False, 'suffix': ' ps', 'default': -3},
+               {'name': 'Speed', 'type': 'float', 'dec': True,
+                'step': 0.05, 'siPrefix': False, 'suffix': ' mm/s', 'default': 0.2},
                {'name': 'bin width', 'suffix': ' fs', 'default': 3}
                ]
         two_d = {'name': '2D Settings', 'type': 'group', 'children': tmp}
@@ -98,10 +103,12 @@ class TwoDStarter(PlanStartDialog):
         s = self.paras.child('Sample')
         p = TwoDimMoving(
             name=p['Filename'],
-            t_range=(p['min. Tau 2'], p['max. Tau 2']),
+            start_end_tau=[p['start Tau 2'], p['end Tau 2']],
             shots=p['Shots'],
             controller=controller,
+            speed = p['Speed']
         )
+        self.save_defaults()
         return p
 
 if __name__ == '__main__':
@@ -119,5 +126,11 @@ if __name__ == '__main__':
     #tw = TwoDViewer(tdp)
     twd = TwoDStarter()
     twd.show()
+
+    controller = Controller()
+    p = twd.create_plan(controller)
     #tw.show()
+    controller.plan = p
+    tw = TwoDViewer(p)
+    tw.show()
     app.exec_()
