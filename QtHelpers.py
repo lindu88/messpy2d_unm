@@ -250,7 +250,7 @@ class ObserverPlot(pg.PlotWidget):
 
     def add_observed(self, single_obs):
         self.observed.append(single_obs)
-        pen = pg.mkPen(color=next(self.color_cycle), width=4)
+        pen = pg.mkPen(color=next(self.color_cycle), width=1)
         self.lines[single_obs[1]] = self.plotItem.plot([0], pen=pen)
 
     def update_data(self):

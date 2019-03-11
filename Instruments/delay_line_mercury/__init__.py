@@ -80,7 +80,9 @@ def fs_to_mm(t_fs):
     pos_m = speed_of_light * t_fs * 1e-15
     return pos_m * 1000.
 
-class DelayLine:
+
+from Instruments.interfaces import IDelayLine
+class DelayLine(IDelayLine):
     def __init__(self):
         if not INI():
             #raise IOError("Can't init Mercury")

@@ -1,9 +1,11 @@
 from functools import partial
 from Config import config
-from qtconsole.inprocess import QtInProcessKernelManager
-from qtconsole.rich_jupyter_widget import RichJupyterWidget
-from qtpy.QtCore import QTimer, Qt
-from qtpy.QtGui import QFont
+START_QT_CONSOLE = False
+if START_QT_CONSOLE:
+    from qtconsole.inprocess import QtInProcessKernelManager
+    from qtconsole.rich_jupyter_widget import RichJupyterWidget
+from qtpy.QtCore import QTimer, Qt, QThread
+from qtpy.QtGui import QFont, QGuiApplication
 from qtpy.QtWidgets import (QMainWindow, QApplication, QWidget, QDockWidget,
                             QPushButton, QLabel, QVBoxLayout, QSizePolicy,
                             QToolBar, QCheckBox)
@@ -36,7 +38,7 @@ class MainWindow(QMainWindow):
         self.timer = QTimer(parent=self)
         self.timer.timeout.connect(controller.loop)
         self.timer.timeout.connect(QApplication.processEvents)
-        self.timer.start(10)
+        self.toggle_run(True)
         lr = controller.last_read
         op = ObserverPlot([(lr, 'probe_mean'), (lr, 'reference_mean')],
                           self.timer.timeout)
@@ -51,28 +53,29 @@ class MainWindow(QMainWindow):
                            self.timer.timeout)
         dw3 = QDockWidget('Pump-probe signal', parent=self)
         dw3.setWidget(op3)
+        if START_QT_CONSOLE:
+            kernel_manager = QtInProcessKernelManager()
+            kernel_manager.start_kernel(show_banner=False)
+            kernel = kernel_manager.kernel
 
-        kernel_manager = QtInProcessKernelManager()
-        kernel_manager.start_kernel(show_banner=False)
-        kernel = kernel_manager.kernel
+            kernel.gui = 'qt'
+            kernel_client = kernel_manager.client()
+            kernel_client.start_channels()
+            kernel_client.namespace = self
+            ipython_widget = RichJupyterWidget()
+            ipython_widget.kernel_manager = kernel_manager
+            ipython_widget.kernel_client = kernel_client
+            kernel.shell.push({'controller': controller})
 
-        kernel.gui = 'qt'
-        kernel_client = kernel_manager.client()
-        kernel_client.start_channels()
-        kernel_client.namespace = self
-        ipython_widget = RichJupyterWidget()
-        ipython_widget.kernel_manager = kernel_manager
-        ipython_widget.kernel_client = kernel_client
-        kernel.shell.push({'controller': controller})
-
-        dw4 = QDockWidget('Console', parent=self)
-        dw4.setWidget(ipython_widget)
-        dw4.close()
+            dw4 = QDockWidget('Console', parent=self)
+            dw4.setWidget(ipython_widget)
+            self.addDockWidget(Qt.LeftDockWidgetArea, dw4)
+            dw4.close()
 
         self.addDockWidget(Qt.LeftDockWidgetArea, dw)
         self.addDockWidget(Qt.LeftDockWidgetArea, dw2)
         self.addDockWidget(Qt.LeftDockWidgetArea, dw3)
-        self.addDockWidget(Qt.LeftDockWidgetArea, dw4)
+
         self.setCentralWidget(cm)
         self.show()
 
@@ -92,7 +95,7 @@ class MainWindow(QMainWindow):
                     self.toggle_run(True)
             return f
 
-        asl_icon = qta.icon('ei.graph', color='white')
+        asl_icon = qta.icon('fa.percent', color='white')
         pp = QPushButton('2D Experiment', icon=asl_icon)
         pp.clicked.connect(plan_starter(TwoDStarter))
         tb.addWidget(pp)
@@ -112,7 +115,7 @@ class MainWindow(QMainWindow):
 
     def toggle_run(self, bool):
         if bool:
-            self.timer.start(20)
+            self.timer.start(10)
         else:
             self.timer.stop()
 
@@ -131,8 +134,8 @@ class CommandMenu(QWidget):
 
         self.add_plan_controls()
 
-        gb = self.add_loop_control(parent)
-        gb = self.add_cam(c, gb)
+        self.add_loop_control(parent)
+        gb = self.add_cam(c)
         self._layout.addWidget(gb)
 
         dls = self.add_delaystages(c)
@@ -174,7 +177,7 @@ class CommandMenu(QWidget):
         self._layout.addWidget(gb)
         return gb
 
-    def add_cam(self, c, gb):
+    def add_cam(self, c):
         sc = ControlFactory('Shots', c.cam.set_shots, format_str='%d',
                             presets=[50, 200, 500, 1000])
         get_bg_button = QPushButton('Record Background')
@@ -234,11 +237,12 @@ if __name__ == '__main__':
     controller = Controller()
 
     app = QApplication([])
-    
+    #app = QGuiApplication([], platformName='minimalegl ')
+
     font = QFont()
 
     app.setStyle('Fusion')
-    app.setAttribute(Qt.AA_EnableHighDpiScaling)
+    #app.setAttribute(Qt.AA_EnableHighDpiScaling)
     app.setPalette(dark_palette)
     ss = """
         QMainWindow { font-size: 20pt;}

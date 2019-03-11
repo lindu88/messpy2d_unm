@@ -3,42 +3,51 @@ from attr import attrs, attrib, Factory, make_class
 from Config import config
 import threading
 from Config import _cam, _dl
+from typing import Callable, List
 
 
 @attrs
 class ReadData:
-    shots = attrib()
+    shots: int = attrib()
     det_a = attrib()
     det_b = attrib()
     ext = attrib()
     chopper = attrib()
 
+@attrs
+class CallBack:
+    cb_func : Callable = attrib()
+    call_in_thread : bool = attrib(True)
+    join_thread : bool = attrib(True)
 
 @attrs
 class Signal:
-    callbacks = attrib(Factory(list))
-    do_threaded = attrib(Factory(list))
+    callbacks: List[CallBack] = attrib(Factory(list))
 
     def emit(self, *args):
-        for cb, thr in zip(self.callbacks, self.do_threaded):
+        thr_to_join = []
+        for cb in self.callbacks:
             try:
-                if not thr:
-                    cb(*args)
+                if not cb.call_in_thread:
+                    cb.cb_func(*args)
                 else:
-                    t = threading.Thread(target=cb, args=args)
+                    t = threading.Thread(target=cb.cb_func, args=args)
                     t.run()
+                    if cb.join_thread:
+                        thr_to_join.append(t)
             except:
                 raise
+        for t in thr_to_join:
+            t.join()
 
     def connect(self, cb, do_threaded=True):
-        self.callbacks.append(cb)
-        self.do_threaded.append(do_threaded)
+        self.callbacks.append(CallBack(cb, do_threaded))
 
     def disconnect(self, cb):
-        if cb in self.callbacks:
-            idx = self.callbacks.find(cb)
-            self.callbacks.remove(cb)
-            self.do_threaded.pop(idx)
+        cbs = [cb.cb_func for cb in self.callbacks]
+        if cb in cbs:
+            idx = cbs.find(cb)            
+            self.callbacks.pop(idx)
         else:
             raise ValueError("Can't disconnect %s from signal. Not found."%cb)
 
@@ -46,7 +55,7 @@ class Signal:
 
 @attrs
 class Cam:
-    shots = attrib(200, type=int)
+    shots : int = attrib(200, type=int)
     sigShotsChanged: Signal = attrib(Factory(Signal))
     num_ch: int = attrib(16)
 
@@ -112,7 +121,7 @@ class Delayline():
         self._dl.set_speed(ps_per_sec)
 
     def set_home(self):
-        self._dl.homepos = self._dl.get_pos_mm()
+        self._dl.home_pos = self._dl.get_pos_mm()
         config['Delay 1 Home Pos.'] = self._dl.get_pos_mm()
 
 
@@ -159,7 +168,7 @@ class Controller:
     """Class which controls the main loop."""
 
     def __init__(self):
-        self.cam = Cam()
+        self.cam = Cam(num_ch=_cam.channels)
         self.cam.read_cam()
         self.delay_line = Delayline(dl=_dl)
 
@@ -177,12 +186,17 @@ class Controller:
         self.plan = None
         self.pause_plan = False
         self.running_step = False
+        self.thread = None
 
     def loop(self):
         t = time.time()
 
         if self.plan is None or self.pause_plan:
-            self.last_read.update()
+           # if not self.thread or not self.thread.is_alive():
+           #     self.thread = threading.Thread(target=self.last_read.update)
+           # else:
+           #     pass
+           self.last_read.update()
         else:
             # if self.running_step:
             #     if self.thread.is_alive():

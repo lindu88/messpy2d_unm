@@ -7,16 +7,22 @@ import time
 
 #header = ''.join(open('PI_GCS2_DLL.h').readlines()[126:-3])
 p = osp.dirname(__file__)
-header = ''.join(open(p+'/C843_GCS_DLL.h').readlines()[104:299])
-header = header.replace('C843_FUNC_DECL', '')
-types = [('pi_uint8', 'uint8_t'),
-         ('pi_int32', 'int32_t'),
-         ('pi_int16', 'int16_t'),
-         ('pi_uint16', 'uint16_t'),]
-for (x, y) in types:
-    header = header.replace(x, y)
-header = header.replace('pi_int64', 'int64_t')
-
+from pathlib import Path
+cur_dir = Path(p)
+if not Path(cur_dir/'C843_GCS_DLL_processed.h').exists():
+    header = ''.join(open(p+'/C843_GCS_DLL.h').readlines()[104:299])
+    header = header.replace('C843_FUNC_DECL', '')
+    types = [('pi_uint8', 'uint8_t'),
+             ('pi_int32', 'int32_t'),
+             ('pi_int16', 'int16_t'),
+             ('pi_uint16', 'uint16_t'),]
+    for (x, y) in types:
+        header = header.replace(x, y)
+    header = header.replace('pi_int64', 'int64_t')
+    file = Path(cur_dir / 'C843_GCS_DLL_processed.h').open('w')
+    file.write(header)
+else:
+    header = ''.join(open(p + '/C843_GCS_DLL.h').readlines())
 ffi = cffi.FFI()
 ax = b'1'
 ffi.cdef(header)

@@ -9,14 +9,14 @@ from ControlClasses import Controller, Signal
 @attrs
 class PumpProbePlan:
     """Plan used for pump-probe experiments"""
-    controller: Controller = attrib()
-    t_list: list = attrib()
-    name: str = attrib()
-    shots: int = attrib(1000)
-    num_scans: int = attrib(0)
-    wl_idx: int = attrib(0)
-    t_idx: int = attrib(0)
-    center_wl_list: list = attrib(Factory(list))
+    controller : Controller = attrib()
+    t_list : list = attrib()
+    name : str = attrib()
+    shots : int = attrib(1000)
+    num_scans : int = attrib(0)
+    wl_idx : int = attrib(0)
+    t_idx : int = attrib(0)
+    center_wl_list : list = attrib(Factory(list))
 
     signal_data: object = attrib(None)
     rot_stage_angles: Optional[list] = attrib(None)
@@ -38,7 +38,7 @@ class PumpProbePlan:
         c.cam.set_shots(self.shots)
         N, M = len(self.center_wl_list), len(self.t_list)
         self.wl = np.zeros((N, c.cam.num_ch))
-        self.wl += np.arange(16)[None, :]
+        self.wl += np.arange(c.cam.num_ch)[None, :]
         self.old_scans = np.zeros((N, M, self.controller.cam.num_ch, 0))
 
         while True:

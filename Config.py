@@ -30,7 +30,7 @@ if platform.node() == '2dir-PC':
 else:
     has_second_delaystage = False
     CamBase = object
-    from Instruments import CamMock, DelayLineMock
+    from Instruments.mocks import CamMock, DelayLineMock
     _cam = CamMock()
     _dl = DelayLineMock()
     DelayBase = object
