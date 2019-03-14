@@ -231,8 +231,24 @@ class PlanStartDialog(QDialog):
 
 
 class ObserverPlot(pg.PlotWidget):
-    def __init__(self, obs, signal, x=None, parent=None):
-        super(ObserverPlot, self).__init__(parent=parent)
+    def __init__(self, obs, signal, x=None, parent=None, **kwargs):
+        """Plot windows which can observe an array
+
+        Parameters
+        ----------
+        obs : tuple of (object, attribute name)
+            Every time the signal is fired, the attribute of the object will be plotted
+            against x
+        signal : Signal
+            Which signal to connect to.
+        x : data
+            The data the obversed data is plotted against.
+        parent : QWidget
+            The QtParent
+
+        All other kwargs are passed to PlotWidget.
+        """
+        super(ObserverPlot, self).__init__(parent=parent, useOpenGl=True, **kwargs)
         signal.connect(self.update_data)
         self.color_cycle = make_default_cycle()
         self.plotItem.showGrid(x=True, y=True, alpha=1)
@@ -250,7 +266,7 @@ class ObserverPlot(pg.PlotWidget):
 
     def add_observed(self, single_obs):
         self.observed.append(single_obs)
-        pen = pg.mkPen(color=next(self.color_cycle), width=1)
+        pen = pg.mkPen(color=next(self.color_cycle), width=2)
         self.lines[single_obs[1]] = self.plotItem.plot([0], pen=pen)
 
     def update_data(self):

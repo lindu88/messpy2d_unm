@@ -2,7 +2,7 @@ import numpy as np
 from attr import attrs, attrib, Factory, make_class
 from Config import config
 import threading
-from Config import _cam, _dl
+from Config import _cam, _dl, has_second_delaystage
 from typing import Callable, List
 
 
@@ -38,7 +38,8 @@ class Signal:
             except:
                 raise
         for t in thr_to_join:
-            t.join()
+            if t.is_alive():
+                t.join()
 
     def connect(self, cb, do_threaded=True):
         self.callbacks.append(CallBack(cb, do_threaded))
@@ -55,30 +56,33 @@ class Signal:
 
 @attrs
 class Cam:
-    shots : int = attrib(200, type=int)
+    shots: int = attrib(config.shots)
     sigShotsChanged: Signal = attrib(Factory(Signal))
     num_ch: int = attrib(16)
+    back: tuple = (0, 0)
 
     def set_shots(self, shots):
         self.shots = shots
-
-        _cam.set_shots(shots)
+        _cam.set_shots(int(shots))
         self.sigShotsChanged.emit(shots)
+        config.shots = shots
 
     def read_cam(self):
         #_fc.prime_fc(self.shots)
         a,b, chopper, ext = _cam.read_cam()
-
+        a = a - self.back[0]
+        b = b - self.back[1]
         #print(_fc.get_values())
         rd = ReadData(shots=self.shots,
-                      det_a=a.T,
-                      det_b=b.T,
+                      det_a=a,
+                      det_b=b,
                       ext=ext.T,
                       chopper=chopper)
         return rd
 
     def get_bg(self):
-        pass
+        rd = self.read_cam()
+        self.back = rd.det_a.mean(0, keepdims=1), rd.det_b.mean(0, keepdims=1)
 
 
 @attrs
@@ -131,7 +135,7 @@ arr_factory = Factory(lambda: np.zeros(16))
 
 @attrs
 class LastRead:
-    cam = attrib()
+    cam: Cam = attrib()
     probe = attrib(arr_factory)
     probe_mean = attrib(arr_factory)
     probe_std = attrib(arr_factory)
@@ -151,16 +155,20 @@ class LastRead:
         dr = self.cam.read_cam()
         x = np.linspace(-7, 7, 16)
 
-        self.probe = dr.det_a - self.probe_back
+        self.probe = dr.det_a
+
         self.probe_mean = self.probe.mean(0)
         self.probe_std = np.nan_to_num(self.probe.std(0) / abs(self.probe_mean) * 100)
 
-        self.reference = dr.det_b - self.ref_back
+        self.reference = dr.det_b
         self.reference_mean = self.reference.mean(0)
         self.reference_std = np.nan_to_num(self.reference.std(0) / abs(self.reference_mean) * 100)
 
         self.ext_channel_mean = 2 + np.random.rand(1)*0.05
-        self.probe_signal = np.log10(self.probe_mean/self.reference_mean)
+        sign = 1 if dr.chopper[0] else -1
+        self.probe_signal = sign*1000*np.log10(self.probe[::2, ...]/self.probe[1::2, ...]).mean(0)
+        self.probe_signal = np.nan_to_num(self.probe_signal)
+        #self.probe_signal = self.reference_mean
 
 import time
 
@@ -191,6 +199,7 @@ class Controller:
     def loop(self):
         t = time.time()
 
+
         if self.plan is None or self.pause_plan:
            # if not self.thread or not self.thread.is_alive():
            #     self.thread = threading.Thread(target=self.last_read.update)
@@ -212,9 +221,11 @@ class Controller:
 
         print(time.time()-t)
 
-
-
-
+    def shutdown(self):
+        if has_second_delaystage:
+            _dl2.shutdown()
+        _dl.shutdown()
+        _cam.shutdown()
 
 
 

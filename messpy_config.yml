@@ -5,6 +5,15 @@
   delay 1: 0.0
   end Tau 2: -4.0
   start Tau 2: 0.7
+Pump Probe:
+  Filename: temp
+  Linear Range (+): 1
+  Linear Range (-): -1
+  Linear Range (step): 0.01
+  Logarithmic End: 0.0
+  Logarithmic Points: 0
+  Logarithmic Scan: false
+  Shots: 100
 Sample:
   Annotations: 1.2 OD
   Excitation: '2700'
@@ -22,3 +31,4 @@ list_of_solvents:
 - D20
 - DMSO
 - None
+shots: '100'

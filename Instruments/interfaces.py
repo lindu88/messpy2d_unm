@@ -3,12 +3,15 @@ import abc
 import attr
 
 
+
+
 # Defining a minimal interface for each hardware
 @attr.s
 class ICam(abc.ABC):
-    shots: int = attr.ib()
-    channels: int = attr.ib()
-    background: attr.ib((0, 0))
+    shots: int = attr.ib(50)
+    lines: int = attr.ib(2)
+    channels: int = attr.ib(100)
+    background: tuple = attr.ib((0, 0))
 
     @abc.abstractmethod
     def read_cam(self):
@@ -30,6 +33,8 @@ class ICam(abc.ABC):
         back_a, back_b = a.mean(1), b.mean(1)
         self.set_background(back_a, back_b)
 
+    def shutdown(self):
+        pass
 
 
 def mm_to_fs(pos_in_mm):
@@ -65,7 +70,8 @@ class IDelayLine(abc.ABC):
         print('mm', mm+self.home_pos)
         self.move_mm(mm/2.+self.home_pos, *args, **kwargs)
 
-
+    def shutdown(self):
+        pass
 
 
 

@@ -150,6 +150,9 @@ class DelayLine:
             diff = (pos - start_pos)
             if sign*diff > 0:
                 break
+
+    def shutdown(self):
+        a.C843_CloseConnection(board_idx)
 dl = DelayLine()
 #dl.set_speed(50.0)
 #dl.move_mm(15.)

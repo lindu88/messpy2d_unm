@@ -4,7 +4,7 @@ START_QT_CONSOLE = False
 if START_QT_CONSOLE:
     from qtconsole.inprocess import QtInProcessKernelManager
     from qtconsole.rich_jupyter_widget import RichJupyterWidget
-from qtpy.QtCore import QTimer, Qt, QThread
+from qtpy.QtCore import QTimer, Qt, QThread, Signal
 from qtpy.QtGui import QFont, QGuiApplication
 from qtpy.QtWidgets import (QMainWindow, QApplication, QWidget, QDockWidget,
                             QPushButton, QLabel, QVBoxLayout, QSizePolicy,
@@ -13,7 +13,7 @@ from qtpy.QtWidgets import (QMainWindow, QApplication, QWidget, QDockWidget,
 import qtawesome as qta
 from Plans import *
 from QtHelpers import dark_palette, ControlFactory, make_groupbox, \
-    ObserverPlot, ValueLabels
+    ObserverPlot, ValueLabels, vlay, hlay
 from ControlClasses import Controller
 
 HAS_SECOND_DELAYLINE = config.has_second_delaystage
@@ -121,6 +121,7 @@ class MainWindow(QMainWindow):
 
     def closeEvent(self, *args, **kwargs):
         config.write()
+        controller.shutdown()
         super(MainWindow, self).closeEvent(*args, **kwargs)
 
 
@@ -183,7 +184,7 @@ class CommandMenu(QWidget):
         get_bg_button = QPushButton('Record Background')
         get_bg_button.clicked.connect(c.cam.get_bg)
         c.cam.sigShotsChanged.connect(sc.update_value)
-        gb = make_groupbox([sc], "ADC")
+        gb = make_groupbox([sc, get_bg_button], "ADC")
         return gb
 
     def add_delaystages(self, c):
@@ -222,6 +223,16 @@ class CommandMenu(QWidget):
         gb = make_groupbox([spec_control], "Spectrometer")
         return gb
 
+
+class AlignmentWindow(QWidget):
+    updated_hist = Signal()
+
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+        self.x = []
+        self.left_plot = ObserverPlot([], self.updated_hist, self.x, self)
+        self.right_plot = ObserverPlot([], self.updated_hist, self.x, self)
+        self.setLayout(hlay([self.left_plot, self.right_plot]))
 
 if __name__ == '__main__':
     import sys

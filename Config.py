@@ -7,8 +7,10 @@ if not os.path.exists(p):
         f.write('{}')
 
 config = yamlcfg.YamlConfig(path=p)
+pc_name = platform.node()
+has_second_delaystage = False
 
-if platform.node() == '2dir-PC':
+if pc_name == '2dir-PC':
     from Instruments.ircam_16 import irdaq
     _cam = irdaq.cam
 
@@ -28,6 +30,15 @@ if platform.node() == '2dir-PC':
 
     #from Instruments.FringeCounter import fc
     #_fc = fc
+
+elif pc_name == 'helmholm':
+    from Instruments.stresing_cam.ESLS import Cam
+    from Instruments.delay_line_serial import dl as _dl
+    _cam = Cam()
+    from Instruments.mocks import CamMock, DelayLineMock
+
+
+
 else:
     has_second_delaystage = False
     CamBase = object
