@@ -20,6 +20,11 @@ Sample:
   Sample: TDI
   Solvent: THF
   Thickness: 50mu
+dl_server: http://130.133.30.146:8000
+has_rotation_stage: false
+has_second_cam: true
+has_second_delaystage: false
+ir_server_addr: tcp://localhost:8001
 list_of_samples:
 - Cyclohexanol
 - Phenylisocyanat
@@ -31,4 +36,4 @@ list_of_solvents:
 - D20
 - DMSO
 - None
-shots: '100'
+shots: 50

@@ -17,6 +17,7 @@ from QtHelpers import dark_palette, ControlFactory, make_groupbox, \
 from ControlClasses import Controller
 
 HAS_SECOND_DELAYLINE = config.has_second_delaystage
+HAS_SECOND_CAM = config.has_second_cam
 HAS_ROTATION_STAGE = config.has_rot_stage
 
 
@@ -40,6 +41,8 @@ class MainWindow(QMainWindow):
         self.timer.timeout.connect(QApplication.processEvents)
         self.toggle_run(True)
         lr = controller.last_read
+        if HAS_SECOND_CAM:
+            lr2 = controller.last_read2
         op = ObserverPlot([(lr, 'probe_mean'), (lr, 'reference_mean')],
                           self.timer.timeout)
         dw = QDockWidget('Readings', parent=self)
@@ -49,10 +52,17 @@ class MainWindow(QMainWindow):
         op2.setYRange(0, 20)
         dw2 = QDockWidget('Readings - stddev', parent=self)
         dw2.setWidget(op2)
+
         op3 = ObserverPlot([(lr, 'probe_signal')],
                            self.timer.timeout)
         dw3 = QDockWidget('Pump-probe signal', parent=self)
         dw3.setWidget(op3)
+
+        if HAS_SECOND_CAM:
+            dw4 = QDockWidget('Readings Cam2')
+            op4 = ObserverPlot([(lr2, 'probe_mean'), (lr2, 'reference_mean')],
+                          self.timer.timeout, parent=dw4)
+            dw4.setWidget(op4)
         if START_QT_CONSOLE:
             kernel_manager = QtInProcessKernelManager()
             kernel_manager.start_kernel(show_banner=False)
@@ -75,6 +85,7 @@ class MainWindow(QMainWindow):
         self.addDockWidget(Qt.LeftDockWidgetArea, dw)
         self.addDockWidget(Qt.LeftDockWidgetArea, dw2)
         self.addDockWidget(Qt.LeftDockWidgetArea, dw3)
+        self.addDockWidget(Qt.LeftDockWidgetArea, dw4)
 
         self.setCentralWidget(cm)
         self.show()

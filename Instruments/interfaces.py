@@ -1,8 +1,7 @@
 import typing
 import abc
 import attr
-
-
+import time
 
 
 # Defining a minimal interface for each hardware
@@ -53,6 +52,7 @@ def fs_to_mm(t_fs):
 @attr.s
 class IDelayLine(abc.ABC):
     home_pos: float = attr.ib(0.)
+    pos_sign: float = 1
 
     @abc.abstractmethod
     def move_mm(self, mm, *args, **kwargs):
@@ -63,16 +63,76 @@ class IDelayLine(abc.ABC):
         pass
 
     def get_pos_fs(self):
-        return mm_to_fs((self.get_pos_mm()-self.home_pos)*2.)
+        return self.pos_sign * mm_to_fs((self.get_pos_mm()-self.home_pos)*2.)
 
-    def move_fs(self, fs, *args, **kwargs):
-        mm = fs_to_mm(fs)
+    def move_fs(self, fs, wait_for_move=False, *args, **kwargs):
+        mm = self.pos_sign*fs_to_mm(fs)
         print('mm', mm+self.home_pos)
         self.move_mm(mm/2.+self.home_pos, *args, **kwargs)
+        if wait_for_move:
+            while self.is_moving():
+                time.sleep(0.2)
+
+    @abc.abstractmethod
+    def is_moving(self):
+        return False
+
+    def def_home(self):
+        self.home_pos = self.get_pos_mm()
 
     def shutdown(self):
         pass
 
 
+class IShutter(abc.ABC):
+    @abc.abstractmethod
+    def toggle(self):
+        pass
+
+    @abc.abstractmethod
+    def is_open(self) -> bool:
+        pass
+
+    def open(self):
+        if self.is_open():
+            return
+        else:
+            self.toggle()
+
+    def close(self):
+        if not self.is_open():
+            return
+        else:
+            self.toggle()
+
+    def shutdown(self):
+        pass
 
 
+class IRotationStage(abc.ABC):
+    @abc.abstractmethod
+    def set_degrees(self, deg: float):
+        pass
+
+    @abc.abstractmethod
+    def get_degrees(self) -> float:
+        pass
+
+    @abc.abstractmethod
+    def is_moving(self):
+        pass
+
+class LissajousScanner(abc.ABC):
+    @abc.abstractmethod
+    def set_pos_mm(self, x=None, y=None):
+        pass
+
+    def set_vel_mm(self):
+        pass
+
+    @abc.abstractmethod
+    def is_moving(self) -> typing.Tuple[bool, bool]:
+        pass
+
+    def shutdown(self):
+        pass

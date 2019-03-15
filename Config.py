@@ -7,46 +7,7 @@ if not os.path.exists(p):
         f.write('{}')
 
 config = yamlcfg.YamlConfig(path=p)
-pc_name = platform.node()
-has_second_delaystage = False
 
-if pc_name == '2dir-PC':
-    from Instruments.ircam_16 import irdaq
-    _cam = irdaq.cam
-
-    #from Instruments.spec_triax import spec
-    #_spec = spec
-
-    from Instruments.delay_line_mercury import dl
-    _dl = dl
-    hp = config.__dict__.get('Delay 1 Home Pos.', 8.80)
-    _dl.home_pos = hp
-
-    from Instruments.delay_line_gmc2 import dl
-    _dl2 = dl
-    #hp = config.__dict__.get('Delay 2 Home Pos.', 8.80)
-    #_dl2.home_pos = hp
-    #_dl2 = None
-
-    #from Instruments.FringeCounter import fc
-    #_fc = fc
-
-elif pc_name == 'helmholm':
-    from Instruments.stresing_cam.ESLS import Cam
-    from Instruments.delay_line_serial import dl as _dl
-    _cam = Cam()
-    from Instruments.mocks import CamMock, DelayLineMock
-
-
-
-else:
-    has_second_delaystage = False
-    CamBase = object
-    from Instruments.mocks import CamMock, DelayLineMock
-    _cam = CamMock()
-    _dl = DelayLineMock()
-    DelayBase = object
-    SpecBase = object
 
 
 config.list_of_solvents = ['Toluene', 'THF', 'H20', 'D20', 'DMSO', 'None']

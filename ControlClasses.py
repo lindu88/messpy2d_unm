@@ -2,9 +2,11 @@ import numpy as np
 from attr import attrs, attrib, Factory, make_class
 from Config import config
 import threading
-from Config import _cam, _dl, has_second_delaystage
+from HwRegistry import _cam, _dl, _cam2
+import Instruments.interfaces as I
 from typing import Callable, List
 
+has_second_cam = config.has_second_cam
 
 @attrs
 class ReadData:
@@ -56,20 +58,22 @@ class Signal:
 
 @attrs
 class Cam:
+    cam: I.ICam = attrib(_cam)
     shots: int = attrib(config.shots)
     sigShotsChanged: Signal = attrib(Factory(Signal))
-    num_ch: int = attrib(16)
-    back: tuple = (0, 0)
+    sigReadCompleted: Signal = attrib(Factory(Signal))
+    back: tuple = attrib((0, 0))
+
 
     def set_shots(self, shots):
         self.shots = shots
-        _cam.set_shots(int(shots))
-        self.sigShotsChanged.emit(shots)
+        self.cam.set_shots(int(shots))
         config.shots = shots
+        self.sigShotsChanged.emit(shots)
 
     def read_cam(self):
         #_fc.prime_fc(self.shots)
-        a,b, chopper, ext = _cam.read_cam()
+        a,b, chopper, ext = self.cam.read_cam()
         a = a - self.back[0]
         b = b - self.back[1]
         #print(_fc.get_values())
@@ -78,11 +82,15 @@ class Cam:
                       det_b=b,
                       ext=ext.T,
                       chopper=chopper)
+        self.sigReadCompleted.emit()
         return rd
 
     def get_bg(self):
         rd = self.read_cam()
         self.back = rd.det_a.mean(0, keepdims=1), rd.det_b.mean(0, keepdims=1)
+
+    def remove_bg(self):
+        self.back = (0, 0)
 
 
 @attrs
@@ -176,8 +184,13 @@ class Controller:
     """Class which controls the main loop."""
 
     def __init__(self):
-        self.cam = Cam(num_ch=_cam.channels)
+        self.cam = Cam()
         self.cam.read_cam()
+
+        if has_second_cam:
+            self.cam2 = Cam(cam=_cam2)
+            self.cam2.read_cam()
+            self.cam.sigShotsChanged.connect(self.cam2.set_shots, do_threaded=False)
         self.delay_line = Delayline(dl=_dl)
 
         if config.has_second_dl:
@@ -191,6 +204,11 @@ class Controller:
         self.last_read = LastRead(cam=self.cam,
                                   probe_back=pb,
                                   ref_back=rb)  #type: LastRead
+        if config.has_second_cam:
+            self.last_read2 = LastRead(cam=self.cam2,
+                                  probe_back=0,
+                                  ref_back=0)  #type: LastRead
+
         self.plan = None
         self.pause_plan = False
         self.running_step = False
@@ -205,7 +223,17 @@ class Controller:
            #     self.thread = threading.Thread(target=self.last_read.update)
            # else:
            #     pass
-           self.last_read.update()
+           t1 = threading.Thread(target=self.last_read.update)
+           t1.start()
+           if has_second_cam:
+               t2 = threading.Thread(target=self.last_read2.update)
+               t2.start()
+               t2.join()
+           t1.join()
+
+
+
+
         else:
             # if self.running_step:
             #     if self.thread.is_alive():
@@ -222,10 +250,12 @@ class Controller:
         print(time.time()-t)
 
     def shutdown(self):
-        if has_second_delaystage:
+        if config.has_second_delaystage:
             _dl2.shutdown()
         _dl.shutdown()
         _cam.shutdown()
+        if config.has_second_cam:
+            _cam2.shutdown()
 
 
 
