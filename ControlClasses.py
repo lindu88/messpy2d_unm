@@ -2,7 +2,7 @@ import numpy as np
 from attr import attrs, attrib, Factory, make_class
 from Config import config
 import threading
-from HwRegistry import _cam, _dl, _cam2
+from HwRegistry import _cam, _dl
 import Instruments.interfaces as I
 from typing import Callable, List
 
@@ -191,6 +191,7 @@ class Controller:
             self.cam2 = Cam(cam=_cam2)
             self.cam2.read_cam()
             self.cam.sigShotsChanged.connect(self.cam2.set_shots, do_threaded=False)
+        self.cam2 = None
         self.delay_line = Delayline(dl=_dl)
 
         if config.has_second_dl:

@@ -2,7 +2,7 @@ import numpy as np
 from attr import attrs, attrib, Factory, make_class
 from ControlClasses import Controller, Signal
 import itertools
-from scipy.stats import binned_statistic
+#from scipy.stats import binned_statistic
 speed_of_light = 299792458.0
 HeNe_periode = 611.802e-9 / speed_of_light
 def bins_and_borders(lower, upper, num_bins):

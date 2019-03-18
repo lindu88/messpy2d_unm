@@ -13,11 +13,11 @@ class CamMock(ICam):
         self.shots = shots
 
     def read_cam(self):
-        a = np.random.normal(loc=30, size=(self.channels, self.shots))
-        b = np.random.normal(loc=20, size=(self.channels, self.shots))
-        ext = np.random.normal(size=(self.ext_channels, self.shots))
+        a = np.random.normal(loc=30, size=(self.channels, self.shots)).T
+        b = np.random.normal(loc=20, size=(self.channels, self.shots)).T
+        ext = np.random.normal(size=(self.ext_channels, self.shots)).T
         chop = np.array([True, False]).repeat(self.shots*2)
-        return a - self.background[0], b - self.background[0], ext, chop
+        return a - self.background[0], b - self.background[0], chop, ext
 
 @attr.s(auto_attribs=True)
 class DelayLineMock(IDelayLine):
@@ -28,3 +28,6 @@ class DelayLineMock(IDelayLine):
 
     def get_pos_mm(self):
         return self.pos_mm
+
+    def is_moving(self):
+        return True

@@ -1,6 +1,6 @@
 from collections import defaultdict
 from Config import config
-from qtpy.QtWidgets import *
+from qtpy.QtWidgets import QWidget, QSizePolicy, QLabel, QVBoxLayout, QHBoxLayout
 from qtpy.QtGui import QPalette, QFont
 from qtpy.QtCore import Qt, QTimer
 from ControlClasses import Controller
@@ -19,6 +19,7 @@ os.environ['QT_API'] = 'pyqt5'
 import formlayout
 from typing import List
 
+from .common_meta import samp
 
 @attr.s
 class IndicatorLine:
@@ -48,10 +49,6 @@ class IndicatorLine:
 
     def update_trans(self):
         pass
-
-
-
-
 
 class LineLabel(QLabel):
     def __init__(self, line, parent=None):
@@ -247,14 +244,9 @@ class PumpProbeStarter(PlanStartDialog):
     viewer = PumpProbeViewer
 
     def setup_paras(self):
-        samp = {'name': 'Sample', 'type': 'group', 'children': [
-            dict(name='Sample', type='list', values=config.list_of_samples),
-            dict(name='Solvent', type='list', values=config.list_of_solvents),
-            dict(name='Excitation', type='str'),
-            dict(name='Thickness', type='str'),
-            dict(name='Annotations', type='str')]}
 
         tmp = [{'name': 'Filename', 'type': 'str', 'value': 'temp'},
+               {'name': 'Operator', 'type': 'str', 'value': ''},
                {'name': 'Shots', 'type': 'int',  'max': 4000, 'decimals': 5,
                 'step': 500, 'value': 100},
                {'name': 'Linear Range (-)', 'suffix': 'ps', 'type': 'float', 'value': -1},
@@ -263,12 +255,20 @@ class PumpProbeStarter(PlanStartDialog):
                {'name': 'Logarithmic Scan', 'type': 'bool'},
                {'name': 'Logarithmic End', 'type': 'float', 'suffix': 'ps',
                 'min': 0.},
-               {'name': 'Logarithmic Points',  'type': 'int', 'min': 0}
+               {'name': 'Logarithmic Points',  'type': 'int', 'min': 0},
+               dict(name='Shutter', type='bool', value=True),
+               dict(name='Use Rotation Stage', type='bool', value=True),
+               dict(name='Angles in deg.', type='str'),
+               dict(name="Add pre-zero times", type='bool', value=False),
+               dict(name="Num pre-zero points", type='int', min=0, max=20),
+               dict(name="Pre-Zero pos", type='float', value=-60., suffix='ps'),
+
                ]
         two_d = {'name': 'Pump Probe', 'type': 'group', 'children': tmp}
-
+        
         params = [samp, two_d]
         self.paras = Parameter.create(name='Pump Probe', type='group', children=params)
+        config.last_pump_probe = self.paras.saveState()
 
     def create_plan(self, controller):
         p = self.paras.child('Pump Probe')
@@ -280,13 +280,27 @@ class PumpProbeStarter(PlanStartDialog):
             t_list.append(np.geomspace(p['Linear Range (+)'],
                                        p['Logarithmic End'],
                                        p['Logarithmic Points']).tolist())
+        if p['Add pre-zero times']:
+            n = p['Num pre-zero points']
+            pos = p['Pre-Zero pos']
+            times = np.linspace(pos-1, pos, n)
+            t_list.append(times)
+
+        if p['Use Rotation Stage']:
+            s = p['Angles in deg.'].split(',')
+            angles = map(float, s)
+        else:
+            angles = None
 
         p = PumpProbePlan(
             name=p['Filename'],
+            meta=self.paras.saveState(),
             t_list=t_list,
             shots=p['Shots'],
             controller=controller,
             center_wl_list=[0.],
+            use_shutter=p['Use Shutter'],
+            rot_stage_angles=angles
         )
         return p
 

@@ -1,12 +1,29 @@
-import typing
-import abc
-import attr
-import time
+import typing, abc, time, attr, threading
+import xmlrpc.server as rpc
 
+class IDevice(abc.ABC):
+    def init(self):
+        pass
+
+    def shutdown(self):
+        pass
+
+    @classmethod
+    def create_remote(cls, *args, **kwargs):
+        '''Creates an instance and puts it into a 
+        xmlrpc server which is started in a seperated thread.
+        
+        Returns (obj, server, thread)'''
+        obj = cls(*args, **kwargs)
+        server = rpc.SimpleXMLRPCServer('')
+        server.register_instance(obj)
+        server.register_introspection_functions()
+        thr = threading.Thread(target=server.serve_forever)
+        return obj, server, thr
 
 # Defining a minimal interface for each hardware
 @attr.s
-class ICam(abc.ABC):
+class ICam(IDevice):
     shots: int = attr.ib(50)
     lines: int = attr.ib(2)
     channels: int = attr.ib(100)
@@ -50,7 +67,7 @@ def fs_to_mm(t_fs):
 
 
 @attr.s
-class IDelayLine(abc.ABC):
+class IDelayLine(IDevice):
     home_pos: float = attr.ib(0.)
     pos_sign: float = 1
 

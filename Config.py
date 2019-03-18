@@ -8,8 +8,6 @@ if not os.path.exists(p):
 
 config = yamlcfg.YamlConfig(path=p)
 
-
-
 config.list_of_solvents = ['Toluene', 'THF', 'H20', 'D20', 'DMSO', 'None']
 config.list_of_samples = ['Cyclohexanol', 'Phenylisocyanat', 'TDI']
 
