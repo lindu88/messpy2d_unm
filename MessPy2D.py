@@ -4,7 +4,7 @@ START_QT_CONSOLE = False
 if START_QT_CONSOLE:
     from qtconsole.inprocess import QtInProcessKernelManager
     from qtconsole.rich_jupyter_widget import RichJupyterWidget
-from qtpy.QtCore import QTimer, Qt, QThread, Signal
+from qtpy.QtCore import QTimer, Qt, QThread
 from qtpy.QtGui import QFont, QGuiApplication
 from qtpy.QtWidgets import (QMainWindow, QApplication, QWidget, QDockWidget,
                             QPushButton, QLabel, QVBoxLayout, QSizePolicy,
@@ -13,11 +13,10 @@ from qtpy.QtWidgets import (QMainWindow, QApplication, QWidget, QDockWidget,
 import qtawesome as qta
 from Plans import *
 from QtHelpers import dark_palette, ControlFactory, make_groupbox, \
-    ObserverPlot, ValueLabels, vlay, hlay
+    ObserverPlot, ValueLabels
 from ControlClasses import Controller
 
 HAS_SECOND_DELAYLINE = config.has_second_delaystage
-HAS_SECOND_CAM = config.has_second_cam
 HAS_ROTATION_STAGE = config.has_rot_stage
 
 
@@ -33,6 +32,7 @@ class MainWindow(QMainWindow):
         # self.setWindowFlags
         self.controller = controller # type: Controller
         self.setup_toolbar()
+        self.view = None
 
         cm = CommandMenu(parent=self)
 
@@ -41,8 +41,6 @@ class MainWindow(QMainWindow):
         self.timer.timeout.connect(QApplication.processEvents)
         self.toggle_run(True)
         lr = controller.last_read
-        if HAS_SECOND_CAM:
-            lr2 = controller.last_read2
         op = ObserverPlot([(lr, 'probe_mean'), (lr, 'reference_mean')],
                           self.timer.timeout)
         dw = QDockWidget('Readings', parent=self)
@@ -52,17 +50,10 @@ class MainWindow(QMainWindow):
         op2.setYRange(0, 20)
         dw2 = QDockWidget('Readings - stddev', parent=self)
         dw2.setWidget(op2)
-
         op3 = ObserverPlot([(lr, 'probe_signal')],
                            self.timer.timeout)
         dw3 = QDockWidget('Pump-probe signal', parent=self)
         dw3.setWidget(op3)
-
-        if HAS_SECOND_CAM:
-            dw4 = QDockWidget('Readings Cam2')
-            op4 = ObserverPlot([(lr2, 'probe_mean'), (lr2, 'reference_mean')],
-                          self.timer.timeout, parent=dw4)
-            dw4.setWidget(op4)
         if START_QT_CONSOLE:
             kernel_manager = QtInProcessKernelManager()
             kernel_manager.start_kernel(show_banner=False)
@@ -85,7 +76,6 @@ class MainWindow(QMainWindow):
         self.addDockWidget(Qt.LeftDockWidgetArea, dw)
         self.addDockWidget(Qt.LeftDockWidgetArea, dw2)
         self.addDockWidget(Qt.LeftDockWidgetArea, dw3)
-        self.addDockWidget(Qt.LeftDockWidgetArea, dw4)
 
         self.setCentralWidget(cm)
         self.show()
@@ -103,6 +93,7 @@ class MainWindow(QMainWindow):
                     self.controller.plan = plan
                     self.viewer = PlanClass.viewer(plan)
                     self.viewer.show()
+
                     self.toggle_run(True)
             return f
 
@@ -130,9 +121,12 @@ class MainWindow(QMainWindow):
         else:
             self.timer.stop()
 
+    def show_planview(self):
+        if self.view is not None:
+            self.view.show()
+
     def closeEvent(self, *args, **kwargs):
         config.write()
-        controller.shutdown()
         super(MainWindow, self).closeEvent(*args, **kwargs)
 
 
@@ -168,6 +162,10 @@ class CommandMenu(QWidget):
         self.start_but.clicked.connect(lambda: self._sp.show())
         self.plan_label = QLabel('Default loop')
         self.plan_label.setAlignment(Qt.AlignHCenter)
+        self.reopen_planview_but = QPushButton('Reopen Planview')
+        self.reopen_planview_but.clicked.connect(self.parent().show_planview)
+        for w in (self.start_but, self.plan_label, self.reopen_planview_but):
+            self._layout.addWidget(w)
 
     def add_ext_view(self):
         def get_ext(i):
@@ -195,7 +193,7 @@ class CommandMenu(QWidget):
         get_bg_button = QPushButton('Record Background')
         get_bg_button.clicked.connect(c.cam.get_bg)
         c.cam.sigShotsChanged.connect(sc.update_value)
-        gb = make_groupbox([sc, get_bg_button], "ADC")
+        gb = make_groupbox([sc], "ADC")
         return gb
 
     def add_delaystages(self, c):
@@ -234,16 +232,6 @@ class CommandMenu(QWidget):
         gb = make_groupbox([spec_control], "Spectrometer")
         return gb
 
-
-class AlignmentWindow(QWidget):
-    updated_hist = Signal()
-
-    def __init__(self, **kwargs):
-        super().__init__(**kwargs)
-        self.x = []
-        self.left_plot = ObserverPlot([], self.updated_hist, self.x, self)
-        self.right_plot = ObserverPlot([], self.updated_hist, self.x, self)
-        self.setLayout(hlay([self.left_plot, self.right_plot]))
 
 if __name__ == '__main__':
     import sys
