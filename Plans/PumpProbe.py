@@ -3,9 +3,24 @@ from typing import Optional, List, Iterable, Any
 import numpy as np
 from attr import attrs, attrib, Factory
 from .common_meta import Plan
-from ControlClasses import Controller, Signal
+from ControlClasses import Controller
+from Signal import Signal
 from pathlib import Path
 from Config import config
+from Instruments.interfaces import ICam
+
+
+@attrs(auto_attribs=True)
+class PumpProbeData:
+    """Class holding the pump-probe data for a single scan"""
+    current_scan: np.ndarray
+    mean_scans: np.ndarray
+    completed_scans: np.ndarray
+    wavelengths: np.ndarray
+
+    def __init__(self, cam: ICam):
+        n = cam.channels
+
 
 @attrs(auto_attribs=True)
 class PumpProbePlan:
@@ -23,11 +38,15 @@ class PumpProbePlan:
     use_shutter: bool = False
 
     signal_data: Any = None
-    rot_stage_angles: Optional[list] =  None
+    rot_stage_angles: Optional[list] = None
     time_per_scan: float = 0
     cur_scan: int = -1
+    cur_scan2: Any = None
     old_scans: Any = None
+    old_scans2: Any = None
     mean_scans: Any = None
+    mean_scans2: Any = None
+
     wl_arrays: Any = None
 
     sigStepDone: Signal = Factory(Signal)
@@ -43,10 +62,9 @@ class PumpProbePlan:
         c.cam.set_shots(self.shots)
         n_pixel = c.cam.cam.channels
         N, M = len(self.center_wl_list), len(self.t_list)
-        self.wl = np.zeros((N, n_pixel))
-        self.wl += np.arange(n_pixel)[None, :]
+        self.wl_arrays = np.zeros((N, n_pixel))
+        self.wl_arrays += np.arange(n_pixel)[None, :]
         self.old_scans = np.zeros((N, M, n_pixel, 0))
-
                 
         if c.cam2 is not None:
             c.cam2.set_shots(self.shots)
@@ -106,8 +124,8 @@ class PumpProbePlan:
         self.t_idx = 0
         if self.controller.cam2 is not None:
             self.cur_scan2 = np.zeros((N, M, self.controller.cam2.cam.channels))
-        if self.rot_stage_angles is not None:
+        if self.rot_stage_angles is not None and self.controller.rot_stage is not None:
             pos = self.rot_stage_angles[self.rot_idx]
             self.rot_idx = (self.rot_idx + 1) % len(self.rot_stage_angles)
-            self.controller.rot_stage.set_pos()
+            self.controller.rot_stage.set_pos(pos)
 

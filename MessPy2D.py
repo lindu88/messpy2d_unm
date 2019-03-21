@@ -1,20 +1,21 @@
 from functools import partial
 from Config import config
-START_QT_CONSOLE = False
-if START_QT_CONSOLE:
-    from qtconsole.inprocess import QtInProcessKernelManager
-    from qtconsole.rich_jupyter_widget import RichJupyterWidget
 from qtpy.QtCore import QTimer, Qt, QThread
 from qtpy.QtGui import QFont, QGuiApplication
 from qtpy.QtWidgets import (QMainWindow, QApplication, QWidget, QDockWidget,
                             QPushButton, QLabel, QVBoxLayout, QSizePolicy,
                             QToolBar, QCheckBox)
-
 import qtawesome as qta
 from Plans import *
 from QtHelpers import dark_palette, ControlFactory, make_groupbox, \
     ObserverPlot, ValueLabels
 from ControlClasses import Controller
+
+START_QT_CONSOLE = False
+if START_QT_CONSOLE:
+    from qtconsole.inprocess import QtInProcessKernelManager
+    from qtconsole.rich_jupyter_widget import RichJupyterWidget
+
 
 HAS_SECOND_DELAYLINE = config.has_second_delaystage
 HAS_ROTATION_STAGE = config.has_rot_stage
@@ -130,7 +131,6 @@ class MainWindow(QMainWindow):
         super(MainWindow, self).closeEvent(*args, **kwargs)
 
 
-
 class CommandMenu(QWidget):
     def __init__(self, parent=None):
         super(CommandMenu, self).__init__(parent=parent)
@@ -148,7 +148,7 @@ class CommandMenu(QWidget):
         gb = make_groupbox(dls, "Delay")
         self._layout.addWidget(gb)
 
-        gb = self.add_spec(c, gb)
+        gb = self.add_spec(c)
         self._layout.addWidget(gb)
 
         if HAS_ROTATION_STAGE:
@@ -221,14 +221,17 @@ class CommandMenu(QWidget):
         gb = make_groupbox([rs], "Rotation Stage")
         self._layout.addWidget(gb)
 
-    def add_spec(self, c, gb):
-        spec = c.spectrometer
+    def add_spec(self, c):
+        if not c.cam.cam.changeable_wavelength:
+            return ''
+        spec = c.cam
+
         pre_fcn = lambda x: spec.set_wavelength(spec.get_wavelength() + x)
-        spec_control = ControlFactory('Wavelength', c.spectrometer.set_wavelength,
+        spec_control = ControlFactory('Wavelength', c.cam.set_wavelength,
                                       format_str='%.1f nm',
                                       presets=[-100, -50, 50, 100],
                                       preset_func=pre_fcn)
-        c.spectrometer.sigWavelengthChanged.connect(spec_control.update_value)
+        spec.sigWavelengthChanged.connect(spec_control.update_value)
         gb = make_groupbox([spec_control], "Spectrometer")
         return gb
 

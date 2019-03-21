@@ -1,6 +1,6 @@
 from collections import defaultdict
 from Config import config
-from qtpy.QtWidgets import QWidget, QSizePolicy, QLabel, QVBoxLayout, QHBoxLayout
+from qtpy.QtWidgets import QWidget, QSizePolicy, QLabel, QVBoxLayout, QHBoxLayout, QCheckBox, QApplication
 from qtpy.QtGui import QPalette, QFont
 from qtpy.QtCore import Qt, QTimer
 from ControlClasses import Controller
@@ -21,6 +21,7 @@ from typing import List
 
 from .common_meta import samp
 
+
 @attr.s
 class IndicatorLine:
     wl_idx = attr.ib()  # type: int
@@ -30,7 +31,7 @@ class IndicatorLine:
     entry_label = attr.ib()
     trans_line = attr.ib()  # type: pg.PlotCurveItem
     hist_trans_line = attr.ib()  # type: pg.PlotCurveItem
-    channel = attr.ib(0)   # type: int
+    channel = attr.ib(0)  # type: int
 
     def __attrs_post_init__(self):
         print('init')
@@ -49,6 +50,7 @@ class IndicatorLine:
 
     def update_trans(self):
         pass
+
 
 class LineLabel(QLabel):
     def __init__(self, line, parent=None):
@@ -87,10 +89,10 @@ class PumpProbeViewer(QWidget):
 
         self.do_show_cur = QCheckBox('Current Scan', self)
         self.do_show_cur.setChecked(True)
-        self.do_show_cur.stateChanged.connect(self.hide_current)
+        self.do_show_cur.stateChanged.connect(self.hide_current_lines)
         self.do_show_mean = QCheckBox('Mean of all scans', self)
         self.do_show_mean.setChecked(True)
-        self.do_show_mean.stateChanged.connect(self.hide_hist)
+        self.do_show_mean.stateChanged.connect(self.hide_history_lines)
         vlay.addWidget(self.info_label)
 
         vlay.addWidget(self.do_show_cur)
@@ -144,6 +146,7 @@ class PumpProbeViewer(QWidget):
         lbl.mouseReleaseEvent = remove_line
 
     def update_info(self):
+        return
         pp_plan = self.pp_plan
         s = '''
         <h3>Current plan</h3>
@@ -153,8 +156,10 @@ class PumpProbeViewer(QWidget):
         <dt>Shots:<dd>{s.shots}
         <dt>Scan:<dd>{s.num_scans}
         <dt>Wl pos:<dd>{s.wl_idx}/{nwl}
+        <dt>Rot. Stage Pos<dd>{s.rot_stage_angles[s.rot_]}
         <dt>t pos:<dd>{s.t_idx}/{nt}
         <dt>Time per scan<dd>{s.time_per_scan}
+        <
         </dl>
         </big>
         '''.format(s=pp_plan, nt=len(pp_plan.t_list),
@@ -172,7 +177,7 @@ class PumpProbeViewer(QWidget):
 
             i.line.show()
 
-    def hide_hist(self, i):
+    def hide_history_lines(self, i):
         all_lines = []
         for i in range(len(self.pp_plan.center_wl_list)):
             all_lines += self.inf_lines[i]
@@ -185,8 +190,7 @@ class PumpProbeViewer(QWidget):
             for i in all_lines:
                 self.trans_plot.addItem(i.hist_trans_line)
 
-
-    def hide_current(self, i):
+    def hide_current_lines(self, i):
         all_lines = []
         for i in range(len(self.pp_plan.center_wl_list)):
             all_lines += self.inf_lines[i]
@@ -221,24 +225,6 @@ class PumpProbeViewer(QWidget):
                     i.hist_trans_line.setData(x=pp.t_list, y=ym)
 
 
-start_form = [('Name', ''),
-              ('Shots', 1000),
-              ('Center Wl.', ''),
-              (None, 't list'),
-              ('Linear min', -1.),
-              ('Linear max', 1.),
-              ('Linear Step', 0.1),
-              ('Use Log.', True),
-              ('Log Points', 70),
-              ('Log End', 100)]
-
-
-def pump_probe_starter(controller):
-    out = formlayout.fedit(start_form, 'Pump-probe config')
-
-    print(out)
-
-
 class PumpProbeStarter(PlanStartDialog):
     title = "New Pump-probe Experiment"
     viewer = PumpProbeViewer
@@ -247,7 +233,7 @@ class PumpProbeStarter(PlanStartDialog):
 
         tmp = [{'name': 'Filename', 'type': 'str', 'value': 'temp'},
                {'name': 'Operator', 'type': 'str', 'value': ''},
-               {'name': 'Shots', 'type': 'int',  'max': 4000, 'decimals': 5,
+               {'name': 'Shots', 'type': 'int', 'max': 4000, 'decimals': 5,
                 'step': 500, 'value': 100},
                {'name': 'Linear Range (-)', 'suffix': 'ps', 'type': 'float', 'value': -1},
                {'name': 'Linear Range (+)', 'suffix': 'ps', 'type': 'float', 'value': 1},
@@ -255,17 +241,17 @@ class PumpProbeStarter(PlanStartDialog):
                {'name': 'Logarithmic Scan', 'type': 'bool'},
                {'name': 'Logarithmic End', 'type': 'float', 'suffix': 'ps',
                 'min': 0.},
-               {'name': 'Logarithmic Points',  'type': 'int', 'min': 0},
-               dict(name='Shutter', type='bool', value=True),
+               {'name': 'Logarithmic Points', 'type': 'int', 'min': 0},
+               dict(name='Use Shutter', type='bool', value=True),
                dict(name='Use Rotation Stage', type='bool', value=True),
-               dict(name='Angles in deg.', type='str'),
+               dict(name='Angles in deg.', type='str', value='0, 45'),
                dict(name="Add pre-zero times", type='bool', value=False),
                dict(name="Num pre-zero points", type='int', min=0, max=20),
                dict(name="Pre-Zero pos", type='float', value=-60., suffix='ps'),
 
                ]
         two_d = {'name': 'Pump Probe', 'type': 'group', 'children': tmp}
-        
+
         params = [samp, two_d]
         self.paras = Parameter.create(name='Pump Probe', type='group', children=params)
         config.last_pump_probe = self.paras.saveState()
@@ -283,12 +269,12 @@ class PumpProbeStarter(PlanStartDialog):
         if p['Add pre-zero times']:
             n = p['Num pre-zero points']
             pos = p['Pre-Zero pos']
-            times = np.linspace(pos-1, pos, n)
+            times = np.linspace(pos - 1, pos, n).tolist()
             t_list.append(times)
 
         if p['Use Rotation Stage']:
             s = p['Angles in deg.'].split(',')
-            angles = map(float, s)
+            angles = list(map(float, s))
         else:
             angles = None
 

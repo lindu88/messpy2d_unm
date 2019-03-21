@@ -8,7 +8,8 @@ import yaml
 from qtpy.QtCore import Qt
 from qtpy.QtGui import QPalette, QColor
 from qtpy.QtWidgets import (QWidget, QLineEdit, QLabel, QPushButton, QHBoxLayout,
-                            QFormLayout, QGroupBox, QVBoxLayout, QDialog, QStyleFactory)
+                            QFormLayout, QGroupBox, QVBoxLayout, QDialog, QStyleFactory,
+                            QListWidget)
 
 from Config import config
 
@@ -159,18 +160,26 @@ class ControlFactory(QWidget):
 
 
 class PlanStartDialog(QDialog):
+    experiment_type = ''
     title = ''
 
     def __init__(self, *args, **kwargs):
         super(PlanStartDialog, self).__init__(*args, **kwargs)
+        self.setMinimumWidth(800)
         self.setWindowTitle(self.title)
         self.treeview = pt.ParameterTree()
+        self.recent_settings = QListWidget()
+        self.recent_settings.currentChanged = self.load_recent
+
         start_button = QPushButton('Start Plan')
         start_button.clicked.connect(self.accept)
         cancel_button = QPushButton('Cancel')
         cancel_button.clicked.connect(self.reject)
-        self.setLayout(vlay([self.treeview,
-                             hlay([start_button, cancel_button])]))
+
+        self.setLayout(
+            hlay([vlay([self.treeview, hlay([start_button, cancel_button])]),
+                  self.recent_settings]))
+
         self.setup_paras()
         self.load_defaults()
         self.treeview.setParameters(self.paras)
@@ -221,6 +230,16 @@ class PlanStartDialog(QDialog):
     def closeEvent(self, *args, **kwargs):
         self.save_defaults()
         super().closeEvent(*args, **kwargs)
+
+    def setup_recent_list(self):
+        self._recent_settings = []
+        recents = config[self.experiment_type]
+        for r in recents:
+            self.recent_settings.addItem(r)
+
+    def load_recent(self, event):
+        pass
+
 
     @classmethod
     def start_plan(cls, controller, parent=None):

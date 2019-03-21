@@ -21,13 +21,17 @@ class IDevice(abc.ABC):
         thr = threading.Thread(target=server.serve_forever)
         return obj, server, thr
 
+
 # Defining a minimal interface for each hardware
-@attr.s
+@attr.s(auto_attribs=True)
 class ICam(IDevice):
-    shots: int = attr.ib(50)
-    lines: int = attr.ib(2)
-    channels: int = attr.ib(100)
-    background: tuple = attr.ib((0, 0))
+    shots: int
+    lines: int
+    channels: int
+    ext_channels: int
+    background: tuple = (0, 0)
+    changeable_wavelength: bool = False
+    center_wl: typing.Optional[float] = None
 
     @abc.abstractmethod
     def read_cam(self):
@@ -49,9 +53,14 @@ class ICam(IDevice):
         back_a, back_b = a.mean(1), b.mean(1)
         self.set_background(back_a, back_b)
 
-    def shutdown(self):
-        pass
+    def get_wavelength_array(self, center_wl):
+        return range(self.channels)
 
+    def get_wavelength(self) -> float:
+        return 0
+
+    def set_wavelength(self, wl: float):
+        pass
 
 def mm_to_fs(pos_in_mm):
     "converts mm to femtoseconds"
@@ -59,6 +68,7 @@ def mm_to_fs(pos_in_mm):
     pos_in_meters = pos_in_mm / 1000.
     pos_sec = pos_in_meters / speed_of_light
     return pos_sec * 1e15
+
 
 def fs_to_mm(t_fs):
     speed_of_light = 299792458.
@@ -101,7 +111,7 @@ class IDelayLine(IDevice):
         pass
 
 
-class IShutter(abc.ABC):
+class IShutter(IDevice):
     @abc.abstractmethod
     def toggle(self):
         pass
@@ -139,17 +149,15 @@ class IRotationStage(abc.ABC):
     def is_moving(self):
         pass
 
-class LissajousScanner(abc.ABC):
+
+class ILissajousScanner(IDevice):
     @abc.abstractmethod
     def set_pos_mm(self, x=None, y=None):
         pass
 
-    def set_vel_mm(self):
+    def set_vel_mm(self, xvel=None, yvel=None):
         pass
 
     @abc.abstractmethod
     def is_moving(self) -> typing.Tuple[bool, bool]:
-        pass
-
-    def shutdown(self):
         pass

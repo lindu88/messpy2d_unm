@@ -1,9 +1,12 @@
 import platform
 from Config import config
+from Instruments.mocks import CamMock, DelayLineMock
 
-config.has_second_delaystage = False
-config.has_second_cam = False
-config.has_rotation_stage = False
+_cam = CamMock()
+_cam2 = None
+_dl = DelayLineMock()
+_dl2 = None
+_rot_stage = None
 
 pc_name = platform.node()
 
@@ -37,14 +40,3 @@ elif pc_name == 'helmholm':
     _cam2 = cam
     config.has_second_cam = True
     from Instruments.mocks import CamMock, DelayLineMock
-
-
-
-else:
-    has_second_delaystage = False
-    CamBase = object
-    from Instruments.mocks import CamMock, DelayLineMock
-    _cam = CamMock()
-    _dl = DelayLineMock()
-    DelayBase = object
-    SpecBase = object

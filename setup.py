@@ -5,9 +5,9 @@ setup(
     version='0.1',
     packages=['Plans'],
     url='',
-    requires=['qtpy', 'qtawesome', 'nicelib', 'yamlcfg', 'formlayout']
+    requires=['qtpy', 'qtawesome', 'nicelib', 'yamlcfg', 'formlayout', 'pyqtgraph', 'harfang'],
     license='BSD',
     author='Tillsten',
     author_email='mail.till@gmx.de',
-    description='Ultrafast Spectroscopy Data Acquisition'
+    description='Ultrafast Spectroscopy Data Acquisition',
 )

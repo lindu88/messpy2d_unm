@@ -25,6 +25,6 @@ pre = """
 th = [cdecl_hook, declspec_hook]
 def build():
     build_lib(header_info, lib_names, '_gcslib', __file__,
-              preamble=pre, token_hooks=[declspec_hook], debug_file='bla.h')
+              preamble=pre, token_hooks=[declspec_hook])#, debug_file='bla.h')
 
 build()

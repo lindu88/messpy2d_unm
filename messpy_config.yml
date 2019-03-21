@@ -2,10 +2,13 @@
   Filename: richtig
   Shots: 19000
   Speed: 0.05
+  bin width: null
   delay 1: 0.0
   end Tau 2: -4.0
   start Tau 2: 0.7
 Pump Probe:
+  Add pre-zero times: false
+  Angles in deg.: ''
   Filename: temp
   Linear Range (+): 1
   Linear Range (-): -1
@@ -13,18 +16,366 @@ Pump Probe:
   Logarithmic End: 0.0
   Logarithmic Points: 0
   Logarithmic Scan: false
+  Num pre-zero points: 0
+  Operator: ''
+  Pre-Zero pos: -60.0
   Shots: 100
+  Use Rotation Stage: true
+  Use Shutter: true
 Sample:
   Annotations: 1.2 OD
   Excitation: '2700'
   Sample: TDI
   Solvent: THF
   Thickness: 50mu
+  'Users:': ''
+data_directory: ./data
 dl_server: http://130.133.30.146:8000
 has_rotation_stage: false
-has_second_cam: true
+has_second_cam: false
 has_second_delaystage: false
 ir_server_addr: tcp://localhost:8001
+last_pump_probe:
+  children: !!python/object/apply:collections.OrderedDict
+  - - - Sample
+      - children: !!python/object/apply:collections.OrderedDict
+        - - - Sample
+            - default: null
+              enabled: true
+              expanded: true
+              limits: &id001
+              - Cyclohexanol
+              - Phenylisocyanat
+              - TDI
+              name: Sample
+              readonly: false
+              removable: false
+              renamable: false
+              strictNaming: false
+              title: null
+              type: list
+              value: Cyclohexanol
+              values: *id001
+              visible: true
+          - - Solvent
+            - default: null
+              enabled: true
+              expanded: true
+              limits: &id002
+              - Toluene
+              - THF
+              - H20
+              - D20
+              - DMSO
+              - None
+              name: Solvent
+              readonly: false
+              removable: false
+              renamable: false
+              strictNaming: false
+              title: null
+              type: list
+              value: Toluene
+              values: *id002
+              visible: true
+          - - Excitation
+            - default: null
+              enabled: true
+              expanded: true
+              name: Excitation
+              readonly: false
+              removable: false
+              renamable: false
+              strictNaming: false
+              title: null
+              type: str
+              value: null
+              visible: true
+          - - Thickness
+            - default: null
+              enabled: true
+              expanded: true
+              name: Thickness
+              readonly: false
+              removable: false
+              renamable: false
+              strictNaming: false
+              title: null
+              type: str
+              value: null
+              visible: true
+          - - Annotations
+            - default: null
+              enabled: true
+              expanded: true
+              name: Annotations
+              readonly: false
+              removable: false
+              renamable: false
+              strictNaming: false
+              title: null
+              type: str
+              value: null
+              visible: true
+          - - 'Users:'
+            - default: null
+              enabled: true
+              expanded: true
+              name: 'Users:'
+              readonly: false
+              removable: false
+              renamable: false
+              strictNaming: false
+              title: null
+              type: str
+              value: null
+              visible: true
+        default: null
+        enabled: true
+        expanded: true
+        name: Sample
+        readonly: false
+        removable: false
+        renamable: false
+        strictNaming: false
+        title: null
+        type: group
+        value: null
+        visible: true
+    - - Pump Probe
+      - children: !!python/object/apply:collections.OrderedDict
+        - - - Filename
+            - default: temp
+              enabled: true
+              expanded: true
+              name: Filename
+              readonly: false
+              removable: false
+              renamable: false
+              strictNaming: false
+              title: null
+              type: str
+              value: temp
+              visible: true
+          - - Operator
+            - default: ''
+              enabled: true
+              expanded: true
+              name: Operator
+              readonly: false
+              removable: false
+              renamable: false
+              strictNaming: false
+              title: null
+              type: str
+              value: ''
+              visible: true
+          - - Shots
+            - decimals: 5
+              default: 100
+              enabled: true
+              expanded: true
+              max: 4000
+              name: Shots
+              readonly: false
+              removable: false
+              renamable: false
+              step: 500
+              strictNaming: false
+              title: null
+              type: int
+              value: 100
+              visible: true
+          - - Linear Range (-)
+            - default: -1
+              enabled: true
+              expanded: true
+              name: Linear Range (-)
+              readonly: false
+              removable: false
+              renamable: false
+              strictNaming: false
+              suffix: ps
+              title: null
+              type: float
+              value: -1
+              visible: true
+          - - Linear Range (+)
+            - default: 1
+              enabled: true
+              expanded: true
+              name: Linear Range (+)
+              readonly: false
+              removable: false
+              renamable: false
+              strictNaming: false
+              suffix: ps
+              title: null
+              type: float
+              value: 1
+              visible: true
+          - - Linear Range (step)
+            - default: null
+              enabled: true
+              expanded: true
+              min: 0.01
+              name: Linear Range (step)
+              readonly: false
+              removable: false
+              renamable: false
+              strictNaming: false
+              suffix: ps
+              title: null
+              type: float
+              value: null
+              visible: true
+          - - Logarithmic Scan
+            - default: null
+              enabled: true
+              expanded: true
+              name: Logarithmic Scan
+              readonly: false
+              removable: false
+              renamable: false
+              strictNaming: false
+              title: null
+              type: bool
+              value: null
+              visible: true
+          - - Logarithmic End
+            - default: null
+              enabled: true
+              expanded: true
+              min: 0.0
+              name: Logarithmic End
+              readonly: false
+              removable: false
+              renamable: false
+              strictNaming: false
+              suffix: ps
+              title: null
+              type: float
+              value: null
+              visible: true
+          - - Logarithmic Points
+            - default: null
+              enabled: true
+              expanded: true
+              min: 0
+              name: Logarithmic Points
+              readonly: false
+              removable: false
+              renamable: false
+              strictNaming: false
+              title: null
+              type: int
+              value: null
+              visible: true
+          - - Use Shutter
+            - default: true
+              enabled: true
+              expanded: true
+              name: Use Shutter
+              readonly: false
+              removable: false
+              renamable: false
+              strictNaming: false
+              title: null
+              type: bool
+              value: true
+              visible: true
+          - - Use Rotation Stage
+            - default: true
+              enabled: true
+              expanded: true
+              name: Use Rotation Stage
+              readonly: false
+              removable: false
+              renamable: false
+              strictNaming: false
+              title: null
+              type: bool
+              value: true
+              visible: true
+          - - Angles in deg.
+            - default: null
+              enabled: true
+              expanded: true
+              name: Angles in deg.
+              readonly: false
+              removable: false
+              renamable: false
+              strictNaming: false
+              title: null
+              type: str
+              value: null
+              visible: true
+          - - Add pre-zero times
+            - default: false
+              enabled: true
+              expanded: true
+              name: Add pre-zero times
+              readonly: false
+              removable: false
+              renamable: false
+              strictNaming: false
+              title: null
+              type: bool
+              value: false
+              visible: true
+          - - Num pre-zero points
+            - default: null
+              enabled: true
+              expanded: true
+              max: 20
+              min: 0
+              name: Num pre-zero points
+              readonly: false
+              removable: false
+              renamable: false
+              strictNaming: false
+              title: null
+              type: int
+              value: null
+              visible: true
+          - - Pre-Zero pos
+            - default: -60.0
+              enabled: true
+              expanded: true
+              name: Pre-Zero pos
+              readonly: false
+              removable: false
+              renamable: false
+              strictNaming: false
+              suffix: ps
+              title: null
+              type: float
+              value: -60.0
+              visible: true
+        default: null
+        enabled: true
+        expanded: true
+        name: Pump Probe
+        readonly: false
+        removable: false
+        renamable: false
+        strictNaming: false
+        title: null
+        type: group
+        value: null
+        visible: true
+  default: null
+  enabled: true
+  expanded: true
+  name: Pump Probe
+  readonly: false
+  removable: false
+  renamable: false
+  strictNaming: false
+  title: null
+  type: group
+  value: null
+  visible: true
 list_of_samples:
 - Cyclohexanol
 - Phenylisocyanat

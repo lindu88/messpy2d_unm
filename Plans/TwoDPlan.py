@@ -1,6 +1,7 @@
 import numpy as np
 from attr import attrs, attrib, Factory, make_class
-from ControlClasses import Controller, Signal
+from ControlClasses import Controller
+from Signal import Signal
 import itertools
 #from scipy.stats import binned_statistic
 speed_of_light = 299792458.0
@@ -50,7 +51,8 @@ class TwoDimMoving:
     def __attrs_post_init__(self):
         gen = self.make_step_gen()
         self.make_step = lambda: next(gen)
-        N = self.controller.cam.num_ch
+        N = self.controller.cam.cam.channels
+
         self.bin_paras = calc_params(self.start_end_tau, self.num_bins)
         self.bin_counts = np.zeros(self.bin_paras.bins.size, dtype='int')
         self.bin_total = np.zeros((self.bin_paras.bins.size, N))
