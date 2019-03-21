@@ -20,7 +20,7 @@ class CamMock(ICam):
     ext_channels: int = 3
     background: tuple = (0., 0.)
     changeable_wavelength: True = True
-    center_wl = 300
+    center_wl: float = 300
 
     def set_shots(self, shots):
         self.shots = shots

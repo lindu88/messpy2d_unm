@@ -232,6 +232,7 @@ class CommandMenu(QWidget):
                                       presets=[-100, -50, 50, 100],
                                       preset_func=pre_fcn)
         spec.sigWavelengthChanged.connect(spec_control.update_value)
+        spec.sigWavelengthChanged.emit(spec.get_wavelength())
         gb = make_groupbox([spec_control], "Spectrometer")
         return gb
 

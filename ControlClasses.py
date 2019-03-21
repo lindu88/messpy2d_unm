@@ -57,7 +57,7 @@ class Cam:
         return self.cam.get_wavelength()
 
     def get_wavelengths(self, center_wl=None):
-        self.cam.get_wavelength_array(center_wl)
+        return self.cam.get_wavelength_array(center_wl)
 
     def get_bg(self):
         rd = self.read_cam()
