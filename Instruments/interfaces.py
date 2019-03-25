@@ -1,7 +1,10 @@
 import typing, abc, time, attr, threading
 import xmlrpc.server as rpc
 
+@attr.s
 class IDevice(abc.ABC):
+    name: str = attr.ib()
+
     def init(self):
         pass
 
@@ -27,6 +30,7 @@ class IDevice(abc.ABC):
 class ICam(IDevice):
     shots: int
     lines: int
+    sig_lines: int
     channels: int
     ext_channels: int
     background: tuple = (0, 0)

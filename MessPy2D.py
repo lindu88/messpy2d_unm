@@ -9,7 +9,7 @@ import qtawesome as qta
 from Plans import *
 from QtHelpers import dark_palette, ControlFactory, make_groupbox, \
     ObserverPlot, ValueLabels
-from ControlClasses import Controller
+from ControlClasses import Controller, LastRead
 
 START_QT_CONSOLE = False
 if START_QT_CONSOLE:
@@ -41,20 +41,29 @@ class MainWindow(QMainWindow):
         self.timer.timeout.connect(controller.loop)
         self.timer.timeout.connect(QApplication.processEvents)
         self.toggle_run(True)
-        lr = controller.last_read
-        op = ObserverPlot([(lr, 'probe_mean'), (lr, 'reference_mean')],
-                          self.timer.timeout)
-        dw = QDockWidget('Readings', parent=self)
-        dw.setWidget(op)
-        op2 = ObserverPlot([(lr, 'probe_std'), (lr, 'reference_std')],
-                           self.timer.timeout)
-        op2.setYRange(0, 20)
-        dw2 = QDockWidget('Readings - stddev', parent=self)
-        dw2.setWidget(op2)
-        op3 = ObserverPlot([(lr, 'probe_signal')],
-                           self.timer.timeout)
-        dw3 = QDockWidget('Pump-probe signal', parent=self)
-        dw3.setWidget(op3)
+
+        dock_wigdets = []
+        for c in [controller.cam, controller.cam2]:
+            lr = c.last_read # type: LastRead
+            op = ObserverPlot([(lr, 'probe_mean'), (lr, 'reference_mean')],
+                              lr.sigProcessingCompleted)
+            dw = QDockWidget('Readings', parent=self)
+            dw.setWidget(op)
+            dock_wigdets.append(dw)
+
+            op2 = ObserverPlot([(lr, 'probe_std'), (lr, 'reference_std')],
+                               lr.sigProcessingCompleted)
+            op2.setYRange(0, 20)
+            dw = QDockWidget('Readings - stddev', parent=self)
+            dw.setWidget(op2)
+            dock_wigdets.append(dw)
+
+            op3 = ObserverPlot([(lr, 'probe_signal')],
+                               lr.sigProcessingCompleted)
+            dw = QDockWidget('Pump-probe signal', parent=self)
+            dw.setWidget(op3)
+            dock_wigdets.append(dw)
+
         if START_QT_CONSOLE:
             kernel_manager = QtInProcessKernelManager()
             kernel_manager.start_kernel(show_banner=False)
@@ -73,11 +82,12 @@ class MainWindow(QMainWindow):
             dw4.setWidget(ipython_widget)
             self.addDockWidget(Qt.LeftDockWidgetArea, dw4)
             dw4.close()
+        for dw in dock_wigdets:
+            self.addDockWidget(Qt.LeftDockWidgetArea, dw)
 
-        self.addDockWidget(Qt.LeftDockWidgetArea, dw)
-        self.addDockWidget(Qt.LeftDockWidgetArea, dw2)
-        self.addDockWidget(Qt.LeftDockWidgetArea, dw3)
-
+        self.splitDockWidget(dock_wigdets[0], dock_wigdets[3], Qt.Horizontal)
+        self.splitDockWidget(dock_wigdets[1], dock_wigdets[4], Qt.Horizontal)
+        self.splitDockWidget(dock_wigdets[2], dock_wigdets[5], Qt.Horizontal)
         self.setCentralWidget(cm)
         self.show()
 
@@ -148,8 +158,9 @@ class CommandMenu(QWidget):
         gb = make_groupbox(dls, "Delay")
         self._layout.addWidget(gb)
 
-        gb = self.add_spec(c)
-        self._layout.addWidget(gb)
+        if c.cam.cam.changeable_wavelength:
+            gb = self.add_spec(c)
+            self._layout.addWidget(gb)
 
         if HAS_ROTATION_STAGE:
             self.add_rot_stage()
@@ -187,12 +198,16 @@ class CommandMenu(QWidget):
         self._layout.addWidget(gb)
         return gb
 
-    def add_cam(self, c):
+    def add_cam(self, c: Controller):
+        bg_buttons = [('Record BG', c.cam.get_bg)]
+        if c.cam2:
+            bg_buttons.append(('Record BG2', c.cam2.get_bg))
         sc = ControlFactory('Shots', c.cam.set_shots, format_str='%d',
-                            presets=[50, 200, 500, 1000])
+                            presets=[50, 200, 500, 1000], extra_buttons=bg_buttons)
         get_bg_button = QPushButton('Record Background')
         get_bg_button.clicked.connect(c.cam.get_bg)
-        c.cam.sigShotsChanged.connect(sc.update_value)
+        if c.cam2:
+            get_bg_button.clicked.connect(c.cam.get_bg)
         gb = make_groupbox([sc], "ADC")
         return gb
 

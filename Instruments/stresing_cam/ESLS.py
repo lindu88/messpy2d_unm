@@ -95,9 +95,12 @@ from ..interfaces import ICam
 
 @dataclass
 class Cam(ICam):
+    name: str = "Stresing CCD"
     shots: int = 100
     lines: int = 2
+    sig_lines: int = 1
     channels: int = 440
+    changeable_wavelength = False
     busy: bool = False
     read_idx: int = 0
     last_read: np.ndarray = np.empty((0))

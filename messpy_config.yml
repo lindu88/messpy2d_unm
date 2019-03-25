@@ -32,7 +32,7 @@ Sample:
 data_directory: ./data
 dl_server: http://130.133.30.146:8000
 has_rotation_stage: false
-has_second_cam: false
+has_second_cam: true
 has_second_delaystage: false
 ir_server_addr: tcp://localhost:8001
 last_pump_probe:
