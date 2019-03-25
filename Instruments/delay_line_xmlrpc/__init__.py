@@ -9,9 +9,14 @@ if config.dl_server is None:
 
 dlproxy = ServerProxy(config.dl_server)
 
-class DelayLine(IDelayLine)
+
+class DelayLine(IDelayLine):
+
     def __init__(self):
         self.name = f"Remote DelayLine xmlrpc {config.dl_server}"
+        super().__init__(name=self.name, pos_sign=-1)
+
+
 
     def move_mm(self, mm, *args, **kwargs):
         dlproxy.move_mm(mm)

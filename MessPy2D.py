@@ -214,7 +214,7 @@ class CommandMenu(QWidget):
     def add_delaystages(self, c):
         dl = controller.delay_line
         dl1c = ControlFactory('Delay 1', c.delay_line.set_pos, format_str='%.1f fs',
-                              extra_buttons=[("Set Home", dl.set_pos)],
+                              extra_buttons=[("Set Home", dl.set_home)],
                               presets=[-50000, -10000, -1001, -50,
                                        50000, 10000, 1001, 50],
                               preset_func=lambda x: dl.set_pos(dl.get_pos() + x),

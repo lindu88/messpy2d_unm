@@ -60,7 +60,7 @@ class PumpProbePlan:
     def make_step_gen(self):
         c = self.controller
         c.cam.set_shots(self.shots)
-        n_pixel = c.cam.cam.channels
+        n_pixel = c.cam.channels
         N, M = len(self.center_wl_list), len(self.t_list)
         self.wl_arrays = np.zeros((N, n_pixel))
         self.wl_arrays += np.arange(n_pixel)[None, :]
@@ -68,19 +68,19 @@ class PumpProbePlan:
                 
         if c.cam2 is not None:
             c.cam2.set_shots(self.shots)
-            self.old_scans2 = np.zeros((N, M, self.controller.cam2.cam.num_ch, 0))
-            self.wl2 = np.zeros((N, c.cam2.num_ch))
+            self.old_scans2 = np.zeros((N, M, self.controller.cam2.channels, 0))
+            self.wl2 = np.zeros((N, c.cam.channels))
 
         while True:
             self.pre_scan()
             yield
             start_t = time.time()
             for self.wl_idx, wl in enumerate(self.center_wl_list):
-                c.spectrometer.set_wavelength(wl)
+                c.cam.set_wavelength(wl)
                 self.sigWavelengthChanged.emit()
 
                 for self.t_idx, t in enumerate(self.t_list):
-                    c.delay_line.set_pos(t*1000.)
+                    c.delay_line.set_pos(t*1000., do_wait=True)
                     self.read_point()
                     self.sigStepDone.emit()
                     yield
@@ -89,19 +89,20 @@ class PumpProbePlan:
             self.post_scan()
 
     def post_scan(self):
+        self.controller.delay_line.set_pos(self.t_list[0])
         self.old_scans = np.concatenate((self.old_scans, self.cur_scan[..., None]), 3)
         self.old_scans2 = np.concatenate((self.old_scans2, self.cur_scan2[..., None]), 3)
 
     def read_point(self):
         if self.use_shutter:
             self.controller.shutter.open()
-        lr = self.controller.last_read
+        lr = self.controller.cam.last_read
         lr.update()
         self.signal_data = lr.probe_signal
         self.cur_scan[self.wl_idx, self.t_idx, :] = lr.probe_signal
 
         if self.controller.cam2 is not None:
-            lr = self.controller.last_read2 
+            lr = self.controller.cam2.last_read
             lr.update()
             self.signal_data2 = lr.probe_signal
             self.cur_scan2[self.wl_idx, self.t_idx, :] = lr.probe_signal

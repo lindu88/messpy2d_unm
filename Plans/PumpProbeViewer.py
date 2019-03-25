@@ -127,7 +127,7 @@ class PumpProbeViewer(QWidget):
         tlh = self.trans_plot.plot(pen=pg.mkPen(c, width=4))
 
         il = IndicatorLine(wl_idx=self.pp_plan.wl_idx,
-                           wl=self.pp_plan.wl,
+                           wl=self.pp_plan.wl_arrays,
                            pos=x,
                            line=l,
                            trans_line=tl,
@@ -263,14 +263,13 @@ class PumpProbeStarter(PlanStartDialog):
                            p['Linear Range (+)'],
                            p['Linear Range (step)']).tolist()
         if p['Logarithmic Scan']:
-            t_list.append(np.geomspace(p['Linear Range (+)'],
-                                       p['Logarithmic End'],
-                                       p['Logarithmic Points']).tolist())
+            t_list += (np.geomspace(p['Linear Range (+)'], p['Logarithmic End'], p['Logarithmic Points']).tolist())
+
         if p['Add pre-zero times']:
             n = p['Num pre-zero points']
             pos = p['Pre-Zero pos']
             times = np.linspace(pos - 1, pos, n).tolist()
-            t_list.append(times)
+            t_list+= times
 
         if p['Use Rotation Stage']:
             s = p['Angles in deg.'].split(',')
@@ -278,10 +277,12 @@ class PumpProbeStarter(PlanStartDialog):
         else:
             angles = None
 
+
+        self.save_defaults()
         p = PumpProbePlan(
             name=p['Filename'],
             meta=self.paras.saveState(),
-            t_list=t_list,
+            t_list=np.asarray(t_list),
             shots=p['Shots'],
             controller=controller,
             center_wl_list=[0.],

@@ -166,6 +166,7 @@ class PlanStartDialog(QDialog):
     def __init__(self, *args, **kwargs):
         super(PlanStartDialog, self).__init__(*args, **kwargs)
         self.setMinimumWidth(800)
+        self.setMaximumHeight(800)
         self.setWindowTitle(self.title)
         self.treeview = pt.ParameterTree()
         self.recent_settings = QListWidget()

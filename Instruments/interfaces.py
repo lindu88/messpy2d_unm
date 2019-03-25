@@ -1,5 +1,7 @@
 import typing, abc, time, attr, threading
 import xmlrpc.server as rpc
+from enum import auto
+
 
 @attr.s
 class IDevice(abc.ABC):
@@ -80,7 +82,7 @@ def fs_to_mm(t_fs):
     return pos_m * 1000.
 
 
-@attr.s
+@attr.s(auto_attribs=True)
 class IDelayLine(IDevice):
     home_pos: float = attr.ib(0.)
     pos_sign: float = 1
