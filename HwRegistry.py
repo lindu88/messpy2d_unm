@@ -7,6 +7,7 @@ _cam2 = None
 _dl = DelayLineMock()
 _dl2 = None
 _rot_stage = None
+_shutter = None
 
 pc_name = platform.node()
 
@@ -33,8 +34,8 @@ if pc_name == '2dir-PC':
 
 elif pc_name == 'helmholm':
     from Instruments.stresing_cam.ESLS import Cam
-    #from Instruments.delay_line_serial import dl as _dl
-    from Instruments.delay_line_xmlrpc import dl as _dl
+    from Instruments.delay_line_serial import dl as _dl
+    #from Instruments.delay_line_xmlrpc import dl as _dl
     _cam = Cam()
     from Instruments.ircam_64_remote import cam
     _cam2 = cam

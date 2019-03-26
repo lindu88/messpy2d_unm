@@ -163,8 +163,9 @@ class PlanStartDialog(QDialog):
     experiment_type = ''
     title = ''
 
-    def __init__(self, *args, **kwargs):
+    def __init__(self, controller, *args, **kwargs):
         super(PlanStartDialog, self).__init__(*args, **kwargs)
+        self.controller = controller
         self.setMinimumWidth(800)
         self.setMaximumHeight(800)
         self.setWindowTitle(self.title)
@@ -244,7 +245,7 @@ class PlanStartDialog(QDialog):
 
     @classmethod
     def start_plan(cls, controller, parent=None):
-        dialog = cls(parent=parent)
+        dialog = cls(parent=parent, controller=controller)
         result = dialog.exec_()
         plan = dialog.create_plan(controller)
         return plan, result == QDialog.Accepted
@@ -283,15 +284,19 @@ class ObserverPlot(pg.PlotWidget):
         #self.enableMouse()
         self.sceneObj.sigMouseClicked.connect(self.click)
         self.click_func = None
+        self.x = x
 
     def add_observed(self, single_obs):
         self.observed.append(single_obs)
         pen = pg.mkPen(color=next(self.color_cycle), width=2)
-        self.lines[single_obs[1]] = self.plotItem.plot([0], pen=pen)
+        self.lines[single_obs] = self.plotItem.plot([0], pen=pen)
 
     def update_data(self):
         for o in self.observed:
-            self.lines[o[1]].setData(getattr(*o))
+            if callable(o):
+                self.lines[o].setData(x=self.x, y=o())
+            else:
+                self.lines[o].setData(x=self.x, y=getattr(*o))
 
     def click(self, ev):
         print(ev.button())

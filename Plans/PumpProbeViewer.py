@@ -1,6 +1,6 @@
 from collections import defaultdict
 from Config import config
-from qtpy.QtWidgets import QWidget, QSizePolicy, QLabel, QVBoxLayout, QHBoxLayout, QCheckBox, QApplication
+from qtpy.QtWidgets import QWidget, QSizePolicy, QLabel, QVBoxLayout, QHBoxLayout, QCheckBox, QApplication, QTabWidget
 from qtpy.QtGui import QPalette, QFont
 from qtpy.QtCore import Qt, QTimer
 from ControlClasses import Controller
@@ -75,11 +75,20 @@ class LineLabel(QLabel):
         self.setText('%.1f' % x)
 
 
-class PumpProbeViewer(QWidget):
-    def __init__(self, pp_plan, parent=None):
+class PumpProbeViewer(QTabWidget):
+    def __init__(self, pp_plan: PumpProbePlan, parent=None):
         super(PumpProbeViewer, self).__init__(parent=parent)
-        self.pp_plan = pp_plan  # type: PumpProbePlan
+        for ppd in pp_plan.cam_data:
+            self.addTab(PumpProbeDataViewer(ppd))
+
+
+
+class PumpProbeDataViewer(QWidget):
+    def __init__(self, pp_plan, parent=None):
+        super(PumpProbeDataViewer, self).__init__(parent=parent)
+        self.pp_plan = pp_plan  # type: PumpProbeData
         self._layout = QHBoxLayout(self)
+        Q
         self.info_label = QLabel()
         self.info_label.setSizePolicy(QSizePolicy.Minimum, QSizePolicy.Minimum)
         self.update_info()
@@ -94,14 +103,15 @@ class PumpProbeViewer(QWidget):
         self.do_show_mean.setChecked(True)
         self.do_show_mean.stateChanged.connect(self.hide_history_lines)
         vlay.addWidget(self.info_label)
-
         vlay.addWidget(self.do_show_cur)
         vlay.addWidget(self.do_show_mean)
+
         self.line_area = QVBoxLayout(self)
         vlay.addLayout(self.line_area)
         vlay.addStretch(1)
         self._layout.addLayout(vlay)
         self._layout.addLayout(lw)
+
 
         self.sig_plot = ObserverPlot([], pp_plan.sigStepDone)
         self.sig_plot.add_observed((pp_plan, 'signal_data'))
@@ -230,6 +240,8 @@ class PumpProbeStarter(PlanStartDialog):
     viewer = PumpProbeViewer
 
     def setup_paras(self):
+        has_rot = self.controller.rot_stage is not None
+        has_shutter = self.controller.shutter is not None
 
         tmp = [{'name': 'Filename', 'type': 'str', 'value': 'temp'},
                {'name': 'Operator', 'type': 'str', 'value': ''},
@@ -242,14 +254,14 @@ class PumpProbeStarter(PlanStartDialog):
                {'name': 'Logarithmic End', 'type': 'float', 'suffix': 'ps',
                 'min': 0.},
                {'name': 'Logarithmic Points', 'type': 'int', 'min': 0},
-               dict(name='Use Shutter', type='bool', value=True),
-               dict(name='Use Rotation Stage', type='bool', value=True),
-               dict(name='Angles in deg.', type='str', value='0, 45'),
                dict(name="Add pre-zero times", type='bool', value=False),
-               dict(name="Num pre-zero points", type='int', min=0, max=20),
+               dict(name="Num pre-zero points", type='int', value=10, min=0, max=20),
                dict(name="Pre-Zero pos", type='float', value=-60., suffix='ps'),
+               dict(name='Use Shutter', type='bool', value=True, enabled=has_shutter, visible=has_shutter),
+               dict(name='Use Rotation Stage', type='bool', value=True, enabled=has_rot, visible=has_rot),
+               dict(name='Angles in deg.', type='str', value='0, 45', enabled=has_rot, visible=has_rot)  ]
 
-               ]
+
         two_d = {'name': 'Pump Probe', 'type': 'group', 'children': tmp}
 
         params = [samp, two_d]
@@ -271,7 +283,7 @@ class PumpProbeStarter(PlanStartDialog):
             times = np.linspace(pos - 1, pos, n).tolist()
             t_list+= times
 
-        if p['Use Rotation Stage']:
+        if p['Use Rotation Stage'] and self.controller.rot_stage:
             s = p['Angles in deg.'].split(',')
             angles = list(map(float, s))
         else:
@@ -286,7 +298,7 @@ class PumpProbeStarter(PlanStartDialog):
             shots=p['Shots'],
             controller=controller,
             center_wl_list=[0.],
-            use_shutter=p['Use Shutter'],
+            use_shutter=p['Use Shutter'] and self.controller.shutter,
             rot_stage_angles=angles
         )
         return p

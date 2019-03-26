@@ -2,13 +2,10 @@ import numpy as np
 from attr import attrs, attrib, Factory
 from Config import config
 import threading, time
-
-from HwRegistry import _cam, _cam2, _dl, _dl2, _rot_stage
+import typing as T
+from HwRegistry import _cam, _cam2, _dl, _dl2, _rot_stage, _shutter
 import Instruments.interfaces as I
 from Signal import Signal
-
-has_second_cam = config.has_second_cam
-
 
 @attrs
 class ReadData:
@@ -81,7 +78,7 @@ class Cam:
 class Delayline:
     sigPosChanged = attrib(Factory(Signal))
     pos = attrib(0)
-    _dl = attrib(object)
+    _dl = attrib(I.IDelayLine)
 
     def __attrs_post_init__(self):
         self.pos = self._dl.get_pos_fs()
@@ -94,6 +91,19 @@ class Delayline:
         except ValueError:
             raise
         self._dl.move_fs(pos_fs, do_wait=do_wait)
+        if not do_wait:
+            self._thread = threading.Thread(target=self.wait_and_update)
+            self._thread.start()
+
+        self.pos = self._dl.get_pos_fs()
+        self.sigPosChanged.emit(self.pos)
+
+    def wait_and_update(self):
+        "Wait until not moving. Do update position while moving"
+        while self._dl.is_moving():
+            self.pos = self._dl.get_pos_fs()
+            self.sigPosChanged.emit(self.pos)
+            time.sleep(0.1)
         self.pos = self._dl.get_pos_fs()
         self.sigPosChanged.emit(self.pos)
 
@@ -111,7 +121,7 @@ class Delayline:
 arr_factory = Factory(lambda: np.zeros(16))
 
 
-@attrs
+@attrs(cmp=False)
 class LastRead:
     cam: Cam = attrib()
     probe = attrib(arr_factory)
@@ -153,16 +163,22 @@ class LastRead:
 
 class Controller:
     """Class which controls the main loop."""
+    cam: Cam
+    cam2: T.Optional[Cam]
+    shutter: T.Optional[I.IShutter]
+    delay_line: Delayline
+    rot_stage: T.Optional[I.IRotationStage]
 
     def __init__(self):
         self.cam = Cam()
         self.cam.read_cam()
-
+        self.shutter = _shutter
+        self.cam_list = [self.cam]
         if _cam2 is not None:
             self.cam2 = Cam(cam=_cam2)
             self.cam2.read_cam()
             self.cam.sigShotsChanged.connect(self.cam2.set_shots, do_threaded=False)
-
+            self.cam_list.append(self.cam2)
         self.delay_line = Delayline(dl=_dl)
         self.rot_stage = None
 
