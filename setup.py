@@ -5,7 +5,7 @@ setup(
     version='0.1',
     packages=['Plans'],
     url='',
-    requires=['qtpy', 'qtawesome', 'nicelib', 'yamlcfg', 'formlayout', 'pyqtgraph', 'harfang'],
+    requires=['qtpy', 'qtawesome', 'nicelib', 'yamlcfg', 'formlayout', 'pyqtgraph', 'cffi'],
     license='BSD',
     author='Tillsten',
     author_email='mail.till@gmx.de',

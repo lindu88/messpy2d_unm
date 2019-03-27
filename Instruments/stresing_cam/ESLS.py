@@ -95,9 +95,12 @@ from ..interfaces import ICam
 
 @dataclass
 class Cam(ICam):
+    name: str = "Stresing CCD"
     shots: int = 100
     lines: int = 2
-    channels: int = 440
+    sig_lines: int = 1
+    channels: int = 390
+    changeable_wavelength = False
     busy: bool = False
     read_idx: int = 0
     last_read: np.ndarray = np.empty((0))
@@ -166,8 +169,9 @@ class Cam(ICam):
         b = b.reshape(b.shape[0], -1, n_downsample).mean(-1)
         a = a- 1*a[:, 400:].mean(keepdims=True)
         b = b - 1*b[:, 400:].mean(keepdims=True)
+        a, b = a[:, :390], b[:, :390]
         ext = np.empty((self.shots, 0))
-        first = b[0, :].sum() > b[1, :].sum()
+        first = b[0, :390].sum() > b[1, :390].sum()
 
         chopper = np.ones(self.shots, dtype='bool')
         if first:

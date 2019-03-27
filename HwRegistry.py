@@ -7,6 +7,7 @@ _cam2 = None
 _dl = DelayLineMock()
 _dl2 = None
 _rot_stage = None
+_shutter = None
 
 pc_name = platform.node()
 

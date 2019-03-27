@@ -3,8 +3,10 @@ import serial
 
 class DelayLine(object):
     def __init__(self):
-        self.port = serial.Serial('COM10', baudrate=9600*12, rtscts=True)
+        port = 'COM10'
+        self.port = serial.Serial(port, baudrate=9600*12, rtscts=True)
         self.moving = False
+        self.name = f'Remote DelayLine {port} '
 
     def move_fs(self, pos_fs, do_wait=True):
         self.port.flushInput()

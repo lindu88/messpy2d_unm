@@ -14,8 +14,10 @@ state = MockState()
 
 @attr.s(auto_attribs=True)
 class CamMock(ICam):
+    name: str = 'MockCam'
     shots: int = 20
     lines: int = 2
+    sig_lines: int =  1
     channels: int = 200
     ext_channels: int = 3
     background: tuple = (0., 0.)
@@ -42,6 +44,7 @@ class CamMock(ICam):
 
 @attr.s(auto_attribs=True)
 class DelayLineMock(IDelayLine):
+    name: str = 'MockDelayStage'
     pos_mm: float = 0.
 
     def move_mm(self, mm, do_wait=True):
@@ -59,6 +62,7 @@ class DelayLineMock(IDelayLine):
 
 @attr.s(auto_attribs=True)
 class RotStageMock(IRotationStage):
+    name: str = 'Rotation Mock'
     deg: float = 0
 
     def set_degrees(self, deg: float):
@@ -74,6 +78,7 @@ class RotStageMock(IRotationStage):
 
 @attr.s(auto_attribs=True)
 class ShutterMock(IShutter):
+    name = 'ShutterMock'
     is_open: bool = True
 
     def is_open(self):

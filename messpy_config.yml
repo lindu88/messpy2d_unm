@@ -11,15 +11,15 @@ Pump Probe:
   Angles in deg.: ''
   Filename: temp
   Linear Range (+): 1
-  Linear Range (-): -1
-  Linear Range (step): 0.01
-  Logarithmic End: 0.0
-  Logarithmic Points: 0
-  Logarithmic Scan: false
-  Num pre-zero points: 0
+  Linear Range (-): -3.0
+  Linear Range (step): 0.2
+  Logarithmic End: 100.0
+  Logarithmic Points: 50
+  Logarithmic Scan: true
+  Num pre-zero points: 10
   Operator: ''
   Pre-Zero pos: -60.0
-  Shots: 100
+  Shots: 1000
   Use Rotation Stage: true
   Use Shutter: true
 Sample:
@@ -32,7 +32,7 @@ Sample:
 data_directory: ./data
 dl_server: http://130.133.30.146:8000
 has_rotation_stage: false
-has_second_cam: false
+has_second_cam: true
 has_second_delaystage: false
 ir_server_addr: tcp://localhost:8001
 last_pump_probe:
@@ -271,45 +271,6 @@ last_pump_probe:
               type: int
               value: null
               visible: true
-          - - Use Shutter
-            - default: true
-              enabled: true
-              expanded: true
-              name: Use Shutter
-              readonly: false
-              removable: false
-              renamable: false
-              strictNaming: false
-              title: null
-              type: bool
-              value: true
-              visible: true
-          - - Use Rotation Stage
-            - default: true
-              enabled: true
-              expanded: true
-              name: Use Rotation Stage
-              readonly: false
-              removable: false
-              renamable: false
-              strictNaming: false
-              title: null
-              type: bool
-              value: true
-              visible: true
-          - - Angles in deg.
-            - default: null
-              enabled: true
-              expanded: true
-              name: Angles in deg.
-              readonly: false
-              removable: false
-              renamable: false
-              strictNaming: false
-              title: null
-              type: str
-              value: null
-              visible: true
           - - Add pre-zero times
             - default: false
               enabled: true
@@ -352,6 +313,45 @@ last_pump_probe:
               type: float
               value: -60.0
               visible: true
+          - - Use Shutter
+            - default: true
+              enabled: false
+              expanded: true
+              name: Use Shutter
+              readonly: false
+              removable: false
+              renamable: false
+              strictNaming: false
+              title: null
+              type: bool
+              value: true
+              visible: false
+          - - Use Rotation Stage
+            - default: true
+              enabled: false
+              expanded: true
+              name: Use Rotation Stage
+              readonly: false
+              removable: false
+              renamable: false
+              strictNaming: false
+              title: null
+              type: bool
+              value: true
+              visible: false
+          - - Angles in deg.
+            - default: 0, 45
+              enabled: false
+              expanded: true
+              name: Angles in deg.
+              readonly: false
+              removable: false
+              renamable: false
+              strictNaming: false
+              title: null
+              type: str
+              value: 0, 45
+              visible: false
         default: null
         enabled: true
         expanded: true

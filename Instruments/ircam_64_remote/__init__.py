@@ -12,8 +12,18 @@ context = zmq.Context()
 socket = context.socket(zmq.REQ)
 socket.connect(config.ir_server_addr)
 
+import attr
 
+@attr.s(auto_attribs=True)
 class Cam(ICam):
+    name: str = 'Remote IR 32x2'
+    shots: int = config.shots
+    lines: int = 2
+    sig_lines: int = 1
+    channels: int = 32
+    ext_channels: int = 3
+    changeable_wavelength: bool = False
+
     def read_cam(self):
         socket.send_pyobj(('read_cam', None))
         #data = socket.recv()

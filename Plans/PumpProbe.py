@@ -3,23 +3,59 @@ from typing import Optional, List, Iterable, Any
 import numpy as np
 from attr import attrs, attrib, Factory
 from .common_meta import Plan
-from ControlClasses import Controller
+from ControlClasses import Controller, Cam
 from Signal import Signal
 from pathlib import Path
 from Config import config
-from Instruments.interfaces import ICam
-
+from Instruments.interfaces import ICam, IRotationStage, IShutter
+from typing import List, Optional
 
 @attrs(auto_attribs=True)
 class PumpProbeData:
-    """Class holding the pump-probe data for a single scan"""
-    current_scan: np.ndarray
-    mean_scans: np.ndarray
-    completed_scans: np.ndarray
-    wavelengths: np.ndarray
+    """Class holding the pump-probe data for a single cam"""
+    cam: Cam
+    cwl: List[float] = attrib()
+    times: Iterable[float]
+    scan: int = 0
+    delay_scans = 0
+    wl_idx: int = 0
+    current_scan: np.ndarray = attrib(init=False)
+    mean_scans: Optional[np.ndarray] = False
+    completed_scans: Optional[np.ndarray] = False
+    wavelengths: np.ndarray = attrib(init=False)
 
-    def __init__(self, cam: ICam):
-        n = cam.channels
+    sigWavelengthChanged: Signal = Factory(Signal)
+
+    def __attrs_post_init__(self):
+        ch = self.cam.sig_lines
+        nwl = len(self.cwl)
+        num_t = len(self.times)
+        self.wavelengths = np.zeros((nwl, ch))
+        for i, wl in enumerate(self.cwl):
+            self.wavelengths[i, :] = self.cam.get_wavelengths(wl)
+        self.current_scan = np.zeros((nwl, num_t, ch))
+        self.mean_scans = None
+        self.cam.set_wavelength(self.cwl[0])
+
+    def time_scan_finished(self):
+        'Called when a scan through the delay-line has finished'
+        self.delay_scans += 1
+        self.wl_idx = self.delay_scans % len(self.cwl)
+        if self.delay_scans == len(self.cwl):
+            self.scan += 1
+            if self.completed_scans is None:
+                self.completed_scans = self.current_scan[None, ...]
+            self.mean_scans = self.completed_scans.mean(0)
+        next_wl = self.cwl[self.wl_idx]
+        self.cam.set_wavelength(next_wl)
+
+    def read_point(self, t_idx):
+        lr = self.cam.last_read
+        lr.update()
+        self.current_scan[self.wl_idx, t_idx, :] = lr.probe_signal
+        self.last_signal = lr.probe_signal
+        if self.scan > 0:
+            self.mean_signal = self.mean_signal[self.wl_idx, t_idx, :]
 
 
 @attrs(auto_attribs=True)
@@ -31,80 +67,54 @@ class PumpProbePlan:
     meta: dict = {} 
     shots: int = 1000
     num_scans: int = 0
-    wl_idx: int = 0
     t_idx: int = 0
     rot_idx: int = 0
+
     center_wl_list : Iterable[float] = Factory(list)
     use_shutter: bool = False
-
-    signal_data: Any = None
+    cam_data: List[PumpProbeData] = attrib(init=False)
+    use_rot_stage: bool = False
     rot_stage_angles: Optional[list] = None
     time_per_scan: float = 0
-    cur_scan: int = -1
-    cur_scan2: Any = None
-    old_scans: Any = None
-    old_scans2: Any = None
-    mean_scans: Any = None
-    mean_scans2: Any = None
-
-    wl_arrays: Any = None
 
     sigStepDone: Signal = Factory(Signal)
-    sigWavelengthChanged: Signal = Factory(Signal)
+
 
     def __attrs_post_init__(self):
         gen = self.make_step_gen()
         self.make_step = lambda: next(gen)
         self.angle_cycle = []
+        self.cam_data = [PumpProbeData(cam=c) for c in self.controller.cam_list]
 
     def make_step_gen(self):
         c = self.controller
-        c.cam.set_shots(self.shots)
-        n_pixel = c.cam.cam.channels
-        N, M = len(self.center_wl_list), len(self.t_list)
-        self.wl_arrays = np.zeros((N, n_pixel))
-        self.wl_arrays += np.arange(n_pixel)[None, :]
-        self.old_scans = np.zeros((N, M, n_pixel, 0))
-                
-        if c.cam2 is not None:
-            c.cam2.set_shots(self.shots)
-            self.old_scans2 = np.zeros((N, M, self.controller.cam2.cam.num_ch, 0))
-            self.wl2 = np.zeros((N, c.cam2.num_ch))
-
         while True:
             self.pre_scan()
             yield
             start_t = time.time()
-            for self.wl_idx, wl in enumerate(self.center_wl_list):
-                c.spectrometer.set_wavelength(wl)
-                self.sigWavelengthChanged.emit()
 
-                for self.t_idx, t in enumerate(self.t_list):
-                    c.delay_line.set_pos(t*1000.)
-                    self.read_point()
-                    self.sigStepDone.emit()
-                    yield
+            for self.t_idx, t in enumerate(self.t_list):
+                c.delay_line.set_pos(t*1000., do_wait=True)
+                self.read_point()
+                self.sigStepDone.emit()
+                yield
+
             delta_t = time.time() - start_t
             self.time_per_scan = '%d:%02d'%(delta_t // 60, delta_t % 60)
             self.post_scan()
 
     def post_scan(self):
-        self.old_scans = np.concatenate((self.old_scans, self.cur_scan[..., None]), 3)
-        self.old_scans2 = np.concatenate((self.old_scans2, self.cur_scan2[..., None]), 3)
+        self.controller.delay_line.set_pos(self.t_list[0], do_wait=False)
+        for pp in self.cam_data:
+            pp.time_scan_finished()
+        if self.use_rot_stage:
+            self.rot_idx += (self.rot_idx+1) % len(self.rot_stage_angles)
 
     def read_point(self):
         if self.use_shutter:
             self.controller.shutter.open()
-        lr = self.controller.last_read
-        lr.update()
-        self.signal_data = lr.probe_signal
-        self.cur_scan[self.wl_idx, self.t_idx, :] = lr.probe_signal
 
-        if self.controller.cam2 is not None:
-            lr = self.controller.last_read2 
-            lr.update()
-            self.signal_data2 = lr.probe_signal
-            self.cur_scan2[self.wl_idx, self.t_idx, :] = lr.probe_signal
+        [pp.read_point(self.t_idx) for pp in self.cam_data]
 
         if self.use_shutter:
             self.controller.shutter.close()
@@ -117,15 +127,7 @@ class PumpProbePlan:
         np.savez(dname)
 
     def pre_scan(self):
-        N, M = len(self.center_wl_list), len(self.t_list)
-        self.cur_scan = np.zeros((N, M, self.controller.cam.cam.channels))
-        self.num_scans += 1
-        self.wl_idx += 1
-        self.t_idx = 0
-        if self.controller.cam2 is not None:
-            self.cur_scan2 = np.zeros((N, M, self.controller.cam2.cam.channels))
-        if self.rot_stage_angles is not None and self.controller.rot_stage is not None:
-            pos = self.rot_stage_angles[self.rot_idx]
-            self.rot_idx = (self.rot_idx + 1) % len(self.rot_stage_angles)
-            self.controller.rot_stage.set_pos(pos)
-
+        rs = self.controller.rot_stage
+        if rs and self.use_rot_stage:
+            rs.set_degrees(self.rot_stage_angles[self.rot_idx])
+        self.controller.delay_line.set_pos(self.t_list[0]-2000.)

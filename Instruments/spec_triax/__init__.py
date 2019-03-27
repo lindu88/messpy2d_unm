@@ -8,7 +8,7 @@ Created on Thu Aug 15 17:40:25 2013
 from __future__ import print_function
 import serial
 import time
-import numpy as np
+#import numpy as np
 
 DEBUG = True
 
@@ -23,45 +23,49 @@ class TriaxSpectrometer(object):
         self.port = port
         self.lines_grating = 100.
         self.write(" ")
-        port.timeout = 1
+        port.timeout = 10
         out = port.read(1)
         print(out)
-        if len(out) == 0:
-            print("Can't connect to Triax Spectrometer")
-            raise IOError
-
-        if out==b'B':
-
-            self.write('O2000'+chr(0))
-            out = port.read(1)
-            if len(out) == 0 or out==b'F':
+        try:            
+            if len(out) == 0:
                 print("Can't connect to Triax Spectrometer")
                 raise IOError
-
-            self.write(" ")
-
-            out = port.read(1)
-            if len(out) == 0 or out==b'F':
-                print("Can't connect to Triax Spectrometer")
-                raise IOError
-
-            self.write("A")
-
-            out = port.read(1)
-            if out!=b'o':
-                print("Init of Triax Spectrometer failed")
-                raise IOError
-
-
-            self.write("i,0,0,0\r")
-            out = port.read(1)
-            if out!=b'o':
-                print("Init of Triax Spectrometer failed")
-                raise IOError
-
-        #self.motor_init()
-        self.get_wl()
-        self.get_slit()
+    
+            if out == b'B':
+    
+                self.write('O2000'+chr(0))
+                out = port.read(1)
+                if len(out) == 0 or out==b'F':
+                    print("Can't connect to Triax Spectrometer")
+                    raise IOError
+    
+                self.write(" ")
+    
+                out = port.read(1)
+                if len(out) == 0 or out==b'F':
+                    print("Can't connect to Triax Spectrometer")
+                    raise IOError
+    
+                self.write("A")
+    
+                out = port.read(1)
+                if out!=b'o':
+                    print("Init of Triax Spectrometer failed")
+                    raise IOError
+    
+    
+                self.write("i,0,0,0\r")
+                out = port.read(1)
+                if out!=b'o':
+                    print("Init of Triax Spectrometer failed")
+                    raise IOError
+    
+            #self.motor_init()
+            self.get_wl()
+            self.get_slit()
+        except (IOError, OSError):
+            self.port.close()
+            raise
 
     def write(self, bstring):
         bstring = bstring.encode()
@@ -184,7 +188,7 @@ def readline(port, eol=b'\r'):
     return port.read_until(eol)
 
 
-spec = TriaxSpectrometer('COM2')
+spec = TriaxSpectrometer('COM21')
 
 print(spec.set_slit(50))
 #print(spec.get_slit())

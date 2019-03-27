@@ -1,7 +1,12 @@
 import typing, abc, time, attr, threading
 import xmlrpc.server as rpc
+from enum import auto
 
+
+@attr.s
 class IDevice(abc.ABC):
+    name: str = attr.ib()
+
     def init(self):
         pass
 
@@ -27,6 +32,7 @@ class IDevice(abc.ABC):
 class ICam(IDevice):
     shots: int
     lines: int
+    sig_lines: int
     channels: int
     ext_channels: int
     background: tuple = (0, 0)
@@ -76,7 +82,7 @@ def fs_to_mm(t_fs):
     return pos_m * 1000.
 
 
-@attr.s
+@attr.s(auto_attribs=True)
 class IDelayLine(IDevice):
     home_pos: float = attr.ib(0.)
     pos_sign: float = 1
