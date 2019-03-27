@@ -1,4 +1,4 @@
-import time
+import time, threading
 from typing import Optional, List, Iterable, TYPE_CHECKING
 import numpy as np
 from attr import attrs, attrib, Factory
@@ -123,9 +123,13 @@ class PumpProbePlan:
     def read_point(self):
         if self.use_shutter:
             self.controller.shutter.open()
-
-        [pp.read_point(self.t_idx) for pp in self.cam_data]
-
+        threads = []
+        for pp in self.cam_data:
+            t = threading.Thread(target=pp.read_point, args=(self.t_idx,))
+            t.start()
+            threads.append(t)
+        for t in threads:
+            t.join()
         if self.use_shutter:
             self.controller.shutter.close()
 

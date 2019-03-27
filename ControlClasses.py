@@ -93,7 +93,7 @@ class Delayline:
         except ValueError:
             raise
         self._dl.move_fs(pos_fs, do_wait=do_wait)
-        if not do_wait:
+        if not do_wait and False:
             self._thread = threading.Thread(target=self.wait_and_update)
             self._thread.start()
 
@@ -105,7 +105,7 @@ class Delayline:
         while self._dl.is_moving():
             self.pos = self._dl.get_pos_fs()
             self.sigPosChanged.emit(self.pos)
-            time.sleep(0.05)
+            time.sleep(0.1)
         self.pos = self._dl.get_pos_fs()
         self.sigPosChanged.emit(self.pos)
 
@@ -117,7 +117,7 @@ class Delayline:
 
     def set_home(self):
         self._dl.home_pos = self._dl.get_pos_mm()
-        config['Delay 1 Home Pos.'] = self._dl.get_pos_mm()
+        config.__dict__['Delay 1 Home Pos.'] = self._dl.get_pos_mm()
 
 
 arr_factory = Factory(lambda: np.zeros(16))

@@ -10,9 +10,9 @@ Pump Probe:
   Add pre-zero times: false
   Angles in deg.: ''
   Filename: temp
-  Linear Range (+): 1
-  Linear Range (-): -3.0
-  Linear Range (step): 0.2
+  Linear Range (+): 5.0
+  Linear Range (-): -1
+  Linear Range (step): 0.1
   Logarithmic End: 100.0
   Logarithmic Points: 50
   Logarithmic Scan: false
@@ -21,7 +21,7 @@ Pump Probe:
   Num pre-zero points: 10
   Operator: ''
   Pre-Zero pos: -60.0
-  Shots: 1000
+  Shots: 200
   Use Rotation Stage: true
   Use Shutter: true
 Sample:
@@ -36,7 +36,7 @@ dl_server: http://130.133.30.146:8000
 has_rotation_stage: false
 has_second_cam: true
 has_second_delaystage: false
-ir_server_addr: tcp://localhost:8001
+ir_server_addr: tcp://130.133.30.146:5555
 last_pump_probe:
   children: !!python/object/apply:collections.OrderedDict
   - - - Sample
@@ -354,32 +354,6 @@ last_pump_probe:
               type: str
               value: 0, 45
               visible: false
-          - - MockCam center wls
-            - default: '0'
-              enabled: true
-              expanded: true
-              name: MockCam center wls
-              readonly: false
-              removable: false
-              renamable: false
-              strictNaming: false
-              title: null
-              type: str
-              value: '0'
-              visible: true
-          - - Mock2 center wls
-            - default: '0'
-              enabled: true
-              expanded: true
-              name: Mock2 center wls
-              readonly: false
-              removable: false
-              renamable: false
-              strictNaming: false
-              title: null
-              type: str
-              value: '0'
-              visible: true
         default: null
         enabled: true
         expanded: true
@@ -406,4 +380,4 @@ last_pump_probe:
   visible: true
 list_of_samples: *id001
 list_of_solvents: *id002
-shots: 500
+shots: 200

@@ -4,8 +4,8 @@ from Instruments.interfaces import IDelayLine
 
 
 
-if config.dl_server is None:
-    config.dl_server = 'http://130.133.30.146:8000'
+
+config.dl_server = 'http://130.133.30.146:8000'
 
 dlproxy = ServerProxy(config.dl_server)
 
