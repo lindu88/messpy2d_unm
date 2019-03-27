@@ -54,10 +54,10 @@ class DelayLineMock(IDelayLine):
         return self.pos_mm
 
     def is_moving(self):
-        return True
+        return False
 
-    def move_fs(self, fs):
-        super().move_fs(fs)
+    def move_fs(self, fs, do_wait=False):
+        super().move_fs(fs, do_wait=do_wait)
         state.t = fs
 
 @attr.s(auto_attribs=True)

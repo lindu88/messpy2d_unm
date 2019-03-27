@@ -43,7 +43,7 @@ class MainWindow(QMainWindow):
         self.toggle_run(True)
 
         dock_wigdets = []
-        for c in [controller.cam, controller.cam2]:
+        for c in controller.cam_list:
             lr = c.last_read # type: LastRead
             op = ObserverPlot([(lr, 'probe_mean'), (lr, 'reference_mean')],
                               lr.sigProcessingCompleted)
@@ -58,7 +58,8 @@ class MainWindow(QMainWindow):
             dw.setWidget(op2)
             dock_wigdets.append(dw)
 
-            op3 = ObserverPlot([(lr, 'probe_signal')],
+            obs = [(lr, 'probe_signal%d'%i) for i in range(lr.cam.sig_lines)]
+            op3 = ObserverPlot(obs,
                                lr.sigProcessingCompleted)
             dw = QDockWidget('Pump-probe signal', parent=self)
             dw.setWidget(op3)
@@ -85,9 +86,10 @@ class MainWindow(QMainWindow):
         for dw in dock_wigdets:
             self.addDockWidget(Qt.LeftDockWidgetArea, dw)
 
-        self.splitDockWidget(dock_wigdets[0], dock_wigdets[3], Qt.Horizontal)
-        self.splitDockWidget(dock_wigdets[1], dock_wigdets[4], Qt.Horizontal)
-        self.splitDockWidget(dock_wigdets[2], dock_wigdets[5], Qt.Horizontal)
+        if len(dock_wigdets) > 3:
+            self.splitDockWidget(dock_wigdets[0], dock_wigdets[3], Qt.Horizontal)
+            self.splitDockWidget(dock_wigdets[1], dock_wigdets[4], Qt.Horizontal)
+            self.splitDockWidget(dock_wigdets[2], dock_wigdets[5], Qt.Horizontal)
         self.setCentralWidget(cm)
         self.show()
 

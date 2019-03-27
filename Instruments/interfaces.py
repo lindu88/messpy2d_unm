@@ -98,13 +98,13 @@ class IDelayLine(IDevice):
     def get_pos_fs(self):
         return self.pos_sign * mm_to_fs((self.get_pos_mm()-self.home_pos)*2.)
 
-    def move_fs(self, fs, wait_for_move=False, *args, **kwargs):
+    def move_fs(self, fs, do_wait=False, *args, **kwargs):
         mm = self.pos_sign*fs_to_mm(fs)
-        print('mm', mm+self.home_pos)
+        #print('mm', mm+self.home_pos)
         self.move_mm(mm/2.+self.home_pos, *args, **kwargs)
-        if wait_for_move:
+        if do_wait:
             while self.is_moving():
-                time.sleep(0.2)
+                time.sleep(0.1)
 
     @abc.abstractmethod
     def is_moving(self):

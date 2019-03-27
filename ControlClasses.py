@@ -79,9 +79,11 @@ class Delayline:
     sigPosChanged = attrib(Factory(Signal))
     pos = attrib(0)
     _dl = attrib(I.IDelayLine)
+    _thread = attrib(None)
 
     def __attrs_post_init__(self):
         self.pos = self._dl.get_pos_fs()
+
         self.sigPosChanged.emit(self.pos)
 
     def set_pos(self, pos_fs: float, do_wait=True):
@@ -103,7 +105,7 @@ class Delayline:
         while self._dl.is_moving():
             self.pos = self._dl.get_pos_fs()
             self.sigPosChanged.emit(self.pos)
-            time.sleep(0.1)
+            time.sleep(0.05)
         self.pos = self._dl.get_pos_fs()
         self.sigPosChanged.emit(self.pos)
 
@@ -159,12 +161,16 @@ class LastRead:
         with np.errstate(divide='ignore', invalid='ignore'):
             self.probe_signal = sign * 1000 * np.log10(self.probe[::2, ...] / self.probe[1::2, ...]).mean(0)
             self.probe_signal = np.nan_to_num(self.probe_signal)
+        self.probe_signal = self.probe_signal[None, :]
+        self.probe_signal0 = self.probe_signal[0, :]
         self.sigProcessingCompleted.emit()
+
 
 class Controller:
     """Class which controls the main loop."""
     cam: Cam
     cam2: T.Optional[Cam]
+    cam_list: T.List[Cam]
     shutter: T.Optional[I.IShutter]
     delay_line: Delayline
     rot_stage: T.Optional[I.IRotationStage]
@@ -174,11 +180,15 @@ class Controller:
         self.cam.read_cam()
         self.shutter = _shutter
         self.cam_list = [self.cam]
+
         if _cam2 is not None:
             self.cam2 = Cam(cam=_cam2)
             self.cam2.read_cam()
             self.cam.sigShotsChanged.connect(self.cam2.set_shots, do_threaded=False)
             self.cam_list.append(self.cam2)
+        else:
+            self.cam2 = None
+
         self.delay_line = Delayline(dl=_dl)
         self.rot_stage = None
 
@@ -212,7 +222,7 @@ class Controller:
 
             self.plan.make_step()
 
-        print(time.time() - t)
+        #print(time.time() - t)
 
     def shutdown(self):
         if _dl2 is not None:

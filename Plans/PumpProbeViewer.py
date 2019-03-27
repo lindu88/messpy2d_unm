@@ -3,7 +3,7 @@ from Config import config
 from qtpy.QtWidgets import QWidget, QSizePolicy, QLabel, QVBoxLayout, QHBoxLayout, QCheckBox, QApplication, QTabWidget
 from qtpy.QtGui import QPalette, QFont
 from qtpy.QtCore import Qt, QTimer
-from ControlClasses import Controller
+from ControlClasses import Controller, Cam
 from Plans.PumpProbe import PumpProbePlan
 from pyqtgraph.parametertree import Parameter, ParameterTree
 
@@ -16,8 +16,10 @@ import attr
 import os
 
 os.environ['QT_API'] = 'pyqt5'
-import formlayout
-from typing import List
+
+from typing import List, TYPE_CHECKING
+if TYPE_CHECKING:
+    from Plans.PumpProbe import PumpProbeData, PumpProbePlan
 
 from .common_meta import samp
 
@@ -79,7 +81,7 @@ class PumpProbeViewer(QTabWidget):
     def __init__(self, pp_plan: PumpProbePlan, parent=None):
         super(PumpProbeViewer, self).__init__(parent=parent)
         for ppd in pp_plan.cam_data:
-            self.addTab(PumpProbeDataViewer(ppd))
+            self.addTab(PumpProbeDataViewer(ppd), ppd.cam.cam.name)
 
 
 
@@ -88,7 +90,7 @@ class PumpProbeDataViewer(QWidget):
         super(PumpProbeDataViewer, self).__init__(parent=parent)
         self.pp_plan = pp_plan  # type: PumpProbeData
         self._layout = QHBoxLayout(self)
-        Q
+
         self.info_label = QLabel()
         self.info_label.setSizePolicy(QSizePolicy.Minimum, QSizePolicy.Minimum)
         self.update_info()
@@ -112,15 +114,14 @@ class PumpProbeDataViewer(QWidget):
         self._layout.addLayout(vlay)
         self._layout.addLayout(lw)
 
-
         self.sig_plot = ObserverPlot([], pp_plan.sigStepDone)
-        self.sig_plot.add_observed((pp_plan, 'signal_data'))
+        self.sig_plot.add_observed((pp_plan, 'last_signal'))
         self.sig_plot.click_func = self.handle_sig_click
         self.trans_plot = ObserverPlot([], pp_plan.sigStepDone)
 
         lw.addWidget(self.sig_plot)
         lw.addWidget(self.trans_plot)
-        self.inf_lines = [list() for i in pp_plan.center_wl_list]  # type: List[List[IndicatorLine]]
+        self.inf_lines = [list() for i in pp_plan.cwl]  # type: List[List[IndicatorLine]]
 
         for i in [self.update_info, self.update_trans]:
             self.pp_plan.sigStepDone.connect(i)
@@ -137,7 +138,7 @@ class PumpProbeDataViewer(QWidget):
         tlh = self.trans_plot.plot(pen=pg.mkPen(c, width=4))
 
         il = IndicatorLine(wl_idx=self.pp_plan.wl_idx,
-                           wl=self.pp_plan.wl_arrays,
+                           wl=self.pp_plan.wavelengths,
                            pos=x,
                            line=l,
                            trans_line=tl,
@@ -173,7 +174,7 @@ class PumpProbeDataViewer(QWidget):
         </dl>
         </big>
         '''.format(s=pp_plan, nt=len(pp_plan.t_list),
-                   nwl=len(pp_plan.center_wl_list))
+                   nwl=len(pp_plan.cwl))
         self.info_label.setText(s)
 
     def handle_wl_change(self):
@@ -189,7 +190,7 @@ class PumpProbeDataViewer(QWidget):
 
     def hide_history_lines(self, i):
         all_lines = []
-        for i in range(len(self.pp_plan.center_wl_list)):
+        for i in range(len(self.pp_plan.cwl)):
             all_lines += self.inf_lines[i]
         chk = self.do_show_mean.checkState()
         if not chk:
@@ -202,7 +203,7 @@ class PumpProbeDataViewer(QWidget):
 
     def hide_current_lines(self, i):
         all_lines = []
-        for i in range(len(self.pp_plan.center_wl_list)):
+        for i in range(len(self.pp_plan.cwl)):
             all_lines += self.inf_lines[i]
         chk = self.do_show_cur.checkState()
         if not chk:
@@ -224,14 +225,14 @@ class PumpProbeDataViewer(QWidget):
         if self.do_show_cur.checkState():
             for i in self.inf_lines[pp.wl_idx]:
                 i.trans_line.setData(x=pp.t_list[:pp.t_idx],
-                                     y=pp.cur_scan[pp.wl_idx, :pp.t_idx, i.channel])
+                                     y=pp.current_scan[pp.wl_idx, :pp.t_idx, 0, i.channel])
 
-        if pp.old_scans.shape[3] > 0 and self.do_show_mean.checkState():
+        if pp.completed_scans is not None and self.do_show_mean.checkState():
             for j in self.inf_lines:
                 for i in j:
                     if i.hist_trans_line not in self.trans_plot.plotItem.dataItems:
                         continue
-                    ym = np.nanmean(pp.old_scans[pp.wl_idx, :, i.channel, :], 1)
+                    ym = np.nanmean(pp.completed_scans[:, i.wl_idx, :, 0, i.channel], 0)
                     i.hist_trans_line.setData(x=pp.t_list, y=ym)
 
 
@@ -261,6 +262,10 @@ class PumpProbeStarter(PlanStartDialog):
                dict(name='Use Rotation Stage', type='bool', value=True, enabled=has_rot, visible=has_rot),
                dict(name='Angles in deg.', type='str', value='0, 45', enabled=has_rot, visible=has_rot)  ]
 
+        for c in self.controller.cam_list:
+            if c.cam.changeable_wavelength:
+                name = c.cam.name
+                tmp.append(dict(name=f'{name} center wls', type='str', value='0'))
 
         two_d = {'name': 'Pump Probe', 'type': 'group', 'children': tmp}
 
@@ -268,7 +273,7 @@ class PumpProbeStarter(PlanStartDialog):
         self.paras = Parameter.create(name='Pump Probe', type='group', children=params)
         config.last_pump_probe = self.paras.saveState()
 
-    def create_plan(self, controller):
+    def create_plan(self, controller: Controller):
         p = self.paras.child('Pump Probe')
         s = self.paras.child('Sample')
         t_list = np.arange(p['Linear Range (-)'],
@@ -289,7 +294,15 @@ class PumpProbeStarter(PlanStartDialog):
         else:
             angles = None
 
-
+        cwls = []
+        for c in self.controller.cam_list:
+            if c.cam.changeable_wavelength:
+                name = c.cam.name
+                s = p[f'{name} center wls'].split(',')
+                cwls.append(list(map(float, s)))
+            else:
+                cwls.append([0.])
+        print(cwls)
         self.save_defaults()
         p = PumpProbePlan(
             name=p['Filename'],
@@ -297,7 +310,7 @@ class PumpProbeStarter(PlanStartDialog):
             t_list=np.asarray(t_list),
             shots=p['Shots'],
             controller=controller,
-            center_wl_list=[0.],
+            center_wl_list=cwls,
             use_shutter=p['Use Shutter'] and self.controller.shutter,
             rot_stage_angles=angles
         )

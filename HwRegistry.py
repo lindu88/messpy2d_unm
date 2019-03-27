@@ -3,7 +3,7 @@ from Config import config
 from Instruments.mocks import CamMock, DelayLineMock
 
 _cam = CamMock()
-_cam2 = None
+_cam2 = CamMock(name="Mock2")
 _dl = DelayLineMock()
 _dl2 = None
 _rot_stage = None

@@ -15,7 +15,9 @@ Pump Probe:
   Linear Range (step): 0.2
   Logarithmic End: 100.0
   Logarithmic Points: 50
-  Logarithmic Scan: true
+  Logarithmic Scan: false
+  Mock2 center wls: '0'
+  MockCam center wls: 3, 50
   Num pre-zero points: 10
   Operator: ''
   Pre-Zero pos: -60.0
@@ -285,7 +287,7 @@ last_pump_probe:
               value: false
               visible: true
           - - Num pre-zero points
-            - default: null
+            - default: 10
               enabled: true
               expanded: true
               max: 20
@@ -297,7 +299,7 @@ last_pump_probe:
               strictNaming: false
               title: null
               type: int
-              value: null
+              value: 10
               visible: true
           - - Pre-Zero pos
             - default: -60.0
@@ -352,6 +354,32 @@ last_pump_probe:
               type: str
               value: 0, 45
               visible: false
+          - - MockCam center wls
+            - default: '0'
+              enabled: true
+              expanded: true
+              name: MockCam center wls
+              readonly: false
+              removable: false
+              renamable: false
+              strictNaming: false
+              title: null
+              type: str
+              value: '0'
+              visible: true
+          - - Mock2 center wls
+            - default: '0'
+              enabled: true
+              expanded: true
+              name: Mock2 center wls
+              readonly: false
+              removable: false
+              renamable: false
+              strictNaming: false
+              title: null
+              type: str
+              value: '0'
+              visible: true
         default: null
         enabled: true
         expanded: true
@@ -376,15 +404,6 @@ last_pump_probe:
   type: group
   value: null
   visible: true
-list_of_samples:
-- Cyclohexanol
-- Phenylisocyanat
-- TDI
-list_of_solvents:
-- Toluene
-- THF
-- H20
-- D20
-- DMSO
-- None
-shots: 50
+list_of_samples: *id001
+list_of_solvents: *id002
+shots: 500

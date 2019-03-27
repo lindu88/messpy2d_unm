@@ -1,5 +1,5 @@
 from Config import config
-import attr
+import attr, time
 
 samp = {'name': 'Sample', 'type': 'group', 'children': [
     dict(name='Sample', type='list', values=config.list_of_samples),
@@ -16,5 +16,6 @@ class Plan:
     name: str
     meta: dict 
     status: str = ''
+    creation_time: float = attr.Factory(time.time)
 
     
