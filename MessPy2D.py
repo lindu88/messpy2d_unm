@@ -122,6 +122,7 @@ class MainWindow(QMainWindow):
 
         asl_icon = qta.icon('ei.barcode', color='white')
         pp = QPushButton('Scan Spectrum', icon=asl_icon)
+        pp.clicked.connect(plan_starter(ScanSpectrumStarter))
         tb.addWidget(pp)
 
         asl_icon = qta.icon('ei.download', color='white')

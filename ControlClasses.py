@@ -38,6 +38,7 @@ class Cam:
         self.channels = c.channels
         self.lines = c.lines
         self.sig_lines = c.sig_lines
+        self.changeable_wavelength = c.changeable_wavelength
         self.wavelengths = self.get_wavelengths()
         self.wavenumbers = 1e7/self.wavelengths
         self.disp_axis = self.wavelengths.copy()
@@ -155,6 +156,7 @@ class LastRead:
     ext_channel_mean = attrib(arr_factory)
     ext_channel_ref = attrib(arr_factory)
     probe_signal = attrib(arr_factory)
+    spec = attrib(arr_factory)
     fringe_count = attrib(None)  # type np.array
     probe_back = attrib(0)  # type np.array
     ref_back = attrib(0)  # type np.array
@@ -174,6 +176,8 @@ class LastRead:
         self.reference = dr.det_b
         self.reference_mean = self.reference.mean(0)
         self.reference_std = np.nan_to_num(self.reference.std(0) / abs(self.reference_mean) * 100)
+
+        self.spec = np.stack((self.probe_mean, self.reference_mean))
 
         self.ext_channel_mean = 2 + np.random.rand(1) * 0.05
         sign = 1 if dr.chopper[0] else -1
@@ -234,8 +238,11 @@ class Controller:
             t1.join()
 
         else:
+            try:
+                self.plan.make_step()
+            except StopIteration:
+                self.pause_plan = True
 
-            self.plan.make_step()
 
         #print(time.time() - t)
 

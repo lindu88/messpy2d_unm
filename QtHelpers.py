@@ -12,6 +12,9 @@ from qtpy.QtWidgets import (QWidget, QLineEdit, QLabel, QPushButton, QHBoxLayout
                             QListWidget, QListWidgetItem)
 
 from Config import config
+import typing as T
+if T.TYPE_CHECKING:
+    from Signal import Signal
 
 VEGA_COLORS = {
     'blue': '#1f77b4',
@@ -225,6 +228,8 @@ class PlanStartDialog(QDialog):
         super().closeEvent(*args, **kwargs)
 
     def setup_recent_list(self):
+        if self.experiment_type not in config.exp_settings:
+            return
         conf_dict = config.exp_settings[self.experiment_type]
         self.recent_settings = sorted(conf_dict.items(), key=lambda kv: kv[1]['date'])
 
@@ -296,6 +301,9 @@ class ObserverPlot(pg.PlotWidget):
             x = 1e7/x
         else:
             x = self.x
+
+        if callable(self.x):
+            x = self.x()
 
         for o in self.observed:
             if callable(o):

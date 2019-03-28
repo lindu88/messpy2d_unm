@@ -11,7 +11,7 @@ samp = {'name': 'Sample', 'type': 'group', 'children': [
     
     
 
-@attr.s(auto_attribs=1)
+@attr.s(auto_attribs=True)
 class Plan:
     name: str
     meta: dict 
