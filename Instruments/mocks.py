@@ -41,6 +41,12 @@ class CamMock(ICam):
     def get_wavelength(self):
         return self.center_wl
 
+    def get_wavelength_array(self, center_wl=None):
+        if not center_wl:
+            center_wl = self.center_wl
+        x = (np.arange(self.channels)-self.channels//2)
+        return x*0.5 + center_wl
+
 
 @attr.s(auto_attribs=True)
 class DelayLineMock(IDelayLine):

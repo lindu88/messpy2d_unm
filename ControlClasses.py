@@ -17,7 +17,7 @@ class ReadData:
     gives_full_data: bool = attrib(False)
 
 
-@attrs
+@attrs(cmp=False)
 class Cam:
     cam: I.ICam = attrib(_cam)
     shots: int = attrib(config.shots)
@@ -26,6 +26,10 @@ class Cam:
     back: tuple = attrib((0, 0))
     last_read: 'LastRead' = attrib(init=False)
     sigWavelengthChanged: Signal = attrib(Factory(Signal))
+    wavelengths: np.ndarray = attrib(init=False)
+    wavenumbers: np.ndarray = attrib(init=False)
+    disp_axis: np.ndarray = attrib(init=False)
+    disp_wavelengths: bool = True
 
     def __attrs_post_init__(self):
         self.last_read = LastRead(self)
@@ -34,11 +38,26 @@ class Cam:
         self.channels = c.channels
         self.lines = c.lines
         self.sig_lines = c.sig_lines
+        self.wavelengths = self.get_wavelengths()
+        self.wavenumbers = 1e7/self.wavelengths
+        self.disp_axis = self.wavelengths.copy()
 
+        self.sigWavelengthChanged.connect(self._update_wl_arrays)
+
+    def _update_wl_arrays(self, cwl=None):
+        self.wavelengths[:] = self.get_wavelengths()
+        self.wavenumbers[:] = 1e7 / self.wavelengths
+        if self.disp_wavelengths:
+            self.disp_axis[:] = self.wavelengths
+        else:
+            self.disp_axis[:] = self.wavenumbers
+
+    def set_disp_wavelengths(self, use_wl):
+        self.disp_wavelengths = not use_wl
+        self._update_wl_arrays()
 
     def set_shots(self, shots):
         """Sets the number of shots recorded"""
-
         self.shots = shots
         self.cam.set_shots(int(shots))
         config.shots = shots
@@ -74,7 +93,7 @@ class Cam:
         self.back = (0, 0)
 
 
-@attrs
+@attrs(cmp=False)
 class Delayline:
     sigPosChanged = attrib(Factory(Signal))
     pos = attrib(0)
@@ -184,7 +203,7 @@ class Controller:
         if _cam2 is not None:
             self.cam2 = Cam(cam=_cam2)
             self.cam2.read_cam()
-            self.cam.sigShotsChanged.connect(self.cam2.set_shots, do_threaded=False)
+            self.cam.sigShotsChanged.connect(self.cam2.set_shots)
             self.cam_list.append(self.cam2)
         else:
             self.cam2 = None
@@ -192,14 +211,10 @@ class Controller:
         self.delay_line = Delayline(dl=_dl)
         self.rot_stage = None
 
-        if config.has_second_dl:
+        if _dl2:
             self.delay_line_second = Delayline(dl=_dl2)
-
-        pb, rb = config.probe_back, config.probe_ref
-        if pb is None:
-            pb = 0
-            rb = 0
-
+        else:
+            self.delay_line_second = None
 
         self.plan = None
         self.pause_plan = False

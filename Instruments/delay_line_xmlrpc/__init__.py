@@ -1,7 +1,7 @@
 from xmlrpc.client import ServerProxy
 from Config import config
 from Instruments.interfaces import IDelayLine
-
+import wrapt
 
 
 
@@ -17,13 +17,15 @@ class DelayLine(IDelayLine):
         super().__init__(name=self.name, pos_sign=-1)
 
 
-
+    @wrapt.synchronized
     def move_mm(self, mm, *args, **kwargs):
         dlproxy.move_mm(mm)
 
+    @wrapt.synchronized
     def get_pos_mm(self):
         return dlproxy.get_mm()
 
+    @wrapt.synchronized
     def is_moving(self):
         return dlproxy.is_moving()
 

@@ -1,7 +1,7 @@
 from functools import partial
 from Config import config
 from qtpy.QtCore import QTimer, Qt, QThread
-from qtpy.QtGui import QFont, QGuiApplication
+from qtpy.QtGui import QFont, QIntValidator
 from qtpy.QtWidgets import (QMainWindow, QApplication, QWidget, QDockWidget,
                             QPushButton, QLabel, QVBoxLayout, QSizePolicy,
                             QToolBar, QCheckBox)
@@ -17,17 +17,13 @@ if START_QT_CONSOLE:
     from qtconsole.rich_jupyter_widget import RichJupyterWidget
 
 
-HAS_SECOND_DELAYLINE = config.has_second_delaystage
-HAS_ROTATION_STAGE = config.has_rot_stage
-
-
 class SelectPlan(QWidget):
     def __init__(self, parent=None):
         super(SelectPlan, self).__init__(parent=parent)
 
 
 class MainWindow(QMainWindow):
-    def __init__(self, controller):
+    def __init__(self, controller: Controller):
         super(MainWindow, self).__init__()
         self.setWindowTitle("Messpy-2D Edition")
         # self.setWindowFlags
@@ -35,32 +31,34 @@ class MainWindow(QMainWindow):
         self.setup_toolbar()
         self.view = None
 
+
         cm = CommandMenu(parent=self)
 
         self.timer = QTimer(parent=self)
         self.timer.timeout.connect(controller.loop)
         self.timer.timeout.connect(QApplication.processEvents)
         self.toggle_run(True)
+        self.xaxis = {}
 
         dock_wigdets = []
         for c in controller.cam_list:
             lr = c.last_read # type: LastRead
+            self.xaxis[c] = c.wavelengths.copy()
             op = ObserverPlot([(lr, 'probe_mean'), (lr, 'reference_mean')],
-                              lr.sigProcessingCompleted)
+                              lr.sigProcessingCompleted, x=c.disp_axis)
             dw = QDockWidget('Readings', parent=self)
             dw.setWidget(op)
             dock_wigdets.append(dw)
 
             op2 = ObserverPlot([(lr, 'probe_std'), (lr, 'reference_std')],
-                               lr.sigProcessingCompleted)
+                               lr.sigProcessingCompleted, x=c.disp_axis)
             op2.setYRange(0, 20)
             dw = QDockWidget('Readings - stddev', parent=self)
             dw.setWidget(op2)
             dock_wigdets.append(dw)
 
             obs = [(lr, 'probe_signal%d'%i) for i in range(lr.cam.sig_lines)]
-            op3 = ObserverPlot(obs,
-                               lr.sigProcessingCompleted)
+            op3 = ObserverPlot(obs, lr.sigProcessingCompleted, x=c.disp_axis)
             dw = QDockWidget('Pump-probe signal', parent=self)
             dw.setWidget(op3)
             dock_wigdets.append(dw)
@@ -91,7 +89,9 @@ class MainWindow(QMainWindow):
             self.splitDockWidget(dock_wigdets[1], dock_wigdets[4], Qt.Horizontal)
             self.splitDockWidget(dock_wigdets[2], dock_wigdets[5], Qt.Horizontal)
         self.setCentralWidget(cm)
-        self.show()
+        #self.obs_plot = [i.getWidget() for i in dock_wigdets]
+
+
 
     def setup_toolbar(self):
         self.tb = self.addToolBar('Begin Plan')
@@ -134,12 +134,17 @@ class MainWindow(QMainWindow):
         else:
             self.timer.stop()
 
+    def toggle_wl(self, c):
+        print(c)
+        self.xaxis[c][:] = 1e7/self.xaxis[c][:]
+
     def show_planview(self):
         if self.view is not None:
             self.view.show()
 
     def closeEvent(self, *args, **kwargs):
-        config.write()
+        config.save()
+
         super(MainWindow, self).closeEvent(*args, **kwargs)
 
 
@@ -160,11 +165,12 @@ class CommandMenu(QWidget):
         gb = make_groupbox(dls, "Delay")
         self._layout.addWidget(gb)
 
-        if c.cam.cam.changeable_wavelength:
-            gb = self.add_spec(c)
-            self._layout.addWidget(gb)
+        for cam in c.cam_list:
+            if cam.cam.changeable_wavelength:
+                gb = self.add_spec(cam)
+                self._layout.addWidget(gb)
 
-        if HAS_ROTATION_STAGE:
+        if c.rot_stage:
             self.add_rot_stage()
 
         self.add_ext_view()
@@ -205,13 +211,13 @@ class CommandMenu(QWidget):
         if c.cam2:
             bg_buttons.append(('Record BG2', c.cam2.get_bg))
         sc = ControlFactory('Shots', c.cam.set_shots, format_str='%d',
-                            presets=[50, 200, 500, 1000], extra_buttons=bg_buttons)
-        get_bg_button = QPushButton('Record Background')
-        get_bg_button.clicked.connect(c.cam.get_bg)
-        if c.cam2:
-            get_bg_button.clicked.connect(c.cam.get_bg)
+                            presets=[20, 100, 500, 1000], extra_buttons=bg_buttons)
+        sc.edit_box.setValidator(QIntValidator(10, 50000))
+        c.cam.sigShotsChanged.connect(sc.update_value)
+        c.cam.set_shots(config.shots)
         gb = make_groupbox([sc], "ADC")
         return gb
+
 
     def add_delaystages(self, c):
         dl = controller.delay_line
@@ -223,7 +229,7 @@ class CommandMenu(QWidget):
                               )
         c.delay_line.sigPosChanged.connect(dl1c.update_value)
         dls = [dl1c]
-        if HAS_SECOND_DELAYLINE:
+        if c.delay_line_second:
             dl2 = controller.delay_line_second
             dl2c = ControlFactory('Delay 2', dl2.set_pos, format_str='%.1f fs',
                                   extra_buttons=[("Set Home", dl2.set_pos)],
@@ -238,19 +244,21 @@ class CommandMenu(QWidget):
         gb = make_groupbox([rs], "Rotation Stage")
         self._layout.addWidget(gb)
 
-    def add_spec(self, c):
-        if not c.cam.cam.changeable_wavelength:
+    def add_spec(self, cam):
+        if not cam.cam.changeable_wavelength:
             return ''
-        spec = c.cam
-
+        spec = cam
         pre_fcn = lambda x: spec.set_wavelength(spec.get_wavelength() + x)
-        spec_control = ControlFactory('Wavelength', c.cam.set_wavelength,
+        spec_control = ControlFactory('Wavelength', cam.set_wavelength,
                                       format_str='%.1f nm',
                                       presets=[-100, -50, 50, 100],
-                                      preset_func=pre_fcn)
+                                      preset_func=pre_fcn,
+                                      )
         spec.sigWavelengthChanged.connect(spec_control.update_value)
         spec.sigWavelengthChanged.emit(spec.get_wavelength())
-        gb = make_groupbox([spec_control], "Spectrometer")
+        cb = QCheckBox('Use Wavenumbers')
+        gb = make_groupbox([spec_control, cb], f"Spec: {cam.cam.name}")
+        cb.clicked.connect(cam.set_disp_wavelengths)
         return gb
 
 
@@ -285,6 +293,8 @@ if __name__ == '__main__':
     font.setStyleStrategy(QFont.PreferQuality)
     app.setFont(font)
     mw = MainWindow(controller=controller)
+    mw.setWindowFlags(Qt.FramelessWindowHint)
+
     from Plans.PumpProbeViewer import PumpProbeViewer
     from Plans.PumpProbe import PumpProbePlan
 
@@ -294,5 +304,8 @@ if __name__ == '__main__':
     #pp.center_wl_list = [300, 600]
     #pi = PumpProbeViewer(pp)
     #ppi.show()
-    mw.show()
+    mw.showFullScreen()
+    def test(ev):
+        print(ev)
+    app.aboutToQuit = test
     app.exec_()

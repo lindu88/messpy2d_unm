@@ -59,8 +59,6 @@ class TwoDimMoving:
         self.bin_means = np.zeros_like(self.bin_total)
         self.controller.cam.set_shots(self.shots)
 
-
-
     def set_tau_min(self, tau_min):
         self.start_end_tau[0] = float(tau_min)
         self.sigTauStartChanged.emit(self.start_end_tau[0])

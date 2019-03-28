@@ -1,4 +1,4 @@
-import math
+import math, datetime
 from functools import partial
 from itertools import cycle
 
@@ -6,10 +6,10 @@ import pyqtgraph as pg
 import pyqtgraph.parametertree as pt
 import yaml
 from qtpy.QtCore import Qt
-from qtpy.QtGui import QPalette, QColor
+from qtpy.QtGui import QPalette, QColor, QDoubleValidator
 from qtpy.QtWidgets import (QWidget, QLineEdit, QLabel, QPushButton, QHBoxLayout,
                             QFormLayout, QGroupBox, QVBoxLayout, QDialog, QStyleFactory,
-                            QListWidget)
+                            QListWidget, QListWidgetItem)
 
 from Config import config
 
@@ -88,8 +88,9 @@ class ControlFactory(QWidget):
         and calling the function func.
 
     """
+
     def __init__(self, name, apply_fn, update_signal=None, parent=None,
-                 format_str='%.1f', presets=None, preset_func=None,extra_buttons=None):
+                 format_str='%.1f', presets=None, preset_func=None, extra_buttons=None):
         super(ControlFactory, self).__init__(parent=parent)
         self.setContentsMargins(0, 0, 0, 0)
         self.apply_button = QPushButton('Set')
@@ -100,12 +101,14 @@ class ControlFactory(QWidget):
         self.edit_box = QLineEdit()
         self.edit_box.setMaxLength(7)
         self.edit_box.setMaximumWidth(100)
+        self.edit_box.setValidator(QDoubleValidator())
+        self.edit_box.returnPressed.connect(lambda: apply_fn(self.edit_box.text()))
         self.apply_button.clicked.connect(lambda: apply_fn(self.edit_box.text()))
 
         self._layout = QFormLayout(self)
         self._layout.setLabelAlignment(Qt.AlignRight)
 
-        for w in [(QLabel('<b>%s</b>'%name), self.cur_value_label),
+        for w in [(QLabel('<b>%s</b>' % name), self.cur_value_label),
                   (self.apply_button, self.edit_box)]:
             self._layout.addRow(*w)
         l = []
@@ -140,7 +143,7 @@ class ControlFactory(QWidget):
             QPushButton { color: lightblue;}''')
             but.setFlat(False)
             but.clicked.connect(partial(self.preset_func, p))
-            but.setFixedWidth(200/min(len(presets), 4))
+            but.setFixedWidth(200 / min(len(presets), 4))
             hlay.addWidget(but)
             hlay.setSpacing(10)
             len_row += 1
@@ -163,6 +166,8 @@ class PlanStartDialog(QDialog):
     experiment_type = ''
     title = ''
 
+    paras: pt.Parameter
+
     def __init__(self, controller, *args, **kwargs):
         super(PlanStartDialog, self).__init__(*args, **kwargs)
         self.controller = controller
@@ -170,8 +175,9 @@ class PlanStartDialog(QDialog):
         self.setMaximumHeight(800)
         self.setWindowTitle(self.title)
         self.treeview = pt.ParameterTree()
-        self.recent_settings = QListWidget()
-        self.recent_settings.currentChanged = self.load_recent
+        self.recent_settings = []
+        self.recent_settings_list = QListWidget()
+        self.recent_settings_list.currentRowChanged.connect(self.load_recent)
 
         start_button = QPushButton('Start Plan')
         start_button.clicked.connect(self.accept)
@@ -180,17 +186,18 @@ class PlanStartDialog(QDialog):
 
         self.setLayout(
             hlay([vlay([self.treeview, hlay([start_button, cancel_button])]),
-                  self.recent_settings]))
+                  vlay([QLabel('Recent Settings'), self.recent_settings_list])])
+        )
 
         self.setup_paras()
-        self.load_defaults()
+        self.setup_recent_list()
         self.treeview.setParameters(self.paras)
         self.treeview.setPalette(self.style().standardPalette())
         self.treeview.setStyle(QStyleFactory.create('Fusion'))
         self.treeview.setStyleSheet("")
         n = len(self.treeview.listAllItems())
 
-        self.resize(350, n*40 + 100 )
+        self.resize(350, n * 40 + 100)
         for i in self.treeview.listAllItems():
             if isinstance(i, pt.types.GroupParameterItem):
                 i.updateDepth(0)
@@ -202,45 +209,37 @@ class PlanStartDialog(QDialog):
         raise NotImplemented
 
     def load_defaults(self, fname=None):
-        if fname is not None:
-            f = open(fname, 'r')
-            d = yaml.load(f)
-        else:
-            d = config._data
-        for group in self.paras:
-            for para in group:
-                try:
-                    para.setValue(d[group.name()][para.name()])
-                except KeyError:
-                    pass
+        pass
 
     def save_defaults(self, fname=None):
-        if fname is not None:
-            d = {}
-        else:
-            d = config._data
-
-        for group in self.paras:
-            for para in group:
-                d.setdefault(group.name(), {})[para.name()] = para.value()
-        if fname is not None:
-            f = open(fname, 'x')
-            yaml.dump(d, f)
-        else:
-            config.write()
+        print(self.paras.getValues())
+        d = self.paras.saveState(filter='user')
+        d['date'] = datetime.datetime.now().isoformat()
+        name = self.paras.child('Exp. Settings')['Filename']
+        conf_dict = config.exp_settings[self.experiment_type]
+        conf_dict[name] = d
+        config.save()
 
     def closeEvent(self, *args, **kwargs):
         self.save_defaults()
         super().closeEvent(*args, **kwargs)
 
     def setup_recent_list(self):
-        self._recent_settings = []
-        recents = config[self.experiment_type]
-        for r in recents:
-            self.recent_settings.addItem(r)
+        conf_dict = config.exp_settings[self.experiment_type]
+        self.recent_settings = sorted(conf_dict.items(), key=lambda kv: kv[1]['date'])
 
-    def load_recent(self, event):
-        pass
+        for (name, r) in self.recent_settings:
+            #tmp = pt.Parameter(name='tmp')
+            #s = r.copy()
+            #s.pop('date')
+            #tmp.restoreState(s)
+            #name = tmp.child('Exp. Settings')['Filename']
+            self.recent_settings_list.addItem(name)
+
+    def load_recent(self, new):
+        settings = self.recent_settings[new][1].copy()
+        settings.pop('date')
+        self.paras.restoreState(settings)
 
 
     @classmethod
@@ -281,10 +280,11 @@ class ObserverPlot(pg.PlotWidget):
             obs = obs
         for i in obs:
             self.add_observed(i)
-        #self.enableMouse()
+        # self.enableMouse()
         self.sceneObj.sigMouseClicked.connect(self.click)
         self.click_func = None
         self.x = x
+        self.use_inverse = False
 
     def add_observed(self, single_obs):
         self.observed.append(single_obs)
@@ -292,34 +292,45 @@ class ObserverPlot(pg.PlotWidget):
         self.lines[single_obs] = self.plotItem.plot([0], pen=pen)
 
     def update_data(self):
+        if self.x is not None and self.use_inverse:
+            x = 1e7/x
+        else:
+            x = self.x
+
         for o in self.observed:
             if callable(o):
-                self.lines[o].setData(x=self.x, y=o())
+                self.lines[o].setData(x=x, y=o())
             else:
-                self.lines[o].setData(x=self.x, y=getattr(*o))
+                self.lines[o].setData(x=x, y=getattr(*o))
 
     def click(self, ev):
-        print(ev.button())
+        #print(ev.button())
 
         if self.click_func is not None and ev.button() == 1:
             coords = self.plotItem.vb.mapSceneToView(ev.pos())
             self.click_func(coords)
             ev.accept()
 
-
+    def set_x(self):
+        self.x = x
 
 
 class ValueLabels(QWidget):
-    def __init__(self, obs, parent=None):
+    def __init__(self, obs, fmt: str = '%.1f', parent=None):
         super(ValueLabels, self).__init__(parent=parent)
         lay = QFormLayout()
         self.setStyleSheet('''
         QLabel { font-size: 14pt;}''')
         self.setLayout(lay)
         self.obs = {}
+        self.fmt = fmt
         for name, getter in obs:
             self.obs[name] = QLabel('0'), getter
             lay.addRow(name + ':', self.obs[name][0])
+
+    def update_labels(self):
+        for lbl, getter in self.obs.values():
+            lbl.setText(self.fmt % getter())
 
 
 def make_groupbox(widgets, title=''):
@@ -335,6 +346,7 @@ def make_groupbox(widgets, title=''):
         gb.setTitle(title)
 
     return gb
+
 
 dark_palette = make_palette()
 
@@ -366,9 +378,8 @@ def vlay(widgets, add_stretch=False):
 
 
 def partial_formatter(val):
-    sign = val/abs(val)
+    sign = val / abs(val)
     if math.log10(abs(val)) > 3:
-        return '%dk'%(sign*(abs(val)//1000))
+        return '%dk' % (sign * (abs(val) // 1000))
     else:
         return str(val)
-

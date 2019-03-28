@@ -18,8 +18,8 @@ import os
 os.environ['QT_API'] = 'pyqt5'
 
 from typing import List, TYPE_CHECKING
-if TYPE_CHECKING:
-    from Plans.PumpProbe import PumpProbeData, PumpProbePlan
+#if TYPE_CHECKING:
+from Plans.PumpProbe import PumpProbeData, PumpProbePlan
 
 from .common_meta import samp
 
@@ -37,7 +37,7 @@ class IndicatorLine:
 
     def __attrs_post_init__(self):
         print('init')
-        self.line.sigPositionChangeFinished.connect(self.update_pos)
+        self.line.sigPositionChanged.connect(self.update_pos)
         self.update_pos()
 
     def update_pos(self):
@@ -58,7 +58,7 @@ class LineLabel(QLabel):
     def __init__(self, line, parent=None):
         super(LineLabel, self).__init__(parent=parent)
         assert (isinstance(line, pg.InfiniteLine))
-        line.sigPositionChangeFinished.connect(self.update_label)
+        line.sigPositionChanged.connect(self.update_label)
         self.line = line
         p = QPalette()
         p.setColor(QPalette.Foreground, line.pen.color())
@@ -81,22 +81,23 @@ class PumpProbeViewer(QTabWidget):
     def __init__(self, pp_plan: PumpProbePlan, parent=None):
         super(PumpProbeViewer, self).__init__(parent=parent)
         for ppd in pp_plan.cam_data:
-            self.addTab(PumpProbeDataViewer(ppd), ppd.cam.cam.name)
-
+            self.addTab(PumpProbeDataViewer(ppd, pp_plan), ppd.cam.cam.name)
 
 
 class PumpProbeDataViewer(QWidget):
-    def __init__(self, pp_plan, parent=None):
+    def __init__(self, pp_plan: PumpProbeData, pp: PumpProbePlan,
+                 parent=None):
         super(PumpProbeDataViewer, self).__init__(parent=parent)
+        self.pp = pp #type: PumpProbePlan
         self.pp_plan = pp_plan  # type: PumpProbeData
         self._layout = QHBoxLayout(self)
 
         self.info_label = QLabel()
         self.info_label.setSizePolicy(QSizePolicy.Minimum, QSizePolicy.Minimum)
         self.update_info()
-        lw = QVBoxLayout(self)
+        lw = QVBoxLayout()
 
-        vlay = QVBoxLayout(self)
+        vlay = QVBoxLayout()
 
         self.do_show_cur = QCheckBox('Current Scan', self)
         self.do_show_cur.setChecked(True)
@@ -145,7 +146,9 @@ class PumpProbeDataViewer(QWidget):
                            hist_trans_line=tlh,
                            entry_label=lbl
                            )
+
         self.inf_lines[self.pp_plan.wl_idx].append(il)
+        l.sigPositionChanged.connect(self.update_trans)
 
         def remove_line(ev):
             lbl.deleteLater()
@@ -157,24 +160,26 @@ class PumpProbeDataViewer(QWidget):
         lbl.mouseReleaseEvent = remove_line
 
     def update_info(self):
-        return
-        pp_plan = self.pp_plan
-        s = '''
-        <h3>Current plan</h3>
+        p = self.pp
+        s = self.pp_plan
+        if p.rot_stage_angles:
+            rot_stage_pos = f'<dt>t pos:<dd>{s.t_idx+1}/{len(s.t_list)}'
+        else:
+            rot_stage_pos = ''
+
+        s = f'''
+        <h3>Current Experiment</h3>
         <big>
         <dl>
-        <dt>Name:<dd>{s.name}
-        <dt>Shots:<dd>{s.shots}
-        <dt>Scan:<dd>{s.num_scans}
-        <dt>Wl pos:<dd>{s.wl_idx}/{nwl}
-        <dt>Rot. Stage Pos<dd>{s.rot_stage_angles[s.rot_]}
-        <dt>t pos:<dd>{s.t_idx}/{nt}
-        <dt>Time per scan<dd>{s.time_per_scan}
-        <
+        <dt>Name:<dd>{p.name}
+        <dt>Shots:<dd>{p.shots}
+        <dt>Scan:<dd>{s.scan}
+        <dt>Wl pos:<dd>{s.wl_idx+1}/{len(s.cwl)}        
+        {rot_stage_pos}
+        <dt>Time per scan<dd>{p.time_per_scan}
         </dl>
         </big>
-        '''.format(s=pp_plan, nt=len(pp_plan.t_list),
-                   nwl=len(pp_plan.cwl))
+        '''
         self.info_label.setText(s)
 
     def handle_wl_change(self):
@@ -239,6 +244,7 @@ class PumpProbeDataViewer(QWidget):
 class PumpProbeStarter(PlanStartDialog):
     title = "New Pump-probe Experiment"
     viewer = PumpProbeViewer
+    experiment_type = 'Pump-Probe'
 
     def setup_paras(self):
         has_rot = self.controller.rot_stage is not None
@@ -267,14 +273,14 @@ class PumpProbeStarter(PlanStartDialog):
                 name = c.cam.name
                 tmp.append(dict(name=f'{name} center wls', type='str', value='0'))
 
-        two_d = {'name': 'Pump Probe', 'type': 'group', 'children': tmp}
+        two_d = {'name': 'Exp. Settings', 'type': 'group', 'children': tmp}
 
         params = [samp, two_d]
         self.paras = Parameter.create(name='Pump Probe', type='group', children=params)
         config.last_pump_probe = self.paras.saveState()
 
     def create_plan(self, controller: Controller):
-        p = self.paras.child('Pump Probe')
+        p = self.paras.child('Exp. Settings')
         s = self.paras.child('Sample')
         t_list = np.arange(p['Linear Range (-)'],
                            p['Linear Range (+)'],
