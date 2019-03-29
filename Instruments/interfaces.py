@@ -1,6 +1,7 @@
 import typing, abc, time, attr, threading
 import xmlrpc.server as rpc
 from enum import auto
+import numpy as np
 
 
 @attr.s
@@ -60,7 +61,7 @@ class ICam(IDevice):
         self.set_background(back_a, back_b)
 
     def get_wavelength_array(self, center_wl):
-        return range(self.channels)
+        return np.arange(self.channels)
 
     def get_wavelength(self) -> float:
         return 0

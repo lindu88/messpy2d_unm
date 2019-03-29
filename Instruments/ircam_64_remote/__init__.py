@@ -3,6 +3,7 @@ import numpy as np
 from Instruments.interfaces import ICam
 from Config import config
 import zmq
+import xmlrpc.client
 config.ir_server_addr = 'tcp://130.133.30.146:5555'
 if config.ir_server_addr is None:
     config.ir_server_addr = 'tcp://130.133.30.146:5555'
@@ -11,6 +12,7 @@ if config.ir_server_addr is None:
 context = zmq.Context()
 socket = context.socket(zmq.REQ)
 socket.connect(config.ir_server_addr)
+triax = xmlrpc.client.ServerProxy('http://130.133.30.146:8001', allow_none=True)
 
 import attr
 
@@ -22,7 +24,7 @@ class Cam(ICam):
     sig_lines: int = 1
     channels: int = 32
     ext_channels: int = 3
-    changeable_wavelength: bool = False
+    changeable_wavelength: bool = True
 
     def read_cam(self):
         socket.send_json(('read', ''))
@@ -35,12 +37,30 @@ class Cam(ICam):
         return ans
 
     def set_shots(self, shots: int):
-
         shots = int(shots)
         socket.send_json(('set_shots', shots))
         self.shots = shots
         b = socket.recv_json()
 
+    def get_wavelength_array(self, center_wl):
+        li = triax.get_arr(center_wl)
+        return np.array(li)
+
+    def set_wavelength(self, wl: float):
+        try:
+            wl = float(wl)
+            triax.set_wl(wl)
+        except ValueError:
+            pass
+
+
+    def get_wavelength(self):
+        return triax.get_wl()
 
 cam = Cam()
-print(cam.read_cam())
+
+if __name__  == '__main__':
+    print(cam.get_wavelength())
+    #cam.set_wavelength(1e7/1700)
+    #print(cam.read_cam())
+    print(cam.get_wavelength_array(5000), cam.get_wavelength_array(5500))
