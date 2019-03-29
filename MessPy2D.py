@@ -32,7 +32,7 @@ class MainWindow(QMainWindow):
         self.view = None
 
 
-        cm = CommandMenu(parent=self)
+        self.cm = CommandMenu(parent=self)
 
         self.timer = QTimer(parent=self)
         self.timer.timeout.connect(controller.loop)
@@ -88,7 +88,7 @@ class MainWindow(QMainWindow):
             self.splitDockWidget(dock_wigdets[0], dock_wigdets[3], Qt.Horizontal)
             self.splitDockWidget(dock_wigdets[1], dock_wigdets[4], Qt.Horizontal)
             self.splitDockWidget(dock_wigdets[2], dock_wigdets[5], Qt.Horizontal)
-        self.setCentralWidget(cm)
+        self.setCentralWidget(self.cm)
         #self.obs_plot = [i.getWidget() for i in dock_wigdets]
 
 
@@ -107,6 +107,7 @@ class MainWindow(QMainWindow):
                     self.plan_class = PlanClass
                     self.viewer = PlanClass.viewer(plan)
                     self.viewer.show()
+                    self.cm.reopen_planview_but.setEnabled(True)
 
                     self.toggle_run(True)
             return f
@@ -186,6 +187,7 @@ class CommandMenu(QWidget):
         self.plan_label = QLabel('Default loop')
         self.plan_label.setAlignment(Qt.AlignHCenter)
         self.reopen_planview_but = QPushButton('Reopen Planview')
+        self.reopen_planview_but.setEnabled(False)
         self.reopen_planview_but.clicked.connect(self.parent().show_planview)
         for w in (self.start_but, self.plan_label, self.reopen_planview_but):
             self._layout.addWidget(w)
