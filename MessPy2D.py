@@ -104,6 +104,7 @@ class MainWindow(QMainWindow):
                     print('ok')
                     self.toggle_run(False)
                     self.controller.plan = plan
+                    self.plan_class = PlanClass
                     self.viewer = PlanClass.viewer(plan)
                     self.viewer.show()
 
@@ -142,6 +143,8 @@ class MainWindow(QMainWindow):
     def show_planview(self):
         if self.view is not None:
             self.view.show()
+        else:
+            self.view = self.plan_class.viewer(self.controller.plan)
 
     def closeEvent(self, *args, **kwargs):
         config.save()
@@ -305,7 +308,8 @@ if __name__ == '__main__':
     #pp.center_wl_list = [300, 600]
     #pi = PumpProbeViewer(pp)
     #ppi.show()
-    mw.showFullScreen()
+    #mw.showFullScreen()
+    mw.showMaximized()
     def test(ev):
         print(ev)
     app.aboutToQuit = test

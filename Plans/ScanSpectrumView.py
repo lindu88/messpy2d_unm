@@ -35,7 +35,8 @@ class ScanSpectrumView(QWidget):
                 signal=ss_plan.sigPointRead,
                 x=x,
         )
-
+        self.top_plot.plotItem.setLabel('bottom', 'Wavelength / nm')
+        self.bot_plot.plotItem.setLabel('bottom', 'Wavenumber / cm-1')
         self.setLayout(vlay([self.top_plot, self.bot_plot]))
 
 import pyqtgraph.parametertree.parameterTypes as pTypes
@@ -47,8 +48,10 @@ class WavelengthParameter(pTypes.GroupParameter):
         opts['value'] = True
         pTypes.GroupParameter.__init__(self, **opts)
 
-        self.addChild({'name': 'Wavelength (nm)', 'type': 'float', 'value': 700})
-        self.addChild({'name': 'Wavenumber (cm-1)', 'type': 'float', 'value': 1e7 / 700.})
+        self.addChild({'name': 'Wavelength (nm)', 'type': 'float', 'value': 700,
+                       'decimals': 5,})
+        self.addChild({'name': 'Wavenumber (cm-1)', 'type': 'float', 'value': 1e7 / 700.,
+                       'decimals': 5,})
         self.a = self.param('Wavelength (nm)')
         self.b = self.param('Wavenumber (cm-1)')
         self.a.sigValueChanged.connect(self.aChanged)
@@ -70,10 +73,10 @@ class ScanSpectrumStarter(PlanStartDialog):
         tmp = [{'name': 'Filename', 'type': 'str', 'value': 'temp'},
                {'name': 'Operator', 'type': 'str', 'value': ''},
                {'name': 'Shots', 'type': 'int', 'max': 4000, 'decimals': 5,
-                'step': 500, 'value': 100},
+                'step': 100, 'value': 100},
                WavelengthParameter(name='Min.'),
                WavelengthParameter(name='Max.'),
-               dict(name='Steps', type='int', min=2),
+               dict(name='Steps', type='int', min=2, value=30),
                dict(name='Linear Axis', type='list', values=['nm', 'cm-1']),
                ]
 
@@ -98,6 +101,7 @@ class ScanSpectrumStarter(PlanStartDialog):
         if len(wl_list) == 0 or wl_list.min()-wl_list.max()==0:
             raise ValueError('Zero Steps')
         ss = ScanSpectrum(
+                name=p['Filename'],
                 cam=self.candidate_cams[p['Cam']],
                 meta=s,
                 wl_list=wl_list,

@@ -9,7 +9,7 @@ from qtpy.QtCore import Qt
 from qtpy.QtGui import QPalette, QColor, QDoubleValidator
 from qtpy.QtWidgets import (QWidget, QLineEdit, QLabel, QPushButton, QHBoxLayout,
                             QFormLayout, QGroupBox, QVBoxLayout, QDialog, QStyleFactory,
-                            QListWidget, QListWidgetItem)
+                            QListWidget, QListWidgetItem, QErrorMessage)
 
 from Config import config
 import typing as T
@@ -251,7 +251,16 @@ class PlanStartDialog(QDialog):
     def start_plan(cls, controller, parent=None):
         dialog = cls(parent=parent, controller=controller)
         result = dialog.exec_()
-        plan = dialog.create_plan(controller)
+        try:
+            plan = dialog.create_plan(controller)
+        except ValueError as e:
+            emsg = QErrorMessage(parent=parent)
+            emsg.setWindowModality(Qt.WindowModal)
+            emsg.showMessage('Plan Creational Failed' +  str(e))
+            emsg.exec_()
+            plan = None
+
+            result = QDialog.Rejected
         return plan, result == QDialog.Accepted
 
 
@@ -275,6 +284,7 @@ class ObserverPlot(pg.PlotWidget):
         """
         super(ObserverPlot, self).__init__(parent=parent, useOpenGl=True, **kwargs)
         signal.connect(self.update_data)
+        self.signal = signal
         self.color_cycle = make_default_cycle()
         self.plotItem.showGrid(x=True, y=True, alpha=1)
         self.lines = {}
@@ -322,6 +332,9 @@ class ObserverPlot(pg.PlotWidget):
     def set_x(self):
         self.x = x
 
+    def closeEvent(self, event) -> None:
+        self.signal.disconnect(self.update_data)
+
 
 class ValueLabels(QWidget):
     def __init__(self, obs, fmt: str = '%.1f', parent=None):
@@ -339,6 +352,8 @@ class ValueLabels(QWidget):
     def update_labels(self):
         for lbl, getter in self.obs.values():
             lbl.setText(self.fmt % getter())
+
+
 
 
 def make_groupbox(widgets, title=''):

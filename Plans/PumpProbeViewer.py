@@ -81,7 +81,7 @@ class PumpProbeViewer(QTabWidget):
     def __init__(self, pp_plan: PumpProbePlan, parent=None):
         super(PumpProbeViewer, self).__init__(parent=parent)
         for ppd in pp_plan.cam_data:
-            self.addTab(PumpProbeDataViewer(ppd, pp_plan), ppd.cam.cam.name)
+            self.addTab(PumpProbeDataViewer(ppd, pp_plan, parent=self), ppd.cam.cam.name)
 
 
 class PumpProbeDataViewer(QWidget):
@@ -92,7 +92,7 @@ class PumpProbeDataViewer(QWidget):
         self.pp_plan = pp_plan  # type: PumpProbeData
         self._layout = QHBoxLayout(self)
 
-        self.info_label = QLabel()
+        self.info_label = QLabel(self)
         self.info_label.setSizePolicy(QSizePolicy.Minimum, QSizePolicy.Minimum)
         self.update_info()
         lw = QVBoxLayout()
@@ -240,6 +240,9 @@ class PumpProbeDataViewer(QWidget):
                     ym = np.nanmean(pp.completed_scans[:, i.wl_idx, :, 0, i.channel], 0)
                     i.hist_trans_line.setData(x=pp.t_list, y=ym)
 
+    def closeEvent(self, a0) -> None:
+        self.pp_plan.sigWavelengthChanged.disconnect(self.handle_wl_change)
+        super().closeEvent(a0)
 
 class PumpProbeStarter(PlanStartDialog):
     title = "New Pump-probe Experiment"
@@ -266,7 +269,7 @@ class PumpProbeStarter(PlanStartDialog):
                dict(name="Pre-Zero pos", type='float', value=-60., suffix='ps'),
                dict(name='Use Shutter', type='bool', value=True, enabled=has_shutter, visible=has_shutter),
                dict(name='Use Rotation Stage', type='bool', value=True, enabled=has_rot, visible=has_rot),
-               dict(name='Angles in deg.', type='str', value='0, 45', enabled=has_rot, visible=has_rot)  ]
+               dict(name='Angles in deg.', type='str', value='0, 45', enabled=has_rot, visible=has_rot)]
 
         for c in self.controller.cam_list:
             if c.cam.changeable_wavelength:
