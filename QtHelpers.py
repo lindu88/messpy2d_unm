@@ -306,7 +306,11 @@ class ObserverPlot(pg.PlotWidget):
         pen = pg.mkPen(color=next(self.color_cycle), width=2)
         self.lines[single_obs] = self.plotItem.plot([0], pen=pen)
 
+
+    def update_finnished(self):
+
     def update_data(self):
+        self.use_inverse = False
         if self.x is not None and self.use_inverse:
             x = 1e7/x
         else:

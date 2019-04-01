@@ -5,7 +5,10 @@ import threading, time
 import typing as T
 from HwRegistry import _cam, _cam2, _dl, _dl2, _rot_stage, _shutter
 import Instruments.interfaces as I
-from Signal import Signal
+
+from qtpy.QtCore import QObject, Slot, Signal
+from qtpy.QtWidgets import QApplication
+
 
 @attrs
 class ReadData:
@@ -18,20 +21,21 @@ class ReadData:
 
 
 @attrs(cmp=False)
-class Cam:
+class Cam(QObject):
     cam: I.ICam = attrib(_cam)
     shots: int = attrib(config.shots)
-    sigShotsChanged: Signal = attrib(Factory(Signal))
-    sigReadCompleted: Signal = attrib(Factory(Signal))
+    sigShotsChanged: Signal = Signal('int')
+    sigReadCompleted: Signal = Signal()
     back: tuple = attrib((0, 0))
     last_read: 'LastRead' = attrib(init=False)
-    sigWavelengthChanged: Signal = attrib(Factory(Signal))
+    sigWavelengthChanged = Signal('float')
     wavelengths: np.ndarray = attrib(init=False)
     wavenumbers: np.ndarray = attrib(init=False)
     disp_axis: np.ndarray = attrib(init=False)
     disp_wavelengths: bool = True
 
     def __attrs_post_init__(self):
+        super().__init__()
         self.last_read = LastRead(self)
         self.last_read.update()
         c = self.cam
@@ -95,13 +99,15 @@ class Cam:
 
 
 @attrs(cmp=False)
-class Delayline:
-    sigPosChanged = attrib(Factory(Signal))
+class Delayline(QObject):
+
     pos = attrib(0)
     _dl = attrib(I.IDelayLine)
     _thread = attrib(None)
+    sigPosChanged = Signal('float')
 
     def __attrs_post_init__(self):
+        super().__init__()
         self.pos = self._dl.get_pos_fs()
 
         self.sigPosChanged.emit(self.pos)
@@ -144,7 +150,7 @@ arr_factory = Factory(lambda: np.zeros(16))
 
 
 @attrs(cmp=False)
-class LastRead:
+class LastRead(QObject):
     cam: Cam = attrib()
     probe = attrib(arr_factory)
     probe_mean = attrib(arr_factory)
@@ -162,7 +168,10 @@ class LastRead:
     ref_back = attrib(0)  # type np.array
     chopper = attrib(None)
 
-    sigProcessingCompleted = attrib(Factory(Signal))
+    sigProcessingCompleted = Signal()
+
+    def __attrs_post_init__(self):
+        super().__init__()
 
     def update(self):
         dr = self.cam.read_cam()
@@ -189,7 +198,7 @@ class LastRead:
         self.sigProcessingCompleted.emit()
 
 
-class Controller:
+class Controller(QObject):
     """Class which controls the main loop."""
     cam: Cam
     cam2: T.Optional[Cam]
@@ -199,6 +208,7 @@ class Controller:
     rot_stage: T.Optional[I.IRotationStage]
 
     def __init__(self):
+        super().__init__()
         self.cam = Cam()
         self.cam.read_cam()
         self.shutter = _shutter
@@ -224,6 +234,20 @@ class Controller:
         self.pause_plan = False
         self.running_step = False
         self.thread = None
+        self._stop = False
+
+    @Slot()
+    def looper(self):
+        while True:
+            self.loop()
+            if self._stop:
+                break
+            #QApplication.instance().processEvents()
+            time.sleep(0.01)
+
+    def start_looper(self):
+        self.thread = threading.Thread(target=self.looper)
+        self.thread.start()
 
     def loop(self):
         t = time.time()
