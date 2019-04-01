@@ -9,7 +9,7 @@ import qtawesome as qta
 from Plans import *
 from QtHelpers import dark_palette, ControlFactory, make_groupbox, \
     ObserverPlot, ValueLabels
-from ControlClasses import Controller, LastRead
+from ControlClasses import Controller
 
 START_QT_CONSOLE = False
 if START_QT_CONSOLE:
@@ -42,23 +42,26 @@ class MainWindow(QMainWindow):
 
         dock_wigdets = []
         for c in controller.cam_list:
-            lr = c.last_read # type: LastRead
+            lr = c.last_read
             self.xaxis[c] = c.wavelengths.copy()
-            op = ObserverPlot([(lr, 'probe_mean'), (lr, 'reference_mean')],
-                              lr.sigProcessingCompleted, x=c.disp_axis)
+
+            obs = [lambda i=i, c=c: c.last_read.lines[i, :] for i in range(c.cam.lines)]
+            op = ObserverPlot(obs,
+                              c.sigReadCompleted, x=c.disp_axis)
             dw = QDockWidget('Readings', parent=self)
             dw.setWidget(op)
             dock_wigdets.append(dw)
 
-            op2 = ObserverPlot([(lr, 'probe_std'), (lr, 'reference_std')],
-                               lr.sigProcessingCompleted, x=c.disp_axis)
-            op2.setYRange(0, 20)
+            obs = [lambda i=i, c=c: c.last_read.stds[i, :] for i in range(c.cam.std_lines)]
+            op2 = ObserverPlot(obs,
+                               c.sigReadCompleted, x=c.disp_axis)
+            op2.setYRange(0, 8)
             dw = QDockWidget('Readings - stddev', parent=self)
             dw.setWidget(op2)
             dock_wigdets.append(dw)
 
-            obs = [(lr, 'probe_signal%d'%i) for i in range(lr.cam.sig_lines)]
-            op3 = ObserverPlot(obs, lr.sigProcessingCompleted, x=c.disp_axis)
+            obs = [lambda i=i, c=c: c.last_read.signals[i, :] for i in range(c.cam.sig_lines)]
+            op3 = ObserverPlot(obs, c.sigReadCompleted, x=c.disp_axis)
             dw = QDockWidget('Pump-probe signal', parent=self)
             dw.setWidget(op3)
             dock_wigdets.append(dw)
@@ -297,7 +300,7 @@ if __name__ == '__main__':
     font.setStyleStrategy(QFont.PreferQuality)
     app.setFont(font)
     mw = MainWindow(controller=controller)
-    mw.setWindowFlags(Qt.FramelessWindowHint)
+    #mw.setWindowFlags(Qt.FramelessWindowHint)
 
     from Plans.PumpProbeViewer import PumpProbeViewer
     from Plans.PumpProbe import PumpProbePlan

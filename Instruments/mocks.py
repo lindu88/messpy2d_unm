@@ -1,6 +1,6 @@
 import numpy as np
 import attr
-from Instruments.interfaces import ICam, IDelayLine, IRotationStage, IShutter
+from Instruments.interfaces import ICam, IDelayLine, IRotationStage, IShutter, Reading
 
 @attr.s(auto_attribs=True)
 class MockState:
@@ -16,11 +16,12 @@ state = MockState()
 class CamMock(ICam):
     name: str = 'MockCam'
     shots: int = 20
-    lines: int = 2
-    sig_lines: int =  1
+    line_names: list = ['Test1', 'Test2']
+    sig_names: list = ['Test1']
+    std_names: list = ['Test1', 'Test2']
     channels: int = 200
     ext_channels: int = 3
-    background: tuple = (0., 0.)
+    background: object = None
     changeable_wavelength: True = True
     center_wl: float = 300
 
@@ -33,6 +34,17 @@ class CamMock(ICam):
         ext = np.random.normal(size=(self.ext_channels, self.shots)).T
         chop = np.array([True, False]).repeat(self.shots*2)
         return a - self.background[0], b - self.background[0], chop, ext
+
+    def make_reading(self) -> Reading:
+        a, b, chopper, ext = self.read_cam()
+        tmp = np.stack((a, b))
+        tm = tmp.mean(1)
+        signal = -np.log10(a[chopper, :].mean(0)/a[~chopper, :].mean(0))
+        return Reading(
+            lines=tm,
+            stds=tmp.std(1)/tm,
+            signals=signal[None, :]
+        )
 
     def set_wavelength(self, wl):
         self.center_wl = wl
