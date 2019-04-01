@@ -307,8 +307,6 @@ class ObserverPlot(pg.PlotWidget):
         self.lines[single_obs] = self.plotItem.plot([0], pen=pen)
 
 
-    def update_finnished(self):
-
     def update_data(self):
         self.use_inverse = False
         if self.x is not None and self.use_inverse:
@@ -326,8 +324,6 @@ class ObserverPlot(pg.PlotWidget):
                 self.lines[o].setData(x=x, y=getattr(*o))
 
     def click(self, ev):
-        #print(ev.button())
-
         if self.click_func is not None and ev.button() == 1:
             coords = self.plotItem.vb.mapSceneToView(ev.pos())
             self.click_func(coords)

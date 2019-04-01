@@ -1,0 +1,73 @@
+from enaml.widgets.api import Window, Container, GroupBox, Label, Form, RadioButton, Field, PushButton, ImageView, Timer, RawWidget
+from enaml.layout.api import vbox, hbox, align
+from enaml.stdlib.slider_transform import FloatTransform
+from enaml.stdlib.fields import IntField, FloatField
+from enaml.core.api import Looper, Conditional
+from enaml.image import Image
+import math
+import numpy as np
+import pyqtgraph as pg
+#from enamlx.widgets.api import PlotArea,PlotItemArray,PlotItemArray3D
+from enaml.application import deferred_call, timed_call
+
+from threading import Thread
+
+
+enamldef FreqView(GroupBox):
+        attr wl: float = 200.
+        constraints = [hbox(wl_field, l1, wn_field, l2),
+                       l1.width == 50, l2.width == 50,
+                       wl_field.width == 100, wn_field.width == 100]
+        Label: l1:
+            text = 'nm'
+        FloatField: wl_field:
+            converter  = lambda x: '%.1f'%x
+            value << parent.wl
+            value ::
+                parent.wl = value
+        Label: l2:
+            text = 'cm-1'
+        FloatField: wn_field:
+            converter  = lambda x: '%.1f'%x
+            value << 1e7/parent.wl
+            value ::
+                parent.wl = 1e7/value
+
+
+
+enamldef ScanSettingsView(GroupBox):
+    attr ss
+    Container:
+        FreqView: wl_min:
+            title = 'Start Wavelength'
+            wl := ss.wl_min
+        FreqView: wl_max:
+            title = 'End Wavelength'
+            wl := ss.wl_max
+        Form: frm:
+
+            Label:
+                text = "Linear in"
+            Form:
+                RadioButton: rb_nm:
+                    text = 'nm'
+                    checked = ss.linear_in == 'wl'
+                    checked ::
+                        ss.linear_in = 'wl'
+                RadioButton: rb_cm:
+                    text = 'cm-1'
+                    checked = ss.linear_in == 'wn'
+                    checked ::
+                        ss.linear_in = 'wn'
+
+            Label:
+                text = 'Steps'
+            IntField: steps:
+               value := ss.steps
+            Label:
+                text = "Filename"
+            Field:
+                text := ss.path
+
+
+
