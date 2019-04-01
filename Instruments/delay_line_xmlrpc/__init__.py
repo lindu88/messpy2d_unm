@@ -5,7 +5,7 @@ import wrapt
 
 
 
-config.dl_server = 'http://130.133.30.146:8000'
+config.dl_server = 'http://130.133.30.24:8001'
 
 dlproxy = ServerProxy(config.dl_server)
 
