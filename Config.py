@@ -2,6 +2,7 @@ import pickle
 import os, platform
 from collections import defaultdict
 import attr
+import pathlib
 p = os.path.dirname(__file__) + '/messpy_config.json'
 
 
@@ -9,10 +10,10 @@ p = os.path.dirname(__file__) + '/messpy_config.json'
 class Config:
     shots: int = 20
     list_of_solvents: list = ['Toluene', 'THF', 'H20', 'D20', 'DMSO', 'None']
-    list_of_samples: list = ['Cyclohexanol', 'Phenylisocyanat', 'TDI']
+    list_of_samples: list = ['Chlorophyll', 'AGP2', 'Cyclohexanol', 'Phenylisocyanat', 'TDI']
     exp_settings: dict = attr.Factory(lambda: defaultdict(dict))
     conf_path: str = p
-
+    data_directory: str = './results/'
     def save(self, fname=p):
         with open(fname, 'wb') as f:
             pickle.dump(self, f)

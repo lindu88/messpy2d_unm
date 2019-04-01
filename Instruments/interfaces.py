@@ -1,7 +1,9 @@
 import typing, abc, time, attr, threading
 import xmlrpc.server as rpc
 from enum import auto
+import numpy as np
 
+T = typing
 
 @attr.s
 class IDevice(abc.ABC):
@@ -27,20 +29,48 @@ class IDevice(abc.ABC):
         return obj, server, thr
 
 
+
+@attr.s(auto_attribs=True, cmp=False)
+class Reading:
+    "Each array has the shape (n_type, pixel)"
+    lines: np.ndarray
+    stds: np.ndarray
+    signals: np.ndarray
+    valid: bool
+
 # Defining a minimal interface for each hardware
-@attr.s(auto_attribs=True)
+@attr.s(auto_attribs=True, cmp=False)
 class ICam(IDevice):
     shots: int
-    lines: int
-    sig_lines: int
+    line_names: T.List[str]
+    sig_names: T.List[str]
+    std_names: T.List[str]
     channels: int
     ext_channels: int
-    background: tuple = (0, 0)
+    background: object = None
     changeable_wavelength: bool = False
+    changeable_slit: bool = False
     center_wl: typing.Optional[float] = None
+    slit_width: typing.Optional[float] = None
+
+    @property
+    def sig_lines(self):
+        return len(self.sig_names)
+
+    @property
+    def std_lines(self):
+        return len(self.std_names)
+
+    @property
+    def lines(self):
+        return len(self.line_names)
 
     @abc.abstractmethod
     def read_cam(self):
+        pass
+
+    @abc.abstractmethod
+    def make_reading(self) -> Reading:
         pass
 
     @abc.abstractmethod
@@ -50,23 +80,27 @@ class ICam(IDevice):
     def get_background(self):
         return self.background
 
-    def set_background(self, back_a, back_b):
-        self.background = (back_a, back_b)
+    def set_background(self, back):
+        self.background = back
 
     def record_background(self):
-        for i in range(5):
-            a, b, *_ = self.read_cam()
-        back_a, back_b = a.mean(1), b.mean(1)
-        self.set_background(back_a, back_b)
+        r = self.make_reading()
+        self.set_background(r.lines)
 
     def get_wavelength_array(self, center_wl):
-        return range(self.channels)
+        return np.arange(self.channels)
 
     def get_wavelength(self) -> float:
         return 0
 
     def set_wavelength(self, wl: float):
         pass
+
+    def set_slit(self, slit: float):
+        pass
+
+    def get_slit(self) -> float:
+        return 0
 
 def mm_to_fs(pos_in_mm):
     "converts mm to femtoseconds"
