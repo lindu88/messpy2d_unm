@@ -2,8 +2,8 @@ import pickle
 import os, platform
 from collections import defaultdict
 import attr
-import pathlib
-p = os.path.dirname(__file__) + '/messpy_config.json'
+from pathlib import Path
+p = Path(__file__).parent / 'messpy_config'
 
 
 @attr.s(auto_attribs=True)
@@ -13,22 +13,25 @@ class Config:
     list_of_samples: list = ['Chlorophyll', 'AGP2', 'Cyclohexanol', 'Phenylisocyanat', 'TDI']
     exp_settings: dict = attr.Factory(lambda: defaultdict(dict))
     conf_path: str = p
-    data_directory: str = './results/'
+    data_directory: Path = Path(__file__).parent / 'results'
+
     def save(self, fname=p):
         with open(fname, 'wb') as f:
             pickle.dump(self, f)
 
     @classmethod
-    def load(cls, fname):
+    def load(cls, fname) -> 'Config':
         with open(fname, 'rb') as f:
             d = pickle.load(f)
             return d
 
-p = os.path.dirname(__file__) + '\\messpy_config'
-no_config = not os.path.exists(p)
 config = Config()
-if no_config:
-    pass
-else:
-    config.load(p)
+config_available = os.path.exists(p)
+if config_available:
+    f = attr.asdict(Config.load(p))
+    for key, val in f:
+        setattr(config, key, val)
+
+
+
 

@@ -7,7 +7,7 @@ setup(
     url='',
     requires=['qtpy', 'qtawesome', 'nicelib', 'dynaconf',
               'formlayout', 'pyqtgraph', 'pytest', 'wrapt',
-              'PySignal'],
+              'PySignal', 'enaml'],
     license='BSD',
     author='Tillsten',
     author_email='mail.till@gmx.de',
