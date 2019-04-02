@@ -3,7 +3,7 @@ import os, platform
 from collections import defaultdict
 import attr
 from pathlib import Path
-p = os.path.dirname(__file__) + '/messpy_config.json'
+p = Path('.') / 'messpy_config'
 
 
 @attr.s(auto_attribs=True)
@@ -20,16 +20,15 @@ class Config:
             pickle.dump(self, f)
 
     @classmethod
-    def load(cls, fname):
+    def load(cls, fname) -> 'Config':
         with open(fname, 'rb') as f:
             d = pickle.load(f)
             return d
 
-p = os.path.dirname(__file__) + '\\messpy_config'
-no_config = not os.path.exists(p)
 config = Config()
-if no_config:
-    pass
-else:
-    config.load(p)
+config_available = os.path.exists(p)
+if config_available:
+    f = attr.asdict(Config.load(p))
+
+
 

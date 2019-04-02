@@ -17,10 +17,10 @@ class Cam:
     back: T.Any = attrib((0, 0))
     last_read: T.Optional[I.Reading] = attrib(init=False)
 
+    disp_wavelengths: bool = attrib(True)
     wavelengths: np.ndarray = attrib(init=False)
     wavenumbers: np.ndarray = attrib(init=False)
     disp_axis: np.ndarray = attrib(init=False)
-    disp_wavelengths: bool = True
 
     sigShotsChanged: Signal = attrib(Factory(Signal))
     sigReadCompleted: Signal = attrib(Factory(Signal))
@@ -63,7 +63,6 @@ class Cam:
     def read_cam(self):
         rd = self.cam.make_reading()
         self.last_read = rd
-        print(rd.lines.shape, rd.signals.shape, rd.stds.shape)
         self.sigReadCompleted.emit()
         return rd
 
@@ -136,8 +135,6 @@ class Delayline:
 
 
 arr_factory = Factory(lambda: np.zeros(16))
-
-
 
 
 class Controller:
