@@ -34,6 +34,7 @@ class Cam:
         self.channels = c.channels
         self.lines = c.lines
         self.sig_lines = c.sig_lines
+        self.name = c.name
         self.changeable_wavelength = c.changeable_wavelength
         self.wavelengths = self.get_wavelengths()
         self.wavenumbers = 1e7/self.wavelengths
@@ -63,7 +64,6 @@ class Cam:
     def read_cam(self):
         rd = self.cam.make_reading()
         self.last_read = rd
-        print(rd.lines.shape, rd.signals.shape, rd.stds.shape)
         self.sigReadCompleted.emit()
         return rd
 

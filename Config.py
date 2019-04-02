@@ -29,7 +29,7 @@ config = Config()
 config_available = os.path.exists(p)
 if config_available:
     f = attr.asdict(Config.load(p))
-    for key, val in f:
+    for key, val in f.items():
         setattr(config, key, val)
 
 
