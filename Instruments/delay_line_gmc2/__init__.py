@@ -141,7 +141,7 @@ class DelayLine:
         return qVEL()
 
     def wait_until(self, pos):
-        start_pos  = self.get_pos_mm(self)
+        start_pos = self.get_pos_mm(self)
         diff = (pos - start_pos)
         if diff == 0:
             return

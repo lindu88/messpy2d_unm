@@ -6,8 +6,8 @@ Created on Thu Feb 28 12:08:01 2019
 """
 
 from nicelib import load_lib, NiceLib, Sig, NiceObject, RetHandler, ret_ignore
-from dataclasses import dataclass
-from typing import Tuple
+import attr
+from typing import Tuple, List
 import numpy as np
 import time
 
@@ -91,21 +91,24 @@ class ESLS(NiceLib):
 ESLS.ErrMsgBoxOff()
 drv = ESLS.CCDDrv(1)
 
-from ..interfaces import ICam
+from ..interfaces import ICam, Reading
 
-@dataclass
+
+@attr.s(auto_attribs=True)
 class Cam(ICam):
     name: str = "Stresing CCD"
     shots: int = 100
-    lines: int = 2
-    sig_lines: int = 1
+    line_names: List[str] = ['Probe', 'Pump']
+    sig_names: List[str] = ['Probe']
+    std_names: List[str] = ['Probe', 'Pump']
+    ext_channels: int = 0
     channels: int = 390
     changeable_wavelength = False
     busy: bool = False
     read_idx: int = 0
     last_read: np.ndarray = np.empty((0))
     
-    def __post_init__(self):
+    def __attrs_post_init__(self):
         #drv.InitBoard(sym=0, burst = 1, pixel=2400, waits=2, flag816=1, pportadr=0,
         #              pclk=0, xckdelay=3)        
         drv.InitBoard(0, 1, 2400, 2, 1, 0, 0, 3)    
@@ -140,8 +143,8 @@ class Cam(ICam):
     
     def read_ring_downsample(self, N=10):
         a, b = self.read_ring()
-        a = a.reshape(a.shape[0],-1, N).mean(-1)
-        b = b.reshape(b.shape[0],-1, N).mean(-1)
+        a = a.reshape(a.shape[0], -1, N).mean(-1)
+        b = b.reshape(b.shape[0], -1, N).mean(-1)
         return a,b
     
     def read(self):        
@@ -153,14 +156,7 @@ class Cam(ICam):
         self.read_idx += 1
         self.last_read = out
         return arr 
-    
-    def read_lines(self, n_downsample=10):
-        x = self.read()
-        a = x[:, 0, 100:-100]
-        b = x[:, 1, 100:-100]
-        a = a.reshape(-1, n_downsample).mean(-1)
-        b = b.reshape(-1, n_downsample).mean(-1)
-        return a, b        
+
     
     def read_cam(self, n_downsample=5):
         a, b = self.read_ring()
@@ -179,6 +175,23 @@ class Cam(ICam):
         else:
             chopper[1::2] = False
         return a, b, chopper, ext
+
+    def make_reading(self) -> Reading:
+        a, b, chopper, ext = self.read_cam()
+        if self.background is not None:
+            a -= self.background[0, ...]
+            b -= self.background[1, ...]
+        tmp = np.stack((a, b))
+        tm = tmp.mean(1)
+        fac = -1000 if chopper[0] else 1000
+        signal = fac * np.log10(a[::2, :].mean(0)/a[1::2, :].mean(0))
+        return Reading(
+            lines=tm,
+            stds=100*tmp.std(1)/tm,
+            signals=signal[None, :],
+            valid=True,
+        )
+
 
     def read_cam_signals(self):
         a, b = self.read_cam()

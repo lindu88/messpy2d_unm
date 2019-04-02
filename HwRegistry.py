@@ -34,7 +34,7 @@ if pc_name == '2dir-PC':
 
 elif pc_name == 'helmholm':
     from Instruments.stresing_cam.ESLS import Cam
-    #from Instruments.delay_line_serial import dl as _dl
+    from Instruments.delay_line_serial import dl as _dl
     from Instruments.delay_line_xmlrpc import dl as _dl
     _cam = Cam()
     from Instruments.ircam_64_remote import cam

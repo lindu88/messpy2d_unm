@@ -117,6 +117,7 @@ class PumpProbeDataViewer(QWidget):
 
         self.sig_plot = ObserverPlot([], pp_plan.sigStepDone)
         self.sig_plot.add_observed((pp_plan, 'last_signal'))
+        self.sig_plot.add_observed((pp_plan, 'mean_signal'))
         self.sig_plot.click_func = self.handle_sig_click
         self.trans_plot = ObserverPlot([], pp_plan.sigStepDone)
 
@@ -295,7 +296,7 @@ class PumpProbeStarter(PlanStartDialog):
             n = p['Num pre-zero points']
             pos = p['Pre-Zero pos']
             times = np.linspace(pos - 1, pos, n).tolist()
-            t_list+= times
+            t_list = times + t_list
 
         if p['Use Rotation Stage'] and self.controller.rot_stage:
             s = p['Angles in deg.'].split(',')
