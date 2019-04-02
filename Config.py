@@ -3,7 +3,7 @@ import os, platform
 from collections import defaultdict
 import attr
 from pathlib import Path
-p = Path('.') / 'messpy_config'
+p = Path(__file__).parent / 'messpy_config'
 
 
 @attr.s(auto_attribs=True)
@@ -13,7 +13,7 @@ class Config:
     list_of_samples: list = ['Chlorophyll', 'AGP2', 'Cyclohexanol', 'Phenylisocyanat', 'TDI']
     exp_settings: dict = attr.Factory(lambda: defaultdict(dict))
     conf_path: str = p
-    data_directory: Path = Path('.') / 'results'
+    data_directory: Path = Path(__file__).parent / 'results'
 
     def save(self, fname=p):
         with open(fname, 'wb') as f:
@@ -29,6 +29,9 @@ config = Config()
 config_available = os.path.exists(p)
 if config_available:
     f = attr.asdict(Config.load(p))
+    for key, val in f:
+        setattr(config, key, val)
+
 
 
 
