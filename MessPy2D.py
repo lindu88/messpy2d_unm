@@ -35,7 +35,7 @@ class MainWindow(QMainWindow):
         self.cm = CommandMenu(parent=self)
 
         self.timer = QTimer(parent=self)
-        #self.timer.timeout.connect(controller.loop)
+        self.timer.timeout.connect(controller.loop)
         self.timer.timeout.connect(QApplication.processEvents)
         self.toggle_run(True)
         self.xaxis = {}
@@ -93,11 +93,6 @@ class MainWindow(QMainWindow):
             self.splitDockWidget(dock_wigdets[2], dock_wigdets[5], Qt.Horizontal)
         self.setCentralWidget(self.cm)
         #self.obs_plot = [i.getWidget() for i in dock_wigdets]
-        self.thread = QThread()
-        controller.moveToThread(self.thread)
-        self.thread.started.connect(controller.looper)
-
-
 
     def setup_toolbar(self):
         self.tb = self.addToolBar('Begin Plan')
@@ -277,6 +272,11 @@ class CommandMenu(QWidget):
 if __name__ == '__main__':
     import sys
     import numpy as np
+    from enaml.qt.qt_application import QtApplication
+
+    app = QApplication([])
+
+    enaml_app = QtApplication()
 
     sys._excepthook = sys.excepthook
     def exception_hook(exctype, value, traceback):
@@ -288,7 +288,7 @@ if __name__ == '__main__':
     controller = Controller()
 
 
-    app = QApplication([])
+
     #app = QGuiApplication([], platformName='minimalegl ')
 
     font = QFont()
@@ -319,8 +319,16 @@ if __name__ == '__main__':
     #ppi.show()
     #mw.showFullScreen()
     mw.showMaximized()
-    mw.thread.start()
-    def test(ev):
-        print(ev)
-    app.aboutToQuit = test
+
+    from enaml import imports
+    with imports():
+        from scan_spectrum import ScanSettingsView
+
+    from EnamlModel import ScanSpectrumSettings, SampleInfo
+    fv = ScanSettingsView(ss=ScanSpectrumSettings(), si=SampleInfo())
+    fv.initialize()
+    fv.activate_proxy()
+    fv.proxy.widget.show()
+
+    app.aboutToQuit = lambda x: controller.shutdown()
     app.exec_()

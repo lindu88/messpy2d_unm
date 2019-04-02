@@ -1,4 +1,5 @@
-from enaml.widgets.api import Window, Container, GroupBox, Label, Form, RadioButton, Field, PushButton, ImageView, Timer, RawWidget
+from enaml.widgets.api import Window, Container, GroupBox, Label, Form, RadioButton,\
+                              Field, PushButton, ImageView, Timer, RawWidget, ComboBox, CheckBox
 from enaml.layout.api import vbox, hbox, align
 from enaml.stdlib.slider_transform import FloatTransform
 from enaml.stdlib.fields import IntField, FloatField
@@ -9,9 +10,9 @@ import numpy as np
 import pyqtgraph as pg
 #from enamlx.widgets.api import PlotArea,PlotItemArray,PlotItemArray3D
 from enaml.application import deferred_call, timed_call
-
+from Config import config
 from threading import Thread
-
+from datetime import datetime
 
 enamldef FreqView(GroupBox):
         attr wl: float = 200.
@@ -33,10 +34,79 @@ enamldef FreqView(GroupBox):
             value ::
                 parent.wl = 1e7/value
 
+enamldef MetaView(Container):
+    attr meta
+    Label:
+        text = fromtimestamp(meta.creation_time).isoformat(' ', 'seconds')
+
+
+enamldef ExcitationInfoView(Form):
+    attr exi
+    Label:
+        text = 'Excitation Wavelength'
+    Field: 
+        text := exi.excitation_wavelength    
+    Label:
+        text = 'Excitation Energy'
+    Field: 
+        text := exi.excitation_energy
+
+enamldef SampleInfoView(Form):
+    attr sample_info
+    attr list_of_samples: list = config.list_of_samples
+    attr list_of_solvents: list = config.list_of_solvents
+    Label:
+        text = 'Sample'
+    Field: 
+        text := sample_info.sample_name    
+    PushButton:
+        text = 'Add'
+        clicked ::
+            sn = sample_info.sample_name
+            if sn not in config.list_of_samples and sn !='None':
+                config.list_of_samples.append(sn)
+                cb1.items = config.list_of_samples
+                cb1.index = len(config.list_of_samples)-1     
+    ComboBox: cb1:
+        items << list_of_samples    
+        selected_item >> sample_info.sample_name
+    Label:
+        text = 'Solvent'
+    Field:
+        text := sample_info.solvent_name
+    PushButton:
+        text = 'Add'
+        clicked ::
+            sn = sample_info.sample_name
+            if sn not in config.list_of_samples and sn !='None':
+                config.list_of_samples.append(sn)
+                cb2.items = config.list_of_samples
+                cb2.index = len(config.list_of_samples)-1   
+    ComboBox: cb2:
+        items = list_of_solvents
+        selected_item >> sample_info.solvent_name    
+
+    Label:
+        text = 'Thickness'
+    Field: 
+        text := sample_info.thickness   
+    Label:
+        text = 'Annotations'
+    Field:
+        text := sample_info.annotations
+    
 
 
 enamldef ScanSettingsView(GroupBox):
+    attr si
     attr ss
+    Container:
+        CheckBox: si_enabled:
+            text = 'Sample info'
+            checked := siv.enabled
+        SampleInfoView: siv:
+            sample_info = si
+
     Container:
         FreqView: wl_min:
             title = 'Start Wavelength'

@@ -5,31 +5,39 @@ import threading, time
 import typing as T
 from HwRegistry import _cam, _cam2, _dl, _dl2, _rot_stage, _shutter
 import Instruments.interfaces as I
-from Signal import Signal
-Reading = I.Reading
+
+from qtpy.QtCore import QObject, Slot, Signal
+from qtpy.QtWidgets import QApplication
+
+
+@attrs
+class ReadData:
+    shots: int = attrib()
+    det_a = attrib()
+    det_b = attrib()
+    ext = attrib()
+    chopper = attrib()
+    gives_full_data: bool = attrib(False)
 
 
 @attrs(cmp=False)
-class Cam:
+class Cam(QObject):
     cam: I.ICam = attrib(_cam)
     shots: int = attrib(config.shots)
-
-    back: T.Any = attrib((0, 0))
-    last_read: T.Optional[I.Reading] = attrib(init=False)
-
-    disp_wavelengths: bool = attrib(True)
+    sigShotsChanged: Signal = Signal('int')
+    sigReadCompleted: Signal = Signal()
+    back: tuple = attrib((0, 0))
+    last_read: 'LastRead' = attrib(init=False)
+    sigWavelengthChanged = Signal('float')
     wavelengths: np.ndarray = attrib(init=False)
     wavenumbers: np.ndarray = attrib(init=False)
     disp_axis: np.ndarray = attrib(init=False)
-
-    sigShotsChanged: Signal = attrib(Factory(Signal))
-    sigReadCompleted: Signal = attrib(Factory(Signal))
-    sigWavelengthChanged: Signal = attrib(Factory(Signal))
-    sigSlitChanged: Signal = attrib(Factory(Signal))
-
+    disp_wavelengths: bool = True
 
     def __attrs_post_init__(self):
-        self.read_cam()
+        super().__init__()
+        self.last_read = LastRead(self)
+        self.last_read.update()
         c = self.cam
         self.channels = c.channels
         self.lines = c.lines
@@ -38,7 +46,7 @@ class Cam:
         self.wavelengths = self.get_wavelengths()
         self.wavenumbers = 1e7/self.wavelengths
         self.disp_axis = self.wavelengths.copy()
-        self.name = c.name
+
         self.sigWavelengthChanged.connect(self._update_wl_arrays)
 
     def _update_wl_arrays(self, cwl=None):
@@ -61,8 +69,14 @@ class Cam:
         self.sigShotsChanged.emit(shots)
 
     def read_cam(self):
-        rd = self.cam.make_reading()
-        self.last_read = rd
+        a, b, chopper, ext = self.cam.read_cam()
+        a = a - self.back[0]
+        b = b - self.back[1]
+        rd = ReadData(shots=self.shots,
+                      det_a=a,
+                      det_b=b,
+                      ext=ext.T,
+                      chopper=chopper)
         self.sigReadCompleted.emit()
         return rd
 
@@ -77,25 +91,23 @@ class Cam:
         return self.cam.get_wavelength_array(center_wl)
 
     def get_bg(self):
-        self.cam.set_background(self.last_read.lines)
+        rd = self.read_cam()
+        self.back = rd.det_a.mean(0, keepdims=1), rd.det_b.mean(0, keepdims=1)
 
     def remove_bg(self):
-        self.cam.set_background(None)
-
-    def set_slit(self, slit):
-        self.cam.set_slit(slit)
-        slit = self.cam.get_slit()
-        self.sigSlitChanged.emit(slit)
+        self.back = (0, 0)
 
 
 @attrs(cmp=False)
-class Delayline:
-    sigPosChanged = attrib(Factory(Signal))
+class Delayline(QObject):
+
     pos = attrib(0)
     _dl = attrib(I.IDelayLine)
     _thread = attrib(None)
+    sigPosChanged = Signal('float')
 
     def __attrs_post_init__(self):
+        super().__init__()
         self.pos = self._dl.get_pos_fs()
 
         self.sigPosChanged.emit(self.pos)
@@ -137,7 +149,56 @@ class Delayline:
 arr_factory = Factory(lambda: np.zeros(16))
 
 
-class Controller:
+@attrs(cmp=False)
+class LastRead(QObject):
+    cam: Cam = attrib()
+    probe = attrib(arr_factory)
+    probe_mean = attrib(arr_factory)
+    probe_std = attrib(arr_factory)
+    reference = attrib(arr_factory)
+    reference_mean = attrib(arr_factory)
+    reference_std = attrib(arr_factory)
+    ext_channel = attrib(arr_factory)
+    ext_channel_mean = attrib(arr_factory)
+    ext_channel_ref = attrib(arr_factory)
+    probe_signal = attrib(arr_factory)
+    spec = attrib(arr_factory)
+    fringe_count = attrib(None)  # type np.array
+    probe_back = attrib(0)  # type np.array
+    ref_back = attrib(0)  # type np.array
+    chopper = attrib(None)
+
+    sigProcessingCompleted = Signal()
+
+    def __attrs_post_init__(self):
+        super().__init__()
+
+    def update(self):
+        dr = self.cam.read_cam()
+        x = np.linspace(-7, 7, 16)
+
+        self.probe = dr.det_a
+
+        self.probe_mean = self.probe.mean(0)
+        self.probe_std = np.nan_to_num(self.probe.std(0) / abs(self.probe_mean) * 100)
+
+        self.reference = dr.det_b
+        self.reference_mean = self.reference.mean(0)
+        self.reference_std = np.nan_to_num(self.reference.std(0) / abs(self.reference_mean) * 100)
+
+        self.spec = np.stack((self.probe_mean, self.reference_mean))
+
+        self.ext_channel_mean = 2 + np.random.rand(1) * 0.05
+        sign = 1 if dr.chopper[0] else -1
+        with np.errstate(divide='ignore', invalid='ignore'):
+            self.probe_signal = sign * 1000 * np.log10(self.probe[::2, ...] / self.probe[1::2, ...]).mean(0)
+            self.probe_signal = np.nan_to_num(self.probe_signal)
+        self.probe_signal = self.probe_signal[None, :]
+        self.probe_signal0 = self.probe_signal[0, :]
+        self.sigProcessingCompleted.emit()
+
+
+class Controller(QObject):
     """Class which controls the main loop."""
     cam: Cam
     cam2: T.Optional[Cam]
@@ -147,6 +208,7 @@ class Controller:
     rot_stage: T.Optional[I.IRotationStage]
 
     def __init__(self):
+        super().__init__()
         self.cam = Cam()
         self.cam.read_cam()
         self.shutter = _shutter
@@ -172,15 +234,18 @@ class Controller:
         self.pause_plan = False
         self.running_step = False
         self.thread = None
+        self._stop = False
+
+
 
     def loop(self):
         t = time.time()
 
         if self.plan is None or self.pause_plan:
-            t1 = threading.Thread(target=self.cam.read_cam)
+            t1 = threading.Thread(target=self.cam.last_read.update)
             t1.start()
             if self.cam2:
-                t2 = threading.Thread(target=self.cam2.read_cam)
+                t2 = threading.Thread(target=self.cam2.last_read.update)
                 t2.start()
                 t2.join()
             t1.join()
