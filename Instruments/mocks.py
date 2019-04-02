@@ -32,18 +32,22 @@ class CamMock(ICam):
         a = np.random.normal(loc=30, size=(self.channels, self.shots)).T
         b = np.random.normal(loc=20, size=(self.channels, self.shots)).T
         ext = np.random.normal(size=(self.ext_channels, self.shots)).T
-        chop = np.array([True, False]).repeat(self.shots*2)
-        return a - self.background[0], b - self.background[0], chop, ext
+        chop = np.array([True, False]).repeat(self.shots/2)
+        return a, b, chop, ext
 
     def make_reading(self) -> Reading:
         a, b, chopper, ext = self.read_cam()
+        if self.background is not None:
+            a -= self.background[0, ...]
+            b -= self.background[1, ...]
         tmp = np.stack((a, b))
         tm = tmp.mean(1)
         signal = -np.log10(a[chopper, :].mean(0)/a[~chopper, :].mean(0))
         return Reading(
             lines=tm,
-            stds=tmp.std(1)/tm,
-            signals=signal[None, :]
+            stds=100*tmp.std(1)/tm,
+            signals=signal[None, :],
+            valid=True,
         )
 
     def set_wavelength(self, wl):

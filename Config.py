@@ -2,7 +2,7 @@ import pickle
 import os, platform
 from collections import defaultdict
 import attr
-import pathlib
+from pathlib import Path
 p = os.path.dirname(__file__) + '/messpy_config.json'
 
 
@@ -13,7 +13,8 @@ class Config:
     list_of_samples: list = ['Chlorophyll', 'AGP2', 'Cyclohexanol', 'Phenylisocyanat', 'TDI']
     exp_settings: dict = attr.Factory(lambda: defaultdict(dict))
     conf_path: str = p
-    data_directory: str = './results/'
+    data_directory: Path = Path('.') / 'results'
+
     def save(self, fname=p):
         with open(fname, 'wb') as f:
             pickle.dump(self, f)

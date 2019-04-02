@@ -38,7 +38,7 @@ class Cam:
         self.wavelengths = self.get_wavelengths()
         self.wavenumbers = 1e7/self.wavelengths
         self.disp_axis = self.wavelengths.copy()
-
+        self.name = c.name
         self.sigWavelengthChanged.connect(self._update_wl_arrays)
 
     def _update_wl_arrays(self, cwl=None):

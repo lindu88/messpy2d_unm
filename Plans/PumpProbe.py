@@ -36,6 +36,7 @@ class PumpProbePlan:
 
 
     def __attrs_post_init__(self):
+        self._name = None
         gen = self.make_step_gen()
         self.make_step = lambda: next(gen)
         self.angle_cycle = []
@@ -80,14 +81,27 @@ class PumpProbePlan:
         if self.use_shutter:
             self.controller.shutter.close()
 
-    def get_name(self, cam_name):
+    def get_name(self):
         if self._name is None:
             p = Path(config.data_directory)
-            dname = p + f"{self.name}.messpy1"
+            dname = p / f"{self.name}.messpy1"
             i = 0
             while dname.is_file():
-                dname = p + f"{self.name}{i}.messpy1"
+                dname = p / f"{self.name}{i}.messpy1"
                 i = i + 1
+            self._name = dname
+        return self._name
+
+    def save(self):
+        name = self.get_name()
+        data = {"data_" + ppd.cam.name: np.float32(ppd.completed_scans)
+                for ppd in self.cam_data}
+        wls = {"wl_" + ppd.cam.name: ppd.wavelengths
+                for ppd in self.cam_data}
+        data.update(wls)
+        data['meta'] = self.meta
+        data['t'] = np.array(self.t_list)
+        np.savez(name, **data)
             
 
     def pre_scan(self):
@@ -142,17 +156,17 @@ class PumpProbeData:
             else:
                 self.completed_scans = np.concatenate((self.completed_scans, self.current_scan[None, ...]))
             self.mean_scans = self.completed_scans.mean(0)
-            self.save()
+            self.plan.save()
         next_wl = self.cwl[self.wl_idx]
         self.cam.set_wavelength(next_wl)
         self.sigWavelengthChanged.emit()
 
     def read_point(self, t_idx):
         self.t_idx = t_idx
+        self.cam.read_cam()
         lr = self.cam.last_read
-        lr.update()
-        self.current_scan[self.wl_idx, t_idx, :] = lr.probe_signal
-        self.last_signal = lr.probe_signal[0, :]
+        self.current_scan[self.wl_idx, t_idx, :, :] = lr.signals[...]
+        self.last_signal = lr.signals[0, :]
         self.sigStepDone.emit()
 
 
