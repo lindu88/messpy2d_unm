@@ -45,10 +45,11 @@ class Cam(ICam):
         if self.background is not None:
             tmp -= self.background[:, None, :]
         tm = tmp.mean(1)
-        ref = a/b
-        ref_std = ref.std(0)/ref.mean(0)
-        signal = -1000*np.log10(a[chopper, :].mean(0)/a[~chopper, :].mean(0))
-        signal2 = -1000*np.log10(ref[chopper, :].mean(0) / ref[~chopper, :].mean(0))
+        with np.errstate(invalid='ignore', divide='ignore'):
+            ref = b/a
+            ref_std = ref.std(0)/ref.mean(0)
+            signal = -1000*np.log10(b[chopper, :].mean(0)/b[~chopper, :].mean(0))
+            signal2 = -1000*np.log10(ref[chopper, :].mean(0) / ref[~chopper, :].mean(0))
         return Reading(
             lines=tm,
             stds=100*np.concatenate((tmp.std(1)/tm, ref_std[None, :])),

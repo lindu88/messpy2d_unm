@@ -88,6 +88,8 @@ class Cam:
         slit = self.cam.get_slit()
         self.sigSlitChanged.emit(slit)
 
+    def get_slit(self):
+        return self.cam.get_slit()
 
 @attrs(cmp=False)
 class Delayline:
@@ -164,7 +166,8 @@ class Controller:
             self.cam2 = None
 
         self.delay_line = Delayline(dl=_dl)
-        self.rot_stage = None
+        self.rot_stage = _rot_stage
+
 
         if _dl2:
             self.delay_line_second = Delayline(dl=_dl2)

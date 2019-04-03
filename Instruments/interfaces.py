@@ -2,7 +2,7 @@ import typing, abc, time, attr, threading
 import xmlrpc.server as rpc
 from enum import auto
 import numpy as np
-
+from Signal import Signal
 T = typing
 
 @attr.s
@@ -150,8 +150,10 @@ class IDelayLine(IDevice):
     def shutdown(self):
         pass
 
-
+@attr.s
 class IShutter(IDevice):
+    sigShutterToggled: Signal = attr.ib(attr.Factory(Signal))
+
     @abc.abstractmethod
     def toggle(self):
         pass
@@ -175,8 +177,11 @@ class IShutter(IDevice):
     def shutdown(self):
         pass
 
-
+@attr.s
 class IRotationStage(abc.ABC):
+    sigDegreesChanged: Signal = attr.ib(attr.Factory(Signal))
+    sigMovementCompleted: Signal = attr.ib(attr.Factory(Signal))
+
     @abc.abstractmethod
     def set_degrees(self, deg: float):
         pass

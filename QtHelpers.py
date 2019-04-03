@@ -104,7 +104,7 @@ class ControlFactory(QWidget):
         self.edit_box = QLineEdit()
         self.edit_box.setMaxLength(7)
         self.edit_box.setMaximumWidth(100)
-        self.edit_box.setValidator(QDoubleValidator())
+        #self.edit_box.setValidator(QDoubleValidator())
         self.edit_box.returnPressed.connect(lambda: apply_fn(self.edit_box.text()))
         self.apply_button.clicked.connect(lambda: apply_fn(self.edit_box.text()))
 
@@ -215,11 +215,12 @@ class PlanStartDialog(QDialog):
         pass
 
     def save_defaults(self, fname=None):
-        print(self.paras.getValues())
+
         d = self.paras.saveState(filter='user')
         d['date'] = datetime.datetime.now().isoformat()
         name = self.paras.child('Exp. Settings')['Filename']
-        conf_dict = config.exp_settings[self.experiment_type]
+        conf_dict = config.exp_settings.setdefault(self.experiment_type, {})
+
         conf_dict[name] = d
         config.save()
 
@@ -230,7 +231,7 @@ class PlanStartDialog(QDialog):
     def setup_recent_list(self):
         if self.experiment_type not in config.exp_settings:
             return
-        conf_dict = config.exp_settings[self.experiment_type]
+        conf_dict = config.exp_settings.setdefault(self.experiment_type, {})
         self.recent_settings = sorted(conf_dict.items(), key=lambda kv: kv[1]['date'])
 
         for (name, r) in self.recent_settings:

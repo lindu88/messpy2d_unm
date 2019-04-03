@@ -39,5 +39,7 @@ elif pc_name == 'helmholm':
     _cam = Cam()
     from Instruments.ircam_64_remote import cam
     _cam2 = cam
-    config.has_second_cam = True
-    from Instruments.mocks import CamMock, DelayLineMock
+    from Instruments.remotes import RotationStage, Shutter
+    _rot_stage = RotationStage()
+    _shutter = Shutter()
+

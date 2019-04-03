@@ -184,6 +184,7 @@ class Cam(ICam):
         tmp = np.stack((a, b))
         tm = tmp.mean(1)
         fac = -1000 if chopper[0] else 1000
+
         signal = fac * np.log10(a[::2, :].mean(0)/a[1::2, :].mean(0))
         return Reading(
             lines=tm,

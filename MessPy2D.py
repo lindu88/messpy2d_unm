@@ -256,15 +256,33 @@ class CommandMenu(QWidget):
             return ''
         spec = cam
         pre_fcn = lambda x: spec.set_wavelength(spec.get_wavelength() + x)
-        spec_control = ControlFactory('Wavelength', cam.set_wavelength,
+
+        def calc_and_set_wl(s):
+            s = s.strip()
+            if s[-1] == 'c':
+                wl =  1e7/float(s[:-1])
+            else:
+                wl =  float(s)
+            spec.set_wavelength(wl)
+
+
+        spec_control = ControlFactory('Wavelength', calc_and_set_wl,
                                       format_str='%.1f nm',
                                       presets=[-100, -50, 50, 100],
-                                      preset_func=pre_fcn,
-                                      )
+                                      preset_func=pre_fcn,)
+
         spec.sigWavelengthChanged.connect(spec_control.update_value)
         spec.sigWavelengthChanged.emit(spec.get_wavelength())
+
+        l = [spec_control]
+        if spec.cam.changeable_slit:
+            slit_control = ControlFactory('Slit (μm)', cam.set_slit)
+            slit_control.update_value(spec.get_slit())
+            spec.sigSlitChanged.connect(slit_control.update_value)
+            l.append((slit_control))
         cb = QCheckBox('Use Wavenumbers')
-        gb = make_groupbox([spec_control, cb], f"Spec: {cam.cam.name}")
+        l[-1].layout().addRow( cb)
+        gb = make_groupbox(l, f"Spec: {cam.cam.name}")
         cb.clicked.connect(cam.set_disp_wavelengths)
         return gb
 

@@ -25,15 +25,19 @@ class PumpProbePlan:
     t_idx: int = 0
     rot_idx: int = 0
 
-    center_wl_list : List[Iterable[float]] = [[0]]
+    center_wl_list : List[List[float]] = [[0]]
     use_shutter: bool = False
     cam_data: List['PumpProbeData'] = attrib(init=False)
     use_rot_stage: bool = False
     rot_stage_angles: Optional[list] = None
+    rot_at_scan: List[float] = Factory(list)
     time_per_scan: float = 0
 
     sigStepDone: Signal = Factory(Signal)
 
+    @property
+    def common_mulitple_cwls(self):
+        return np.lcm(map(len, self.center_wl_list))
 
     def __attrs_post_init__(self):
         self._name = None
@@ -62,11 +66,13 @@ class PumpProbePlan:
             self.post_scan()
 
     def post_scan(self):
+        self.num_scans += 1
         self.controller.delay_line.set_pos(self.t_list[0], do_wait=False)
         for pp in self.cam_data:
             pp.post_scan()
-        if self.use_rot_stage:
+        if self.use_rot_stage and self.num_scans % self.common_mulitple_cwls:
             self.rot_idx += (self.rot_idx+1) % len(self.rot_stage_angles)
+            self.controller.rot_stage.set_degrees(self.rot_stage_angles[self.rot_idx])
 
     def read_point(self):
         if self.use_shutter:
@@ -107,7 +113,9 @@ class PumpProbePlan:
     def pre_scan(self):
         rs = self.controller.rot_stage
         if rs and self.use_rot_stage:
-            rs.set_degrees(self.rot_stage_angles[self.rot_idx])
+            self.rot_at_scan.append(rs.get_degrees())
+            while rs.is_moving():
+                time.sleep(0.1)
         self.controller.delay_line.set_pos(self.t_list[0]-2000.)
 
 

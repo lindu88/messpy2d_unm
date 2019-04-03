@@ -308,8 +308,14 @@ class PumpProbeStarter(PlanStartDialog):
         for c in self.controller.cam_list:
             if c.cam.changeable_wavelength:
                 name = c.cam.name
-                s = p[f'{name} center wls'].split(',')
-                cwls.append(list(map(float, s)))
+                l = p[f'{name} center wls'].split(',')
+                cam_cwls = []
+                for s in l:
+                    if s[-1] == 'c':
+                        cam_cwls.append(1e7/float(s[:-1]))
+                    else:
+                        cam_cwls.append(float(s))
+                cwls.append(cam_cwls)
             else:
                 cwls.append([0.])
         print(cwls)
