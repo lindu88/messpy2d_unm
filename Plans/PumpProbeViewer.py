@@ -115,10 +115,11 @@ class PumpProbeDataViewer(QWidget):
         self._layout.addLayout(vlay)
         self._layout.addLayout(lw)
 
-        self.sig_plot = ObserverPlot([], pp_plan.sigStepDone)
+        self.sig_plot = ObserverPlot([], pp_plan.sigStepDone, x=pp_plan.cam.disp_axis)
         self.sig_plot.add_observed((pp_plan, 'last_signal'))
         self.sig_plot.add_observed((pp_plan, 'mean_signal'))
         self.sig_plot.click_func = self.handle_sig_click
+
         self.trans_plot = ObserverPlot([], pp_plan.sigStepDone)
 
         lw.addWidget(self.sig_plot)
@@ -307,7 +308,7 @@ class PumpProbeStarter(PlanStartDialog):
         cwls = []
         for c in self.controller.cam_list:
             if c.cam.changeable_wavelength:
-                name = c.cam.name
+                name = c.name
                 l = p[f'{name} center wls'].split(',')
                 cam_cwls = []
                 for s in l:
@@ -328,6 +329,7 @@ class PumpProbeStarter(PlanStartDialog):
             controller=controller,
             center_wl_list=cwls,
             use_shutter=p['Use Shutter'] and self.controller.shutter,
+            use_rot_stage=p['Use Rotation Stage'],
             rot_stage_angles=angles
         )
         return p

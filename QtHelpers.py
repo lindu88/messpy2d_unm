@@ -145,7 +145,7 @@ class ControlFactory(QWidget):
             but.setStyleSheet('''
             QPushButton { color: lightblue;}''')
             but.setFlat(False)
-            but.clicked.connect(partial(self.preset_func, p))
+            but.clicked.connect(lambda x, p=p: self.preset_func(p))
             but.setFixedWidth(200 / min(len(presets), 4))
             hlay.addWidget(but)
             hlay.setSpacing(10)
@@ -322,7 +322,9 @@ class ObserverPlot(pg.PlotWidget):
             if callable(o):
                 self.lines[o].setData(x=x, y=o())
             else:
-                self.lines[o].setData(x=x, y=getattr(*o))
+                y = getattr(*o)
+                if y is not None:
+                    self.lines[o].setData(x=x, y=y)
 
     def click(self, ev):
         if self.click_func is not None and ev.button() == 1:
@@ -402,7 +404,10 @@ def vlay(widgets, add_stretch=False):
 
 
 def partial_formatter(val):
-    sign = val / abs(val)
+    if val == 0:
+        return '0'
+    else:
+        sign = 1
     if math.log10(abs(val)) > 3:
         return '%dk' % (sign * (abs(val) // 1000))
     else:

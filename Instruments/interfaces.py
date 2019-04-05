@@ -186,6 +186,11 @@ class IRotationStage(abc.ABC):
     def set_degrees(self, deg: float):
         pass
 
+    def set_degrees_and_wait(self, deg: float):
+        self.set_degrees(float)
+        while self.is_moving():
+            time.sleep(0.1)
+
     @abc.abstractmethod
     def get_degrees(self) -> float:
         pass

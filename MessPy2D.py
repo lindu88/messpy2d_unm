@@ -3,7 +3,7 @@ from Config import config
 from qtpy.QtCore import QTimer, Qt, QThread
 from qtpy.QtGui import QFont, QIntValidator
 from qtpy.QtWidgets import (QMainWindow, QApplication, QWidget, QDockWidget,
-                            QPushButton, QLabel, QVBoxLayout, QSizePolicy,
+                            QPushButton, QLabel, QVBoxLayout, QSizePolicy, QFormLayout,
                             QToolBar, QCheckBox)
 import qtawesome as qta
 from Plans import *
@@ -33,35 +33,35 @@ class MainWindow(QMainWindow):
 
 
         self.cm = CommandMenu(parent=self)
-
-        self.timer = QTimer(parent=self)
+        self.timer = QTimer()
         self.timer.timeout.connect(controller.loop)
-        self.timer.timeout.connect(QApplication.processEvents)
-        self.toggle_run(True)
+
+        #self.toggle_run(True)
         self.xaxis = {}
 
         dock_wigdets = []
         for c in controller.cam_list:
+            lf = controller.loop_finnished
             lr = c.last_read
             self.xaxis[c] = c.wavelengths.copy()
 
             obs = [lambda i=i, c=c: c.last_read.lines[i, :] for i in range(c.cam.lines)]
             op = ObserverPlot(obs,
-                              c.sigReadCompleted, x=c.disp_axis)
+                              lf, x=c.disp_axis)
             dw = QDockWidget('Readings', parent=self)
             dw.setWidget(op)
             dock_wigdets.append(dw)
 
             obs = [lambda i=i, c=c: c.last_read.stds[i, :] for i in range(c.cam.std_lines)]
             op2 = ObserverPlot(obs,
-                               c.sigReadCompleted, x=c.disp_axis)
+                               lf, x=c.disp_axis)
             op2.setYRange(0, 8)
             dw = QDockWidget('Readings - stddev', parent=self)
             dw.setWidget(op2)
             dock_wigdets.append(dw)
 
             obs = [lambda i=i, c=c: c.last_read.signals[i, :] for i in range(c.cam.sig_lines)]
-            op3 = ObserverPlot(obs, c.sigReadCompleted, x=c.disp_axis)
+            op3 = ObserverPlot(obs, lf, x=c.disp_axis)
             dw = QDockWidget('Pump-probe signal', parent=self)
             dw.setWidget(op3)
             dock_wigdets.append(dw)
@@ -134,7 +134,7 @@ class MainWindow(QMainWindow):
 
     def toggle_run(self, bool):
         if bool:
-            self.timer.start(10)
+            self.timer.start(0)
         else:
             self.timer.stop()
 
@@ -158,7 +158,7 @@ class CommandMenu(QWidget):
     def __init__(self, parent=None):
         super(CommandMenu, self).__init__(parent=parent)
         self.setSizePolicy(QSizePolicy.Fixed, QSizePolicy.Fixed)
-        self._layout = QVBoxLayout(self)
+        self._layout = QFormLayout(self)
         c = parent.controller # type: Controller
 
         self.add_plan_controls()
@@ -177,9 +177,9 @@ class CommandMenu(QWidget):
                 self._layout.addWidget(gb)
 
         if c.rot_stage:
-            self.add_rot_stage()
+            self.add_rot_stage(c.rot_stage)
 
-        self.add_ext_view()
+        #self.add_ext_view()
 
     def add_plan_controls(self):
         self.start_but = QPushButton('Start Plan')
@@ -200,7 +200,7 @@ class CommandMenu(QWidget):
 
         vl = ValueLabels([('Ext 1', partial(get_ext, 1))])
         self._layout.addWidget(make_groupbox([vl], 'Ext.'))
-        self._layout.addStretch(10)
+        #self._layout.addStretch(10)
 
     def add_loop_control(self, parent):
         cb_running = QPushButton('Running',
@@ -235,6 +235,7 @@ class CommandMenu(QWidget):
                               preset_func=lambda x: dl.set_pos(dl.get_pos() + x, do_wait=False),
                               )
         c.delay_line.sigPosChanged.connect(dl1c.update_value)
+        dl1c.update_value(c.delay_line.get_pos())
         dls = [dl1c]
         if c.delay_line_second:
             dl2 = controller.delay_line_second
@@ -245,10 +246,13 @@ class CommandMenu(QWidget):
             dl2.sigPosChanged.connect(dl2c.update_value)
         return dls
 
-    def add_rot_stage(self):
-        rs = ControlFactory('Angle', print,
-                            format_str='%.1f deg')
-        gb = make_groupbox([rs], "Rotation Stage")
+    def add_rot_stage(self, rs):
+        rsi = ControlFactory('Angle', rs.set_degrees,
+                             format_str='%.1f deg', presets=[0, 45])
+
+        rsi.update_value(rs.get_degrees())
+        gb = make_groupbox([rsi], "Rotation Stage")
+
         self._layout.addWidget(gb)
 
     def add_spec(self, cam):
@@ -276,7 +280,8 @@ class CommandMenu(QWidget):
 
         l = [spec_control]
         if spec.cam.changeable_slit:
-            slit_control = ControlFactory('Slit (μm)', cam.set_slit)
+            pre_fcn = lambda x: spec.set_slit(spec.get_slit() + x)
+            slit_control = ControlFactory('Slit (μm)', cam.set_slit, presets=[-10, 10], preset_func=pre_fcn)
             slit_control.update_value(spec.get_slit())
             spec.sigSlitChanged.connect(slit_control.update_value)
             l.append((slit_control))

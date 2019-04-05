@@ -14,12 +14,11 @@ class DelayLine(IDelayLine):
 
     def __init__(self):
         self.name = f"Remote DelayLine xmlrpc {config.dl_server}"
-        super().__init__(name=self.name, pos_sign=-1)
-
+        super().__init__(name=self.name, pos_sign=-1, home_pos=dlproxy.get_home())
 
     @wrapt.synchronized
     def move_mm(self, mm, *args, **kwargs):
-        dlproxy.move_mm(mm)
+        return dlproxy.move_mm(mm)
 
     @wrapt.synchronized
     def get_pos_mm(self):
@@ -29,6 +28,13 @@ class DelayLine(IDelayLine):
     def is_moving(self):
         return dlproxy.is_moving()
 
+    @wrapt.synchronized
+    def def_home(self):
+        self.home_pos = self.get_pos_mm()
+        return dlproxy.def_home()
+
 
 dl = DelayLine()
-dl.is_moving()
+print(dl.is_moving())
+print(dlproxy.get_home(), dl.home_pos)
+print(dl.def_home())

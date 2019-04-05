@@ -11,7 +11,7 @@ import datetime
 
 if TYPE_CHECKING:
     from Instruments.interfaces import ICam, IRotationStage, IShutter
-
+from qtpy.QtWidgets import QApplication
 
 @attrs(auto_attribs=True)
 class PumpProbePlan:
@@ -37,7 +37,7 @@ class PumpProbePlan:
 
     @property
     def common_mulitple_cwls(self):
-        return np.lcm(map(len, self.center_wl_list))
+        return np.lcm(*map(len, self.center_wl_list))
 
     def __attrs_post_init__(self):
         self._name = None
@@ -47,6 +47,7 @@ class PumpProbePlan:
         self.cam_data = []
         for c, cwl in zip(self.controller.cam_list, self.center_wl_list):
             self.cam_data.append(PumpProbeData(cam=c, cwl=cwl, plan=self, t_list=self.t_list))
+            c.set_shots(self.shots)
 
     def make_step_gen(self):
         c = self.controller
@@ -56,8 +57,25 @@ class PumpProbePlan:
             start_t = time.time()
 
             for self.t_idx, t in enumerate(self.t_list):
-                c.delay_line.set_pos(t*1000., do_wait=True)
-                self.read_point()
+                c.delay_line.set_pos(t*1000.)
+                while self.controller.delay_line._dl.is_moving():
+                    yield
+                if self.use_shutter:
+                    self.controller.shutter.open()
+
+                threads = []
+                for pp in self.cam_data:
+                    t = threading.Thread(target=pp.read_point, args=(self.t_idx,))
+                    t.start()
+                    threads.append(t)
+                while any([t.isAlive() for t in threads]):
+                    yield
+                for pp in self.cam_data:
+                    pp.sigStepDone.emit()
+
+                if self.use_shutter:
+                    self.controller.shutter.close()
+
                 self.sigStepDone.emit()
                 yield
 
@@ -70,22 +88,11 @@ class PumpProbePlan:
         self.controller.delay_line.set_pos(self.t_list[0], do_wait=False)
         for pp in self.cam_data:
             pp.post_scan()
+        print(self.common_mulitple_cwls)
         if self.use_rot_stage and self.num_scans % self.common_mulitple_cwls:
-            self.rot_idx += (self.rot_idx+1) % len(self.rot_stage_angles)
+            self.rot_idx = (self.rot_idx+1) % len(self.rot_stage_angles)
             self.controller.rot_stage.set_degrees(self.rot_stage_angles[self.rot_idx])
 
-    def read_point(self):
-        if self.use_shutter:
-            self.controller.shutter.open()
-        threads = []
-        for pp in self.cam_data:
-            t = threading.Thread(target=pp.read_point, args=(self.t_idx,))
-            t.start()
-            threads.append(t)
-        for t in threads:
-            t.join()
-        if self.use_shutter:
-            self.controller.shutter.close()
 
     def get_name(self):
         if self._name is None:
@@ -107,6 +114,7 @@ class PumpProbePlan:
         data.update(wls)
         data['meta'] = self.meta
         data['t'] = np.array(self.t_list)
+        data['rot'] = self.rot_at_scan
         np.savez(name, **data)
             
 
@@ -116,7 +124,9 @@ class PumpProbePlan:
             self.rot_at_scan.append(rs.get_degrees())
             while rs.is_moving():
                 time.sleep(0.1)
-        self.controller.delay_line.set_pos(self.t_list[0]-2000.)
+        self.controller.delay_line.set_pos(self.t_list[0]-2000., do_wait=False)
+        while self.controller.delay_line._dl.is_moving():
+            QApplication.instance().processEvents()
 
 
 @attrs(auto_attribs=True, cmp=False)
@@ -171,11 +181,19 @@ class PumpProbeData:
 
     def read_point(self, t_idx):
         self.t_idx = t_idx
+        #t1 = threading.Thread(target=self.cam.read_cam)
+        #t1.start()
+        #while t1.isAlive():
+        #    QApplication.instance().processEvents()
+
+
         self.cam.read_cam()
         lr = self.cam.last_read
         self.current_scan[self.wl_idx, t_idx, :, :] = lr.signals[...]
+        if self.mean_scans is not None:
+            self.mean_signal = self.mean_scans[self.wl_idx, t_idx, 0, :]
         self.last_signal = lr.signals[0, :]
-        self.sigStepDone.emit()
+
 
 
 

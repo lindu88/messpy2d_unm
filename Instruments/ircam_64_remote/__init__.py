@@ -1,5 +1,6 @@
 """Using the IR-ADC over network. Uses direct zmq messages."""
 import numpy as np
+import wrapt
 from Instruments.interfaces import ICam, Reading
 from Config import config
 import zmq
@@ -23,7 +24,7 @@ class Cam(ICam):
     shots: int = config.shots
     line_names: List = ['Probe', 'Ref']
     std_names: List = ['Probe', 'Ref', 'Probe/Ref']
-    sig_names: List = ['Probe', 'Probe/Ref']
+    sig_names: List = ['Probe/Ref']
     channels: int = 32
     ext_channels: int = 3
     changeable_wavelength: bool = True
@@ -39,6 +40,7 @@ class Cam(ICam):
         ans = arr[:, :32], arr[:, 32:64], arr[:, -1] > 2, arr[:, [77]]
         return ans
 
+    @wrapt.synchronized
     def make_reading(self) -> Reading:
         a, b, chopper, ext = self.read_cam()
         tmp = np.stack((a, b))
@@ -53,10 +55,11 @@ class Cam(ICam):
         return Reading(
             lines=tm,
             stds=100*np.concatenate((tmp.std(1)/tm, ref_std[None, :])),
-            signals=np.stack((signal, signal2)),
+            signals=signal2[None, :],#np.stack((signal2)),
             valid=True,
         )
 
+    @wrapt.synchronized
     def set_shots(self, shots: int):
         shots = int(shots)
         socket.send_json(('set_shots', shots))

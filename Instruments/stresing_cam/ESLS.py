@@ -10,6 +10,7 @@ import attr
 from typing import Tuple, List
 import numpy as np
 import time
+import threading
 
 
 class ESLS(NiceLib):
@@ -92,7 +93,7 @@ ESLS.ErrMsgBoxOff()
 drv = ESLS.CCDDrv(1)
 
 from ..interfaces import ICam, Reading
-
+from wrapt import synchronized
 
 @attr.s(auto_attribs=True)
 class Cam(ICam):
@@ -107,7 +108,8 @@ class Cam(ICam):
     busy: bool = False
     read_idx: int = 0
     last_read: np.ndarray = np.empty((0))
-    
+    lock: threading.Lock = attr.Factory(threading.Lock)
+
     def __attrs_post_init__(self):
         #drv.InitBoard(sym=0, burst = 1, pixel=2400, waits=2, flag816=1, pportadr=0,
         #              pclk=0, xckdelay=3)        
@@ -126,7 +128,9 @@ class Cam(ICam):
         
     def stop_ring_thread(self):
         ESLS.StopRingReadThread()
-        
+
+
+    @synchronized
     def read_ring(self) -> Tuple[np.ndarray]:
         arr = np.zeros((self.shots, 2, 2400), dtype=np.uint32)
         while drv.ReadRingCounter() < self.shots:        
@@ -139,25 +143,10 @@ class Cam(ICam):
         
         a = x[:, 0, 100:-100]
         b = x[:, 1, 100:-100]
-        return a, b
-    
-    def read_ring_downsample(self, N=10):
-        a, b = self.read_ring()
-        a = a.reshape(a.shape[0], -1, N).mean(-1)
-        b = b.reshape(b.shape[0], -1, N).mean(-1)
-        return a,b
-    
-    def read(self):        
-       # drv.EnableFifo()
-       # drv.SetExtTrig()
-        arr = np.ones((self.shots, 2400, 4), dtype=np.uint16)*30000
-        out = drv.ReadFFLoop(arr.view(np.uint16), 20, 1, 1, self.shots,
-                             200, 0, 31, 0, 0, 1, 0)
-        self.read_idx += 1
-        self.last_read = out
-        return arr 
 
-    
+        return a, b
+
+    @synchronized
     def read_cam(self, n_downsample=5):
         a, b = self.read_ring()
 
@@ -176,6 +165,7 @@ class Cam(ICam):
             chopper[1::2] = False
         return a, b, chopper, ext
 
+    @synchronized
     def make_reading(self) -> Reading:
         a, b, chopper, ext = self.read_cam()
         if self.background is not None:
@@ -185,7 +175,8 @@ class Cam(ICam):
         tm = tmp.mean(1)
         fac = -1000 if chopper[0] else 1000
 
-        signal = fac * np.log10(a[::2, :].mean(0)/a[1::2, :].mean(0))
+        signal = 0.5*fac * np.log10(a[::2, :].mean(0)/a[1::2, :]).mean(0)
+
         return Reading(
             lines=tm,
             stds=100*tmp.std(1)/tm,
@@ -193,22 +184,10 @@ class Cam(ICam):
             valid=True,
         )
 
-
-    def read_cam_signals(self):
-        a, b = self.read_cam()
-        a_mean = a.mean(0)
-        a_std = a.std(0)
-        b_mean = b.mean(0)
-        b_std = b.std(0)
-        out = (a_mean, a_std, 
-                b_mean, b_std)
-        if bytify:                        
-            return [i.tobytes() for i in out]
-        else:
-            return out
-    
+    @synchronized
     def set_shots(self, shots):
         self.shots = shots
+
         return True
         
     def get_shots(self):

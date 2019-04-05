@@ -8,6 +8,9 @@ import Instruments.interfaces as I
 from Signal import Signal
 Reading = I.Reading
 
+from qtpy.QtWidgets import QApplication
+from qtpy.QtCore import QThread, QTimer
+
 
 @attrs(cmp=False)
 class Cam:
@@ -110,7 +113,7 @@ class Delayline:
         except ValueError:
             raise
         self._dl.move_fs(pos_fs, do_wait=do_wait)
-        if not do_wait and False:
+        if not do_wait:
             self._thread = threading.Thread(target=self.wait_and_update)
             self._thread.start()
 
@@ -122,7 +125,8 @@ class Delayline:
         while self._dl.is_moving():
             self.pos = self._dl.get_pos_fs()
             self.sigPosChanged.emit(self.pos)
-            time.sleep(0.1)
+            QTimer.singleShot(0, QApplication.instance().processEvents)
+
         self.pos = self._dl.get_pos_fs()
         self.sigPosChanged.emit(self.pos)
 
@@ -134,7 +138,10 @@ class Delayline:
 
     def set_home(self):
         self._dl.home_pos = self._dl.get_pos_mm()
+        self._dl.def_home()
         config.__dict__['Delay 1 Home Pos.'] = self._dl.get_pos_mm()
+        config.save()
+        self.sigPosChanged.emit(self.get_pos())
 
 
 arr_factory = Factory(lambda: np.zeros(16))
@@ -151,11 +158,14 @@ class Controller:
     delay_line: Delayline
     rot_stage: T.Optional[I.IRotationStage]
 
+
+
     def __init__(self):
         self.cam = Cam()
         self.cam.read_cam()
         self.shutter = _shutter
         self.cam_list = [self.cam]
+        self.loop_finnished = Signal()
 
         if _cam2 is not None:
             self.cam2 = Cam(cam=_cam2)
@@ -178,25 +188,28 @@ class Controller:
         self.pause_plan = False
         self.running_step = False
         self.thread = None
+        #self.loop = lambda: next(self.loop_gen())
 
     def loop(self):
-        t = time.time()
-
         if self.plan is None or self.pause_plan:
             t1 = threading.Thread(target=self.cam.read_cam)
             t1.start()
+            t2 = threading.Thread()
             if self.cam2:
                 t2 = threading.Thread(target=self.cam2.read_cam)
                 t2.start()
-                t2.join()
-            t1.join()
 
+
+            while t1.isAlive() or t2.isAlive():
+                QApplication.instance().processEvents()
+            t1.join()
+            t2.join()
         else:
             try:
                 self.plan.make_step()
             except StopIteration:
                 self.pause_plan = True
-
+        self.loop_finnished.emit()
 
         #print(time.time() - t)
 
