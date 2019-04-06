@@ -5,7 +5,7 @@ from itertools import cycle
 import pyqtgraph as pg
 import pyqtgraph.parametertree as pt
 import yaml
-from qtpy.QtCore import Qt
+from qtpy.QtCore import Qt, Signal, Slot, QTimer
 from qtpy.QtGui import QPalette, QColor, QDoubleValidator
 from qtpy.QtWidgets import (QWidget, QLineEdit, QLabel, QPushButton, QHBoxLayout,
                             QFormLayout, QGroupBox, QVBoxLayout, QDialog, QStyleFactory,
@@ -284,7 +284,7 @@ class ObserverPlot(pg.PlotWidget):
         All other kwargs are passed to PlotWidget.
         """
         super(ObserverPlot, self).__init__(parent=parent, useOpenGl=True, **kwargs)
-        signal.connect(self.update_data)
+        signal.connect(self.request_update)
         self.signal = signal
         self.color_cycle = make_default_cycle()
         self.plotItem.showGrid(x=True, y=True, alpha=1)
@@ -301,14 +301,27 @@ class ObserverPlot(pg.PlotWidget):
         self.click_func = None
         self.x = x
         self.use_inverse = False
+        self.timer = QTimer()
+        self.timer.setSingleShot(True)
+        self.timer.timeout.connect(self.update_data)
+        self.timer.start(1000//60)
+        self.do_update = False
 
     def add_observed(self, single_obs):
         self.observed.append(single_obs)
         pen = pg.mkPen(color=next(self.color_cycle), width=2)
         self.lines[single_obs] = self.plotItem.plot([0], pen=pen)
 
+    @Slot()
+    def request_update(self):
+        self.do_update = True
+        if not self.timer.isActive():
+            self.timer.start(0)
+
 
     def update_data(self):
+        if not self.do_update:
+            return
         self.use_inverse = False
         if self.x is not None and self.use_inverse:
             x = 1e7/x
@@ -325,6 +338,7 @@ class ObserverPlot(pg.PlotWidget):
                 y = getattr(*o)
                 if y is not None:
                     self.lines[o].setData(x=x, y=y)
+        self.do_update = False
 
     def click(self, ev):
         if self.click_func is not None and ev.button() == 1:

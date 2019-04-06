@@ -5,15 +5,15 @@ import threading, time
 import typing as T
 from HwRegistry import _cam, _cam2, _dl, _dl2, _rot_stage, _shutter
 import Instruments.interfaces as I
-from Signal import Signal
+
 Reading = I.Reading
 
 from qtpy.QtWidgets import QApplication
-from qtpy.QtCore import QThread, QTimer
+from qtpy.QtCore import QThread, QTimer, Signal, Slot, QObject
 
 
 @attrs(cmp=False)
-class Cam:
+class Cam(QObject):
     cam: I.ICam = attrib(_cam)
     shots: int = attrib(config.shots)
 
@@ -25,13 +25,14 @@ class Cam:
     disp_axis: np.ndarray = attrib(init=False)
     disp_wavelengths: bool = True
 
-    sigShotsChanged: Signal = attrib(Factory(Signal))
-    sigReadCompleted: Signal = attrib(Factory(Signal))
-    sigWavelengthChanged: Signal = attrib(Factory(Signal))
-    sigSlitChanged: Signal = attrib(Factory(Signal))
+    sigShotsChanged = Signal(int)
+    sigReadCompleted = Signal()
+    sigWavelengthChanged = Signal(float)
+    sigSlitChanged = Signal(float)
 
 
     def __attrs_post_init__(self):
+        super().__init__()
         self.read_cam()
         c = self.cam
         self.channels = c.channels
@@ -95,13 +96,14 @@ class Cam:
         return self.cam.get_slit()
 
 @attrs(cmp=False)
-class Delayline:
-    sigPosChanged = attrib(Factory(Signal))
+class Delayline(QObject):
+    sigPosChanged = Signal(float)
     pos = attrib(0)
     _dl = attrib(I.IDelayLine)
     _thread = attrib(None)
 
     def __attrs_post_init__(self):
+        super().__init__()
         self.pos = self._dl.get_pos_fs()
 
         self.sigPosChanged.emit(self.pos)
@@ -114,21 +116,17 @@ class Delayline:
             raise
         self._dl.move_fs(pos_fs, do_wait=do_wait)
         if not do_wait:
-            self._thread = threading.Thread(target=self.wait_and_update)
-            self._thread.start()
+            QTimer.singleShot(100, self.wait_and_update)
 
         self.pos = self._dl.get_pos_fs()
         self.sigPosChanged.emit(self.pos)
 
     def wait_and_update(self):
         "Wait until not moving. Do update position while moving"
-        while self._dl.is_moving():
-            self.pos = self._dl.get_pos_fs()
-            self.sigPosChanged.emit(self.pos)
-            QTimer.singleShot(0, QApplication.instance().processEvents)
-
         self.pos = self._dl.get_pos_fs()
         self.sigPosChanged.emit(self.pos)
+        if self._dl.is_moving():
+            QTimer.singleShot(100, self.wait_and_update)
 
     def get_pos(self) -> float:
         return self._dl.get_pos_fs()
@@ -149,7 +147,7 @@ arr_factory = Factory(lambda: np.zeros(16))
 
 
 
-class Controller:
+class Controller(QObject):
     """Class which controls the main loop."""
     cam: Cam
     cam2: T.Optional[Cam]
@@ -158,14 +156,15 @@ class Controller:
     delay_line: Delayline
     rot_stage: T.Optional[I.IRotationStage]
 
-
+    loop_finnished = Signal()
 
     def __init__(self):
+        super().__init__()
         self.cam = Cam()
         self.cam.read_cam()
         self.shutter = _shutter
         self.cam_list = [self.cam]
-        self.loop_finnished = Signal()
+
 
         if _cam2 is not None:
             self.cam2 = Cam(cam=_cam2)

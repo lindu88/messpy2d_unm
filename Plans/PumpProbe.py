@@ -57,7 +57,7 @@ class PumpProbePlan:
             start_t = time.time()
 
             for self.t_idx, t in enumerate(self.t_list):
-                c.delay_line.set_pos(t*1000.)
+                c.delay_line.set_pos(t*1000., do_wait=False)
                 while self.controller.delay_line._dl.is_moving():
                     yield
                 if self.use_shutter:
@@ -88,11 +88,10 @@ class PumpProbePlan:
         self.controller.delay_line.set_pos(self.t_list[0], do_wait=False)
         for pp in self.cam_data:
             pp.post_scan()
-        print(self.common_mulitple_cwls)
+
         if self.use_rot_stage and self.num_scans % self.common_mulitple_cwls:
             self.rot_idx = (self.rot_idx+1) % len(self.rot_stage_angles)
             self.controller.rot_stage.set_degrees(self.rot_stage_angles[self.rot_idx])
-
 
     def get_name(self):
         if self._name is None:
@@ -125,9 +124,6 @@ class PumpProbePlan:
             while rs.is_moving():
                 time.sleep(0.1)
         self.controller.delay_line.set_pos(self.t_list[0]-2000., do_wait=False)
-        while self.controller.delay_line._dl.is_moving():
-            QApplication.instance().processEvents()
-
 
 @attrs(auto_attribs=True, cmp=False)
 class PumpProbeData:

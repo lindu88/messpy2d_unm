@@ -1,6 +1,8 @@
 import numpy as np
 import attr
 from Instruments.interfaces import ICam, IDelayLine, IRotationStage, IShutter, Reading
+import time
+import threading
 
 @attr.s(auto_attribs=True)
 class MockState:
@@ -33,6 +35,7 @@ class CamMock(ICam):
         b = np.random.normal(loc=20, size=(self.channels, self.shots)).T
         ext = np.random.normal(size=(self.ext_channels, self.shots)).T
         chop = np.array([True, False]).repeat(self.shots/2)
+        time.sleep(self.shots/1000.)
         return a, b, chop, ext
 
     def make_reading(self) -> Reading:
@@ -68,12 +71,25 @@ class CamMock(ICam):
 class DelayLineMock(IDelayLine):
     name: str = 'MockDelayStage'
     pos_mm: float = 0.
+    mock_speed: float = 6.
+    moving: bool = False
+    current_move: tuple = None
 
     def move_mm(self, mm, do_wait=True):
+        distance = mm - self.pos_mm
+        duration = distance / self.mock_speed
+        self.current_move = (time.time(), mm)
+        self.moving = True
         self.pos_mm = mm
 
     def get_pos_mm(self):
+        if self.moving:
+            time_passed = self.current_move[0] - time.time()
+
+
+
         return self.pos_mm
+
 
     def is_moving(self):
         return False

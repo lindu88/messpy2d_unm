@@ -4,6 +4,9 @@ from enum import auto
 import numpy as np
 from Signal import Signal
 T = typing
+import asyncio
+from qtpy.QtCore import Signal, Slot, QObject
+
 
 @attr.s
 class IDevice(abc.ABC):
@@ -102,6 +105,16 @@ class ICam(IDevice):
     def get_slit(self) -> float:
         return 0
 
+    async def async_make_read(self):
+        out = []
+        def reader():
+            out.append(self.make_reading())
+        thread = threading.Thread(target=reader())
+        while thread.is_alive():
+            await asyncio.sleep(0.1)
+        return out[0]
+
+
 def mm_to_fs(pos_in_mm):
     "converts mm to femtoseconds"
     speed_of_light = 299792458.
@@ -147,8 +160,13 @@ class IDelayLine(IDevice):
     def def_home(self):
         self.home_pos = self.get_pos_mm()
 
-    def shutdown(self):
-        pass
+    async def async_move_mm(self, mm, do_wait=False):
+        self.move_mm(mm)
+        if do_wait:
+            while self.is_moving():
+                self.pos = self.get_pos_mm()
+                await asyncio.sleep(0.1)
+
 
 @attr.s
 class IShutter(IDevice):
@@ -178,7 +196,7 @@ class IShutter(IDevice):
         pass
 
 @attr.s
-class IRotationStage(abc.ABC):
+class IRotationStage(IDevice):
     sigDegreesChanged: Signal = attr.ib(attr.Factory(Signal))
     sigMovementCompleted: Signal = attr.ib(attr.Factory(Signal))
 
@@ -198,6 +216,12 @@ class IRotationStage(abc.ABC):
     @abc.abstractmethod
     def is_moving(self):
         pass
+
+    async def async_set_degrees(self, deg: float, do_wait=False):
+        self.set_degrees(deg)
+        while self.is_moving():
+            self.sigDegreesChanged.emit(deg)
+            await asyncio.sleep(0.1)
 
 
 class ILissajousScanner(IDevice):
