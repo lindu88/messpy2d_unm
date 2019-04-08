@@ -129,8 +129,6 @@ class Cam(ICam):
     def stop_ring_thread(self):
         ESLS.StopRingReadThread()
 
-
-    @synchronized
     def read_ring(self) -> Tuple[np.ndarray]:
         arr = np.zeros((self.shots, 2, 2400), dtype=np.uint32)
         while drv.ReadRingCounter() < self.shots:        
@@ -146,26 +144,26 @@ class Cam(ICam):
 
         return a, b
 
-    @synchronized
     def read_cam(self, n_downsample=5):
-        a, b = self.read_ring()
+        with self.lock:
+            a, b = self.read_ring()
 
-        a = a.reshape(a.shape[0], -1, n_downsample).mean(-1)
-        b = b.reshape(b.shape[0], -1, n_downsample).mean(-1)
-        a = a- 1*a[:, 400:].mean(keepdims=True)
-        b = b - 1*b[:, 400:].mean(keepdims=True)
-        a, b = a[:, :390], b[:, :390]
-        ext = np.empty((self.shots, 0))
-        first = b[0, :390].sum() > b[1, :390].sum()
+            a = a.reshape(a.shape[0], -1, n_downsample).mean(-1)
+            b = b.reshape(b.shape[0], -1, n_downsample).mean(-1)
+            a = a- 1*a[:, 400:].mean(keepdims=True)
+            b = b - 1*b[:, 400:].mean(keepdims=True)
+            a, b = a[:, :390], b[:, :390]
+            ext = np.empty((self.shots, 0))
+            first = b[0, :390].sum() > b[1, :390].sum()
 
-        chopper = np.ones(self.shots, dtype='bool')
+            chopper = np.ones(self.shots, dtype='bool')
         if first:
             chopper[::2] = False
         else:
             chopper[1::2] = False
         return a, b, chopper, ext
 
-    @synchronized
+
     def make_reading(self) -> Reading:
         a, b, chopper, ext = self.read_cam()
         if self.background is not None:
@@ -184,10 +182,10 @@ class Cam(ICam):
             valid=True,
         )
 
-    @synchronized
-    def set_shots(self, shots):
-        self.shots = shots
 
+    def set_shots(self, shots):
+        with self.lock:
+            self.shots = shots
         return True
         
     def get_shots(self):

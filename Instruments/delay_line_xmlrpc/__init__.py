@@ -35,6 +35,6 @@ class DelayLine(IDelayLine):
 
 
 dl = DelayLine()
-print(dl.is_moving())
-print(dlproxy.get_home(), dl.home_pos)
-print(dl.def_home())
+#print(dl.is_moving())
+#print(dlproxy.get_home(), dl.home_pos)
+#print(dl.def_home())

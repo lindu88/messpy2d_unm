@@ -23,7 +23,7 @@ class Cam:
     wavelengths: np.ndarray = attrib(init=False)
     wavenumbers: np.ndarray = attrib(init=False)
     disp_axis: np.ndarray = attrib(init=False)
-    disp_wavelengths: bool = True
+    disp_wavelengths: bool = attrib(True)
 
     sigShotsChanged: Signal = attrib(Factory(Signal))
     sigReadCompleted: Signal = attrib(Factory(Signal))
@@ -67,7 +67,7 @@ class Cam:
     def read_cam(self):
         rd = self.cam.make_reading()
         self.last_read = rd
-        self.sigReadCompleted.emit()
+        #self.sigReadCompleted.emit()
         return rd
 
     def set_wavelength(self, wl):
@@ -114,21 +114,21 @@ class Delayline:
             raise
         self._dl.move_fs(pos_fs, do_wait=do_wait)
         if not do_wait:
-            self._thread = threading.Thread(target=self.wait_and_update)
-            self._thread.start()
+            self.wait_and_update()
+        else:
+            while _dl.is_moving():
+                time.sleep(0.1)
 
         self.pos = self._dl.get_pos_fs()
         self.sigPosChanged.emit(self.pos)
 
     def wait_and_update(self):
         "Wait until not moving. Do update position while moving"
-        while self._dl.is_moving():
-            self.pos = self._dl.get_pos_fs()
-            self.sigPosChanged.emit(self.pos)
-            QTimer.singleShot(0, QApplication.instance().processEvents)
-
         self.pos = self._dl.get_pos_fs()
         self.sigPosChanged.emit(self.pos)
+        if self._dl.is_moving():
+            QTimer.singleShot(50, self.wait_and_update)
+
 
     def get_pos(self) -> float:
         return self._dl.get_pos_fs()

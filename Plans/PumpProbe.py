@@ -52,10 +52,18 @@ class PumpProbePlan:
     def make_step_gen(self):
         c = self.controller
         while True:
-            self.pre_scan()
+            # --- Pre Scan
+            rs = self.controller.rot_stage
+            if rs and self.use_rot_stage:
+                while rs.is_moving():
+                    rs.sigDegreesChanged.emit(rs.get_degrees())
+                    yield
+                self.rot_at_scan.append(rs.get_degrees())
+            self.controller.delay_line.set_pos(self.t_list[0] - 2000.)
             yield
             start_t = time.time()
 
+            # -- scan
             for self.t_idx, t in enumerate(self.t_list):
                 c.delay_line.set_pos(t*1000.)
                 while self.controller.delay_line._dl.is_moving():
@@ -81,18 +89,16 @@ class PumpProbePlan:
 
             delta_t = time.time() - start_t
             self.time_per_scan = '%d:%02d'%(delta_t // 60, delta_t % 60)
-            self.post_scan()
 
-    def post_scan(self):
-        self.num_scans += 1
-        self.controller.delay_line.set_pos(self.t_list[0], do_wait=False)
-        for pp in self.cam_data:
-            pp.post_scan()
-        print(self.common_mulitple_cwls)
-        if self.use_rot_stage and self.num_scans % self.common_mulitple_cwls:
-            self.rot_idx = (self.rot_idx+1) % len(self.rot_stage_angles)
-            self.controller.rot_stage.set_degrees(self.rot_stage_angles[self.rot_idx])
-
+            # --- post scans
+            self.num_scans += 1
+            self.controller.delay_line.set_pos(self.t_list[0], do_wait=False)
+            for pp in self.cam_data:
+                pp.post_scan()
+            print(self.common_mulitple_cwls)
+            if self.use_rot_stage and self.num_scans % self.common_mulitple_cwls:
+                self.rot_idx = (self.rot_idx + 1) % len(self.rot_stage_angles)
+                self.controller.rot_stage.set_degrees(self.rot_stage_angles[self.rot_idx])
 
     def get_name(self):
         if self._name is None:
@@ -106,6 +112,7 @@ class PumpProbePlan:
         return self._name
 
     def save(self):
+        print('save')
         name = self.get_name()
         data = {"data_" + ppd.cam.name: np.float32(ppd.completed_scans)
                 for ppd in self.cam_data}
@@ -117,16 +124,6 @@ class PumpProbePlan:
         data['rot'] = self.rot_at_scan
         np.savez(name, **data)
             
-
-    def pre_scan(self):
-        rs = self.controller.rot_stage
-        if rs and self.use_rot_stage:
-            self.rot_at_scan.append(rs.get_degrees())
-            while rs.is_moving():
-                time.sleep(0.1)
-        self.controller.delay_line.set_pos(self.t_list[0]-2000., do_wait=False)
-        while self.controller.delay_line._dl.is_moving():
-            QApplication.instance().processEvents()
 
 
 @attrs(auto_attribs=True, cmp=False)
