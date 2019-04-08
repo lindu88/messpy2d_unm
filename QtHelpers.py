@@ -320,8 +320,6 @@ class ObserverPlot(pg.PlotWidget):
 
 
     def update_data(self):
-        if not self.do_update:
-            return
         self.use_inverse = False
         if self.x is not None and self.use_inverse:
             x = 1e7/x
@@ -333,7 +331,9 @@ class ObserverPlot(pg.PlotWidget):
 
         for o in self.observed:
             if callable(o):
-                self.lines[o].setData(x=x, y=o())
+                y = o()
+
+                self.lines[o].setData(x=x, y=y)
             else:
                 y = getattr(*o)
                 if y is not None:

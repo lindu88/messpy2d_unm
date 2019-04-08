@@ -60,6 +60,20 @@ class Cam(ICam):
         )
 
     @wrapt.synchronized
+    def new_make_reading(self):
+        socket.send_json(('reading', ''))
+        shape, dtype = socket.recv_json()
+        arr = socket.recv()
+        arr = np.frombuffer(arr, dtype=dtype).reshape(shape)
+        print('reading')
+        return Reading(
+            lines=arr[:2, :],
+            stds=arr[2:5, :],
+            signals=arr[5:6, :],  # np.stack((signal2)),
+            valid=True,
+        )
+
+    @wrapt.synchronized
     def set_shots(self, shots: int):
         shots = int(shots)
         socket.send_json(('set_shots', shots))
@@ -90,6 +104,15 @@ class Cam(ICam):
         except ValueError:
             pass
 
+    @wrapt.synchronized
+    def set_background(self, back):
+        socket.send_json(('set_back', ''))
+        ans = socket.recv_json()
+
+    @wrapt.synchronized
+    def get_background(self):
+        socket.send_json(('get_back', ''))
+        return socket.recv_json()
 
 
 cam = Cam()

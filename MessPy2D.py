@@ -36,7 +36,7 @@ class MainWindow(QMainWindow):
         self.timer = QTimer()
         self.timer.timeout.connect(controller.loop)
 
-        #self.toggle_run(True)
+        self.toggle_run(True)
         self.xaxis = {}
 
         dock_wigdets = []
@@ -134,7 +134,7 @@ class MainWindow(QMainWindow):
 
     def toggle_run(self, bool):
         if bool:
-            self.timer.start(0)
+            self.timer.start(10)
         else:
             self.timer.stop()
 
@@ -251,6 +251,7 @@ class CommandMenu(QWidget):
                              format_str='%.1f deg', presets=[0, 45])
 
         rsi.update_value(rs.get_degrees())
+        rs.sigDegreesChanged.connect(rsi.update_value)
         gb = make_groupbox([rsi], "Rotation Stage")
 
         self._layout.addWidget(gb)
@@ -342,16 +343,16 @@ if __name__ == '__main__':
     #ppi.show()
     #mw.showFullScreen()
     mw.showMaximized()
-
-    from enaml import imports
-    with imports():
-        from scan_spectrum import ScanSettingsView
-
-    from EnamlModel import ScanSpectrumSettings, SampleInfo
-    fv = ScanSettingsView(ss=ScanSpectrumSettings(), si=SampleInfo())
-    fv.initialize()
-    fv.activate_proxy()
-    fv.proxy.widget.show()
+    #
+    # from enaml import imports
+    # with imports():
+    #     from scan_spectrum import ScanSettingsView
+    #
+    # from EnamlModel import ScanSpectrumSettings, SampleInfo
+    # fv = ScanSettingsView(ss=ScanSpectrumSettings(), si=SampleInfo())
+    # fv.initialize()
+    # fv.activate_proxy()
+    # fv.proxy.widget.show()
 
     app.aboutToQuit = lambda x: controller.shutdown()
     app.exec_()
