@@ -4,7 +4,7 @@ from enum import auto
 import numpy as np
 from Signal import Signal
 T = typing
-import asyncio
+import asyncio, contextlib
 from qtpy.QtCore import Signal, Slot, QObject
 
 
@@ -109,9 +109,10 @@ class ICam(IDevice):
         out = []
         def reader():
             out.append(self.make_reading())
-        thread = threading.Thread(target=reader())
+        thread = threading.Thread(target=reader)
+        thread.start()
         while thread.is_alive():
-            await asyncio.sleep(0.1)
+            await asyncio.sleep(0.01)
         return out[0]
 
 
@@ -195,6 +196,14 @@ class IShutter(IDevice):
     def shutdown(self):
         pass
 
+    @contextlib
+    def opened(self):
+        self.open()
+        yield
+        self.close()
+
+
+
 @attr.s
 class IRotationStage(IDevice):
     sigDegreesChanged: Signal = attr.ib(attr.Factory(Signal))
@@ -221,7 +230,7 @@ class IRotationStage(IDevice):
         self.set_degrees(deg)
         while self.is_moving():
             self.sigDegreesChanged.emit(deg)
-            await asyncio.sleep(0.1)
+            await asyncio.sleep(0.3)
 
 
 class ILissajousScanner(IDevice):

@@ -245,6 +245,7 @@ class PumpProbeDataViewer(QWidget):
     def closeEvent(self, a0) -> None:
         self.pp_plan.sigWavelengthChanged.disconnect(self.handle_wl_change)
         super().closeEvent(a0)
+        
 
 class PumpProbeStarter(PlanStartDialog):
     title = "New Pump-probe Experiment"

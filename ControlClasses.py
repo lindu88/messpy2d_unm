@@ -10,7 +10,7 @@ Reading = I.Reading
 
 from qtpy.QtWidgets import QApplication
 from qtpy.QtCore import QThread, QTimer
-
+import asyncio as aio
 
 @attrs(cmp=False)
 class Cam:
@@ -129,9 +129,13 @@ class Delayline:
         if self._dl.is_moving():
             QTimer.singleShot(50, self.wait_and_update)
 
-
     def get_pos(self) -> float:
         return self._dl.get_pos_fs()
+
+    async def async_set_pos(self):
+        self._dl.move_fs(pos_fs, do_wait=False)
+        while _dl.is_moving():
+            aio.sleep(0.1)
 
     def set_speed(self, ps_per_sec: float):
         self._dl.set_speed(ps_per_sec)
