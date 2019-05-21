@@ -5,7 +5,7 @@ import wrapt
 
 
 
-config.dl_server = 'http://130.133.30.24:8001'
+config.dl_server = 'http://130.133.30.235:8000'
 
 dlproxy = ServerProxy(config.dl_server)
 
@@ -35,6 +35,8 @@ class DelayLine(IDelayLine):
 
 
 dl = DelayLine()
-#print(dl.is_moving())
-#print(dlproxy.get_home(), dl.home_pos)
+if __name__ == '__main__':
+
+    dl.is_moving()
+    print(dlproxy.get_home(), dl.home_pos)
 #print(dl.def_home())

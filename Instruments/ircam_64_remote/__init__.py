@@ -30,6 +30,7 @@ class Cam(ICam):
     changeable_wavelength: bool = True
     changeable_slit: bool = True
 
+    @wrapt.synchronized
     def read_cam(self):
         socket.send_json(('read', ''))
         #data = socket.recv()
@@ -120,5 +121,6 @@ cam = Cam()
 if __name__  == '__main__':
     print(cam.get_wavelength())
     #cam.set_wavelength(1e7/1700)
-    #print(cam.read_cam())
+    print(cam.set_shots(100))
+    print(cam.read_cam())
     print(cam.get_wavelength_array(5000), cam.get_wavelength_array(5500))

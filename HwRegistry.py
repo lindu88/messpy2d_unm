@@ -1,7 +1,7 @@
 import platform
 from Config import config
 from Instruments.mocks import CamMock, DelayLineMock
-
+TESTING = config.testing
 _cam = CamMock()
 _cam2 = CamMock(name="Mock2")
 _dl = DelayLineMock()
@@ -32,10 +32,11 @@ if pc_name == '2dir-PC':
     #from Instruments.FringeCounter import fc
     #_fc = fc
 
-elif pc_name == 'helmholm':
+elif pc_name == 'helmholm' and not TESTING:
     from Instruments.stresing_cam.ESLS import Cam
-    from Instruments.delay_line_serial import dl as _dl
+    #from Instruments.delay_line_serial import dl as _dl
     from Instruments.delay_line_xmlrpc import dl as _dl
+    #from Instruments.delay_line_mercury import dl as _dl
     _cam = Cam()
     from Instruments.ircam_64_remote import cam
     _cam2 = cam

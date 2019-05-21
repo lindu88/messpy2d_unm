@@ -264,12 +264,14 @@ class CommandMenu(QWidget):
 
         def calc_and_set_wl(s):
             s = s.strip()
-            if s[-1] == 'c':
-                wl =  1e7/float(s[:-1])
-            else:
-                wl =  float(s)
-            spec.set_wavelength(wl)
-
+            try:
+                if s[-1] == 'c':
+                    wl =  1e7/float(s[:-1])
+                else:
+                    wl =  float(s)
+                spec.set_wavelength(wl)
+            except ValueError:
+                pass
 
         spec_control = ControlFactory('Wavelength', calc_and_set_wl,
                                       format_str='%.1f nm',

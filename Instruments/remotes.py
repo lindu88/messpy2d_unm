@@ -19,6 +19,7 @@ class RotationStage(IRotationStage):
     def set_degrees(self, deg: float):
         deg = float(deg)
         rot.set_pos(deg)
+        #self.sigDegreesChanged.emit(deg)
 
 
     @synchronized

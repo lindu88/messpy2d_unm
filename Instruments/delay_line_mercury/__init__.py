@@ -84,6 +84,7 @@ def fs_to_mm(t_fs):
 from Instruments.interfaces import IDelayLine
 class DelayLine(IDelayLine):
     def __init__(self):
+        self.pos_sign = -1
         if not INI():
             #raise IOError("Can't init Mercury")
             pass
@@ -94,26 +95,27 @@ class DelayLine(IDelayLine):
             while is_moving():
                 print('ref ing')
                 time.sleep(0.1)
-        self.set_speed(1.0)
-        self.homepos = 9.0
+        self.set_speed(6.0)
+
+        try:
+            with open('zeropos', 'r') as f:
+                self.home_pos = float(f.readline())
+        except IOError:
+            self.home_pos = 9.0
 
     def get_pos_mm(self):
         return qPOS()
 
-    def get_pos_fs(self):
-        return mm_to_fs((self.get_pos_mm()-self.homepos)*2.)
+    def get_mm(self):
+        return qPOS()
 
     def move_mm(self, mm, do_wait=True):
-        MOV(mm)
+        a = MOV(mm)
         if do_wait:
             while is_moving():
                 #print('mov ing')
                 time.sleep(0.05)
-
-    def move_fs(self, fs, do_wait=True):
-        mm = fs_to_mm(fs)
-        print('mm', mm+self.homepos)
-        self.move_mm(mm/2.+self.homepos, do_wait=do_wait)
+        return a
 
     def set_speed(self, speed):
         speed = float(speed)
@@ -133,7 +135,28 @@ class DelayLine(IDelayLine):
             if sign*diff > 0:
                 break
 
+    def is_moving(self):
+        return is_moving()
+
+    def def_home(self):
+        self.home_pos = self.get_pos_mm()
+        with open('zeropos', 'w') as f:
+            f.writelines(str(self.home_pos))
+        return True
+
+    def get_home(self):
+        return self.home_pos
+
+
 dl = DelayLine()
+
+if __name__ == '__main__':
+    import xmlrpc.server
+
+    server = xmlrpc.server.SimpleXMLRPCServer(('',8000))
+    server.register_instance(dl)
+    server.serve_forever()
+
 #dl.move_mm(15)
 #dl.move_mm(0)
 

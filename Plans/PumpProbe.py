@@ -59,13 +59,15 @@ class PumpProbePlan:
                     rs.sigDegreesChanged.emit(rs.get_degrees())
                     yield
                 self.rot_at_scan.append(rs.get_degrees())
-            self.controller.delay_line.set_pos(self.t_list[0] - 2000.)
-            yield
+            self.controller.delay_line.set_pos(self.t_list[0] - 2000., do_wait=False)
+            while self.controller.delay_line._dl.is_moving():
+                yield
+
             start_t = time.time()
 
             # -- scan
             for self.t_idx, t in enumerate(self.t_list):
-                c.delay_line.set_pos(t*1000.)
+                c.delay_line.set_pos(t*1000., do_wait=False)
                 while self.controller.delay_line._dl.is_moving():
                     yield
                 if self.use_shutter:
@@ -95,18 +97,18 @@ class PumpProbePlan:
             self.controller.delay_line.set_pos(self.t_list[0], do_wait=False)
             for pp in self.cam_data:
                 pp.post_scan()
-            print(self.common_mulitple_cwls)
-            if self.use_rot_stage and self.num_scans % self.common_mulitple_cwls:
+
+            if self.use_rot_stage and (self.num_scans % self.common_mulitple_cwls == 0):
                 self.rot_idx = (self.rot_idx + 1) % len(self.rot_stage_angles)
                 self.controller.rot_stage.set_degrees(self.rot_stage_angles[self.rot_idx])
 
     def get_name(self):
         if self._name is None:
             p = Path(config.data_directory)
-            dname = p / f"{self.name}.messpy1"
+            dname = p / f"{self.name}_messpy1.npz"
             i = 0
             while dname.is_file():
-                dname = p / f"{self.name}{i}.messpy1"
+                dname = p / f"{self.name}{i}_messpy1.npz"
                 i = i + 1
             self._name = dname
         return self._name
