@@ -44,18 +44,18 @@ import pyqtgraph.parametertree.parameterTypes as pTypes
 
 class WavelengthParameter(pTypes.GroupParameter):
     def __init__(self, **opts):
-        opts['type'] = 'bool'
-        opts['value'] = True
+        opts['type'] = 'float'
+        opts['value'] = 700
         pTypes.GroupParameter.__init__(self, **opts)
 
         self.addChild({'name': 'Wavelength (nm)', 'type': 'float', 'value': 700,
                        'decimals': 5,})
         self.addChild({'name': 'Wavenumber (cm-1)', 'type': 'float', 'value': 1e7 / 700.,
                        'decimals': 5,})
-        self.a = self.param('Wavelength (nm)')
-        self.b = self.param('Wavenumber (cm-1)')
-        self.a.sigValueChanged.connect(self.aChanged)
-        self.b.sigValueChanged.connect(self.bChanged)
+        self.wl = self.param('Wavelength (nm)')
+        self.wn = self.param('Wavenumber (cm-1)')
+        self.wl.sigValueChanged.connect(self.aChanged)
+        self.wn.sigValueChanged.connect(self.bChanged)
 
     def aChanged(self):
         self.b.setValue(1e7 / self.a.value(), blockSignal=self.bChanged)
@@ -87,6 +87,7 @@ class ScanSpectrumStarter(PlanStartDialog):
                          children=tmp)
         params = [samp, p]
         self.paras = pt.Parameter.create(name='Scan Spectrum', type='group', children=params)
+        self.para.sigPara
         self.save_defaults()
 
     def create_plan(self, controller: Controller):

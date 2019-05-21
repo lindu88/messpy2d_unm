@@ -14,17 +14,21 @@ class SampleInfo(a.Atom):
     annotations = a.Unicode('')
 
 
+class FocusInfo(a.Atom):
+    "All units are given in μm"
+    pump_x = a.Int(0)
+    pump_y = a.Int(0)
+    probe_x = a.Int(0)
+    probe_y = a.Int(0)
+    ref_x = a.Int(0)
+    ref_y = a.Int(0)
+
+
 class SetupInfo(a.Atom):
     excitation_wavelength = a.Float()
     excitation_energy_mw = a.Float()
-
-class FocusInfo(a.Atom):
-    "All units are given in μm"
-    pump_x = a.Float(0)
-    pump_y = a.Float(0)
-    probe_x = a.Float(0)
-    probe_y = a.Float(0)
-
+    focus = a.Typed(FocusInfo)
+    shots = a.Int()
 
 class ScanSpectrumSettings(a.Atom):
     wl_min = a.Float(400)
@@ -34,9 +38,11 @@ class ScanSpectrumSettings(a.Atom):
     linear_in = a.Enum('wl', 'wn')
     path = a.Str('')
 
-    @a.observe('wl_min')
-    def bla(self, ch):
-        print(f'bla{self.wl_min}')
+
+class PumpProbeSettings(a.Atom):
+    switch_pol = a.Bool(False)
+    center_wls = a.List(a.Float)
+    delay_times = a.List(a.Float)
 
 
 if __name__ == '__main__':
@@ -48,7 +54,7 @@ if __name__ == '__main__':
         from scan_spectrum import ScanSettingsView
     w = QtWidgets.QMainWindow()
 
-    fv = ScanSettingsView(ss=ScanSpectrumSettings(), si=SampleInfo())
+    fv = ScanSettingsView(ss=ScanSpectrumSettings(), si=SampleInfo(), focus=FocusInfo())
     fv.initialize()
     fv.activate_proxy()
     w.setCentralWidget(fv.proxy.widget)

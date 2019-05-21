@@ -1,6 +1,6 @@
 from enaml.widgets.api import Window, Container, GroupBox, Label, Form, RadioButton,\
                               Field, PushButton, ImageView, Timer, RawWidget, ComboBox, CheckBox
-from enaml.layout.api import vbox, hbox, align
+from enaml.layout.api import vbox, hbox, align, grid
 from enaml.stdlib.slider_transform import FloatTransform
 from enaml.stdlib.fields import IntField, FloatField
 from enaml.core.api import Looper, Conditional
@@ -51,10 +51,55 @@ enamldef ExcitationInfoView(Form):
     Field: 
         text := exi.excitation_energy
 
+    
+
+
+
+enamldef FocusView(Container):
+    attr focus
+
+    constraints << [grid([c1, x_lbl, y_lbl],
+                         [lbl_pr, x_pr, y_pr],
+                         [lbl_pu, x_pu, y_pu],
+                         [lbl_ref, x_ref, y_ref]), 
+                    x_pu.width <= 50, y_pu.width <= 50,
+                    x_pr.width <= 50, y_pr.width <= 50,
+                    x_ref.width <= 50, y_ref.width <= 50,]
+    Container: c1:
+        pass
+    Label: lbl_pr:
+        text = "Probe"
+    Label: x_lbl:
+        text = 'x (μm)'
+        align = 'center'
+    Label: y_lbl:
+        text = 'y (μm)'
+        align = 'center'
+    IntField: x_pr:
+        value := focus.probe_x    
+    IntField: y_pr:
+        value := focus.probe_y
+    Label: lbl_pu:
+        text = "Pump"    
+    IntField: x_pu:
+        value := focus.pump_x   
+    IntField: y_pu:
+        value := focus.pump_y
+    Label: lbl_ref:
+        text = "Ref"    
+    IntField: x_ref:
+        value := focus.ref_x   
+    IntField: y_ref:
+        value := focus.ref_y
+
+
+
 enamldef SampleInfoView(Form):
     attr sample_info
     attr list_of_samples: list = config.list_of_samples
     attr list_of_solvents: list = config.list_of_solvents
+    
+
     Label:
         text = 'Sample'
     Field: 
@@ -85,7 +130,6 @@ enamldef SampleInfoView(Form):
     ComboBox: cb2:
         items = list_of_solvents
         selected_item >> sample_info.solvent_name    
-
     Label:
         text = 'Thickness'
     Field: 
@@ -94,18 +138,26 @@ enamldef SampleInfoView(Form):
         text = 'Annotations'
     Field:
         text := sample_info.annotations
-    
+
 
 
 enamldef ScanSettingsView(GroupBox):
     attr si
-    attr ss
+    attr ss    
+    attr focus
+
+    padding = 0
+    maximum_size = (900, 300)
+    
     Container:
         CheckBox: si_enabled:
             text = 'Sample info'
             checked := siv.enabled
         SampleInfoView: siv:
             sample_info = si
+
+    FocusView:
+        focus = parent.focus
 
     Container:
         FreqView: wl_min:
@@ -138,6 +190,4 @@ enamldef ScanSettingsView(GroupBox):
                 text = "Filename"
             Field:
                 text := ss.path
-
-
 

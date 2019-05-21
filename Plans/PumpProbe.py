@@ -8,6 +8,7 @@ from Signal import Signal
 from pathlib import Path
 from Config import config
 import datetime
+import asyncio as aio
 
 if TYPE_CHECKING:
     from Instruments.interfaces import ICam, IRotationStage, IShutter
@@ -48,6 +49,45 @@ class PumpProbePlan:
         for c, cwl in zip(self.controller.cam_list, self.center_wl_list):
             self.cam_data.append(PumpProbeData(cam=c, cwl=cwl, plan=self, t_list=self.t_list))
             c.set_shots(self.shots)
+
+    async def maybe_switch_pol(self):
+        rs = self.controller.rot_stage
+        do_switch = (self.num_scans % len(self.rot_stage_angles) == 0)
+        if do_switch and self.use_rot_stage:
+            self.rot_idx = (self.rot_idx+1) % len(self.rot_stage_angles)
+            next_pos = self.rot_stage_angles[self.rot_idx]
+            await rs.async_set_degrees(next_pos)
+
+    async def post_scan(self):
+        self.num_scans += 1
+        self.controller.delay_line.set_pos(self.t_list[0], do_wait=False)
+        for pp in self.cam_data:
+            pp.post_scan()
+
+    async def scan(self):
+        c = self.controller
+        loop = aio.get_event_loop()
+        await self.maybe_switch_pol()
+
+        await c.delay_line.async_set_pos(self.t_list[0]-2000.)
+        for self.t_idx, t in enumerate(self.t_list):
+            await c.delay_line.async_set_pos(t)
+            tasks = []
+            for cd in self.cam_data:
+                coro = loop.run_in_executor(None, cd.read_point, (self.t_idx,))
+                tasks.append(coro)
+            if self.use_shutter:
+                c.shutter.open()
+            await aio.gather(*tasks)
+            if self.use_shutter:
+                c.shutter.close()
+        self.num_scans += 1
+        self.controller.delay_line.set_pos(self.t_list[0], do_wait=False)
+        for pp in self.cam_data:
+            pp.post_scan()
+
+    async def step(self):
+        yield self.scan()
 
     def make_step_gen(self):
         c = self.controller
@@ -118,8 +158,7 @@ class PumpProbePlan:
         name = self.get_name()
         data = {"data_" + ppd.cam.name: np.float32(ppd.completed_scans)
                 for ppd in self.cam_data}
-        wls = {"wl_" + ppd.cam.name: ppd.wavelengths
-                for ppd in self.cam_data}
+        wls = {"wl_" + ppd.cam.name: ppd.wavelengths for ppd in self.cam_data}
         data.update(wls)
         data['meta'] = self.meta
         data['t'] = np.array(self.t_list)
@@ -180,12 +219,6 @@ class PumpProbeData:
 
     def read_point(self, t_idx):
         self.t_idx = t_idx
-        #t1 = threading.Thread(target=self.cam.read_cam)
-        #t1.start()
-        #while t1.isAlive():
-        #    QApplication.instance().processEvents()
-
-
         self.cam.read_cam()
         lr = self.cam.last_read
         self.current_scan[self.wl_idx, t_idx, :, :] = lr.signals[...]
