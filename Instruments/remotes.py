@@ -1,7 +1,8 @@
 from xmlrpc.client import ServerProxy
 from Config import config
-from Instruments.interfaces import IRotationStage, IShutter
+from Instruments.interfaces import IRotationStage, IShutter, ILissajousScanner
 from wrapt import synchronized
+import typing
 import attr
 from Signal import Signal
 
@@ -44,6 +45,26 @@ class Shutter(IShutter):
         shutter.toggle()
         self.sigShutterToggled.emit(self.is_open())
 
+
+config.fh_server = 'http://130.133.30.146:8004'
+fh = ServerProxy(config.fh_server, allow_none=True)
+
+
+@attr.s
+class Faulhaber(ILissajousScanner):
+    name = attr.ib('xmlrpc-Faulhaber')
+
+    @synchronized
+    def is_moving(self) -> typing.Tuple[bool, bool]:
+        return fh.is_xy_moving()
+
+    @synchronized
+    def set_pos_mm(self, x=None, y=None):
+        fh.set_pos_mm(x, y)
+
+    @synchronized
+    def get_pos_mm(self) -> typing.Tuple[float, float]:
+        return fh.get_pos_mm()
 
 if __name__ == '__main__':
     sh = Shutter()

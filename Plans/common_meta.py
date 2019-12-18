@@ -2,7 +2,7 @@ from Config import config
 import attr, time
 
 samp = {'name': 'Sample', 'type': 'group', 'children': [
-    dict(name='Sample', type='list', values=config.list_of_samples),
+    dict(name='Sample', type='str', value=''),
     dict(name='Solvent', type='list', values=config.list_of_solvents),
     dict(name='Excitation', type='str'),
     dict(name='Thickness', type='str'),

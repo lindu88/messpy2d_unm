@@ -5,7 +5,7 @@ import numpy as np
 from Signal import Signal
 T = typing
 import asyncio, contextlib
-from qtpy.QtCore import Signal, Slot, QObject
+#from qtpy.QtCore import Signal, Slot, QObject
 
 
 @attr.s
@@ -196,7 +196,7 @@ class IShutter(IDevice):
     def shutdown(self):
         pass
 
-    @contextlib
+    @contextlib.contextmanager
     def opened(self):
         self.open()
         yield
@@ -234,6 +234,16 @@ class IRotationStage(IDevice):
 
 
 class ILissajousScanner(IDevice):
+    def init_motor(self):
+        pass
+
+    def disable_motor(self):
+        pass
+
+    @abc.abstractmethod
+    def get_pos_mm(self) -> typing.Tuple[float, float]:
+        pass
+
     @abc.abstractmethod
     def set_pos_mm(self, x=None, y=None):
         pass

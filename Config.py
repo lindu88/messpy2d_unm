@@ -10,10 +10,11 @@ p = Path(__file__).parent / 'messpy_config'
 class Config:
     shots: int = 20
     list_of_solvents: list = ['Toluene', 'THF', 'H20', 'D20', 'DMSO', 'None']
-    list_of_samples: list = ['Chlorophyll', 'AGP2', 'Cyclohexanol', 'Phenylisocyanat', 'TDI', 'Semi-Conductor']
+    list_of_samples: list = ['Chlorophyll', 'AGP2', 'Cyclohexanol', 'Phenylisocyanat', 'TDI',
+                             'Semi-Conductor', 'Cph1']
     exp_settings: dict = attr.Factory(lambda: defaultdict(dict))
     conf_path: str = p
-    data_directory: Path = Path(__file__).parent / 'results'
+    data_directory: Path = Path('D:') / 'results'
     testing = False
 
     def save(self, fname=p):
@@ -32,6 +33,7 @@ if config_available:
     f = attr.asdict(Config.load(p))
     for key, val in f.items():
         setattr(config, key, val)
+config.data_directory = Path('D:\\') / 'results'
 
 
 

@@ -246,7 +246,7 @@ class CommandMenu(QWidget):
             dl2.sigPosChanged.connect(dl2c.update_value)
         return dls
 
-    def add_rot_stage(self, rs):
+    def add_rot_stage(self, rs ):
         rsi = ControlFactory('Angle', rs.set_degrees,
                              format_str='%.1f deg', presets=[0, 45])
 
@@ -302,7 +302,7 @@ if __name__ == '__main__':
 
     app = QApplication([])
 
-    enaml_app = QtApplication()
+    #enaml_app = QtApplication()
 
     sys._excepthook = sys.excepthook
     def exception_hook(exctype, value, traceback):

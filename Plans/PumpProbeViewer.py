@@ -137,6 +137,7 @@ class PumpProbeDataViewer(QWidget):
         l.setMovable(True)
         lbl = LineLabel(l, self)
         self.line_area.addWidget(lbl)
+
         tl = self.trans_plot.plot(pen=pg.mkPen(c, width=2))
         tlh = self.trans_plot.plot(pen=pg.mkPen(c, width=4))
 

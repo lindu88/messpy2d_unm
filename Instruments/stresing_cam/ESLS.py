@@ -11,7 +11,7 @@ from typing import Tuple, List
 import numpy as np
 import time
 import threading
-
+import scipy.stats as st
 
 class ESLS(NiceLib):
     _info_ = load_lib('esls', __package__)    
@@ -92,7 +92,7 @@ class ESLS(NiceLib):
 ESLS.ErrMsgBoxOff()
 drv = ESLS.CCDDrv(1)
 
-from ..interfaces import ICam, Reading
+from Instruments.interfaces import ICam, Reading
 from wrapt import synchronized
 
 @attr.s(auto_attribs=True)
@@ -173,7 +173,9 @@ class Cam(ICam):
         tm = tmp.mean(1)
         fac = -1000 if chopper[0] else 1000
 
-        signal = 0.5*fac * np.log10(a[::2, :].mean(0)/a[1::2, :]).mean(0)
+        even = st.trim_mean(a[::2, :], 0.05, 0)
+        odd = st.trim_mean(a[1::2, :], 0.05, 0)
+        signal = 0.5*fac * np.log10(even/odd)
 
         return Reading(
             lines=tm,
@@ -190,7 +192,12 @@ class Cam(ICam):
         
     def get_shots(self):
         return self.shots
-    
+
+    def get_wavelength_array(self, center_wl):
+        slope = -1.5
+        intercept = 864.4
+        return slope * np.arange(390) + intercept
+
     def shutdown(self):
         ESLS.StopRingReadThread()
         drv.CCDDrvExit()
@@ -205,7 +212,7 @@ if __name__ == '__main__':
     #import qtpy.QtGui as g
     cam = Cam()
     cam.start_ring_thread()
-    cam.read_ring()
+    #cam.read_ring()
 
     #cam.stop_ring_thread()
     
