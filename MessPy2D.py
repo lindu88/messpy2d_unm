@@ -132,6 +132,11 @@ class MainWindow(QMainWindow):
         pp = QPushButton('Save current Spec', icon=asl_icon)
         tb.addWidget(pp)
 
+        alg_icon = qta.icon('mdi.chart-line', color='white')
+        pp = QPushButton('Show alignment helper')
+        pp.clicked.connect(self.show_alignment_helper)
+        tb.addWidget(pp)
+
     def toggle_run(self, bool):
         if bool:
             self.timer.start(10)
@@ -147,6 +152,12 @@ class MainWindow(QMainWindow):
             self.view.show()
         else:
             self.view = self.plan_class.viewer(self.controller.plan)
+
+    def show_alignment_helper(self):
+        self._ah = AlignmentHelper(self.controller)
+        self._ah.show()
+        #dw = QDockWidget(self._ah)
+        #self.addDockWidget(Qt.LeftDockWidgetArea, dw)
 
     def closeEvent(self, *args, **kwargs):
         config.save()

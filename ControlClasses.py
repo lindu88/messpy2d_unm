@@ -203,9 +203,11 @@ class Controller:
                 t2 = threading.Thread(target=self.cam2.read_cam)
                 t2.start()
 
-
-            while t1.isAlive() or t2.isAlive():
+            while t1.is_alive() or t2.is_alive():
                 QApplication.instance().processEvents()
+            self.cam.sigReadCompleted.emit()
+            if self.cam2:
+                self.cam2.sigReadCompleted.emit()
             t1.join()
             t2.join()
         else:
