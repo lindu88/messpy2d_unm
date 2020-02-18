@@ -38,7 +38,10 @@ class PumpProbePlan:
 
     @property
     def common_mulitple_cwls(self):
-        return np.lcm(*map(len, self.center_wl_list))
+        if len(self.center_wl_list) == 1:
+            return 1
+        else:
+            return np.lcm(*map(len, self.center_wl_list))
 
     def __attrs_post_init__(self):
         self._name = None
@@ -91,10 +94,16 @@ class PumpProbePlan:
 
     def make_step_gen(self):
         c = self.controller
+        rs = self.controller.rot_stage
+        rs.set_degrees(self.rot_stage_angles[self.rot_idx])
+        while rs.is_moving():
+            rs.sigDegreesChanged.emit(rs.get_degrees())
+            yield
         while True:
             # --- Pre Scan
-            rs = self.controller.rot_stage
+
             if rs and self.use_rot_stage:
+
                 while rs.is_moving():
                     rs.sigDegreesChanged.emit(rs.get_degrees())
                     yield
@@ -175,7 +184,7 @@ class PumpProbeData:
     cwl: List[float] = attrib()
     t_list: Iterable[float]
     scan: int = 0
-    delay_scans = 0
+    delay_scans : int  = 0
     wl_idx: int = 0
     t_idx: int = 0
 

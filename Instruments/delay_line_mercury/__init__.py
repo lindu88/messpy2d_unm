@@ -85,9 +85,8 @@ from Instruments.interfaces import IDelayLine
 class DelayLine(IDelayLine):
     def __init__(self):
         self.pos_sign = -1
-        if not INI():
-            #raise IOError("Can't init Mercury")
-            pass
+        #if not INI():
+        #    raise IOError("Can't init Mercury")
         if not qSVO():
             print(SVO(True))
         if not qFRF():
@@ -148,7 +147,7 @@ class DelayLine(IDelayLine):
         return self.home_pos
 
 
-dl = DelayLine()
+_dl = DelayLine()
 
 if __name__ == '__main__':
     import xmlrpc.server

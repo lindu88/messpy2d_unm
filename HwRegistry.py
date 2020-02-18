@@ -1,6 +1,8 @@
 import platform
 from Config import config
 from Instruments.mocks import CamMock, DelayLineMock
+import logging
+
 TESTING = config.testing
 _cam = CamMock()
 _cam2 = CamMock(name="Mock2")
@@ -31,15 +33,31 @@ if pc_name == '2dir-PC':
 
     #from Instruments.FringeCounter import fc
     #_fc = fc
+elif pc_name == 'ir-2d':
+    from Instruments.cam_phasetec import _ircam as _cam
+    _cam2 = None
+    #from Instruments.delay_line_gmc2 import DelayL
+    #from Instruments.delay_line_mercury import dl
+    from Instruments.delay_line_xmlrpc import _dl
+    hp = config.__dict__.get('Delay 1 Home Pos.', 8.80)
+    _dl.home_pos = hp
+    logging.info("Init RotationStage and Shutter (rpc)")
+    from Instruments.shutter import sh
+    _shutter = sh
+    from Instruments.RotationStage import rs
+    _rot_stage = rs
+
 
 elif pc_name == 'helmholm' and not TESTING:
     from Instruments.stresing_cam.ESLS import Cam
     #from Instruments.delay_line_serial import dl as _dl
     from Instruments.delay_line_xmlrpc import dl as _dl
     #from Instruments.delay_line_mercury import dl as _dl
+    logging.info("Init ESLS Cam")
     _cam = Cam()
-    from Instruments.ircam_64_remote import cam
-    _cam2 = cam
+    #from Instruments.ircam_64_remote import cam
+    _cam2 = None
+    logging.info("Init RotationStage and Shutter (rpc)")
     from Instruments.remotes import RotationStage, Shutter
     _rot_stage = RotationStage()
     _shutter = Shutter()

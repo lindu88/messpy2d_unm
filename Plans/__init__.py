@@ -4,6 +4,8 @@ from .TwoDPlan import TwoDimMoving
 from .TwoDPlanViewer import TwoDViewer, TwoDStarter
 from .ScanSpectrum import ScanSpectrum
 from .ScanSpectrumView import ScanSpectrumView, ScanSpectrumStarter
+from.FocusScan import FocusScan
+from.FocusScanView import FocusScanView,FocusScanStarter
 #__all__ = [PumpProbePlan, PumpProbeViewer, pump_probe_starter,  TwoDViewer, TwoDStarter]
 
 import abc

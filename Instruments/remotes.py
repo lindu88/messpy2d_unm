@@ -6,10 +6,10 @@ import typing
 import attr
 from Signal import Signal
 
-config.rot_server = 'http://130.133.30.146:8003'
+config.rot_server = 'http://130.133.30.223:8003'
 rot = ServerProxy(config.rot_server)
 
-config.shutter_server = 'http://130.133.30.146:8002'
+config.shutter_server = 'http://130.133.30.223:8002'
 shutter = ServerProxy(config.shutter_server)
 
 @attr.s
@@ -66,10 +66,13 @@ class Faulhaber(ILissajousScanner):
     def get_pos_mm(self) -> typing.Tuple[float, float]:
         return fh.get_pos_mm()
 
+rs = RotationStage()
+#sh = Shutter()
+
 if __name__ == '__main__':
-    sh = Shutter()
-    sh.toggle()
-    rs = RotationStage()
+    #sh = Shutter()
+    #sh.toggle()
+    #rs = RotationStage()
     print(rs.get_degrees())
     rs.set_degrees(30)
     print(rs.is_moving())

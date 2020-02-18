@@ -132,6 +132,11 @@ class MainWindow(QMainWindow):
         pp = QPushButton('Save current Spec', icon=asl_icon)
         tb.addWidget(pp)
 
+        asl_icon = qta.icon('ei.graph', color='white')
+        pp = QPushButton('Focus Scan', icon=asl_icon)
+        pp.clicked.connect(plan_starter(FocusScanStarter))
+        tb.addWidget(pp)
+
     def toggle_run(self, bool):
         if bool:
             self.timer.start(10)
@@ -296,9 +301,10 @@ class CommandMenu(QWidget):
 
 
 if __name__ == '__main__':
+
     import sys
     import numpy as np
-    from enaml.qt.qt_application import QtApplication
+    #from enaml.qt.qt_application import QtApplication
 
     app = QApplication([])
 

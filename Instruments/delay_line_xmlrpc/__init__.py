@@ -2,10 +2,10 @@ from xmlrpc.client import ServerProxy
 from Config import config
 from Instruments.interfaces import IDelayLine
 import wrapt
+import logging
 
 
-
-config.dl_server = 'http://130.133.30.235:8000'
+config.dl_server = 'http://130.133.30.223:8000'
 
 dlproxy = ServerProxy(config.dl_server)
 
@@ -33,10 +33,11 @@ class DelayLine(IDelayLine):
         self.home_pos = self.get_pos_mm()
         return dlproxy.def_home()
 
-
-dl = DelayLine()
+logging.info("Init xmlrpc delayline")
+_dl = DelayLine()
 if __name__ == '__main__':
 
     dl.is_moving()
     print(dlproxy.get_home(), dl.home_pos)
+    dl.move_mm(5)
 #print(dl.def_home())
