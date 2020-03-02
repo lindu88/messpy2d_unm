@@ -1,0 +1,34 @@
+2D Settings:
+  Filename: richtig
+  Shots: 19000
+  Speed: 0.05
+  delay 1: 0.0
+  end Tau 2: -4.0
+  start Tau 2: 0.7
+Pump Probe:
+  Filename: temp
+  Linear Range (+): 1
+  Linear Range (-): -1
+  Linear Range (step): 0.01
+  Logarithmic End: 0.0
+  Logarithmic Points: 0
+  Logarithmic Scan: false
+  Shots: 100
+Sample:
+  Annotations: 1.2 OD
+  Excitation: '2700'
+  Sample: TDI
+  Solvent: THF
+  Thickness: 50mu
+list_of_samples:
+- Cyclohexanol
+- Phenylisocyanat
+- TDI
+list_of_solvents:
+- Toluene
+- THF
+- H20
+- D20
+- DMSO
+- None
+shots: 100
