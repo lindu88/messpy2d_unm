@@ -124,7 +124,7 @@ class FringeCounter(object):
         print('time:', time.time() - self.time)
         while True:
             tc = self.get_target_counts()
-            print(tc)
+            #print(tc)
             time.sleep(0.1)
             if tc  ==  0:
                 break
@@ -132,7 +132,7 @@ class FringeCounter(object):
 
         b = self.get_counter_table()
 
-        print(b[0], len(b[1]))
+        #print(b[0], len(b[1]))
         return numpy.frombuffer(b[1][:-2], 'h')
 
     def set_counter(self, value=0):

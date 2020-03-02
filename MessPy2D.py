@@ -111,6 +111,7 @@ class MainWindow(QMainWindow):
                     self.cm.reopen_planview_but.setEnabled(True)
 
                     self.toggle_run(True)
+
             return f
 
         asl_icon = qta.icon('fa.percent', color='white')

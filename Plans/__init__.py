@@ -15,7 +15,6 @@ import attr
 
 class Plan(abc.ABC):
 
-
     @abc.abstractmethod
     def make_step(self):
         pass

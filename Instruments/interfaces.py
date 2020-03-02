@@ -90,7 +90,6 @@ class ICam(IDevice):
         r = self.make_reading()
         self.set_background(r.lines)
 
-
     def get_wavelength_array(self, center_wl):
         return np.arange(self.channels)
 

@@ -13,28 +13,27 @@ from QtHelpers import vlay, hlay, PlanStartDialog, ObserverPlot
 
 
 class ScanSpectrumView(QWidget):
-    def __init__(self, ss_plan: ScanSpectrum, *args, **kwargs):
+    def __init__(self, scan_plan: ScanSpectrum, *args, **kwargs):
         super(ScanSpectrumView, self).__init__(*args, **kwargs)
-        cam = ss_plan.cam
 
-        def amp_getter(i):
-            pixel = ss_plan.cam.channels // 2
-            return ss_plan.amplitudes[i, :ss_plan.wl_idx, pixel]
+        get_probe = lambda: scan_plan.probe[:scan_plan.wl_idx,64]
+        get_ref = lambda :scan_plan.ref[:scan_plan.wl_idx, 64]
+        #x = lambda: scan_plan.wls[:scan_plan.wl_idx, 64]
+        wn = lambda: 1e7/scan_plan.wls[:scan_plan.wl_idx, 64]
 
-        obs = [lambda: amp_getter(i) for i in range(cam.lines)]
-        x = lambda: ss_plan.wl_list[:ss_plan.wl_idx]
+
         self.top_plot = ObserverPlot(
-                obs=obs,
-                signal=ss_plan.sigPointRead,
-                x=x,
+                obs=[get_probe],
+                signal=scan_plan.sigPointRead,
+                x = wn,
         )
 
-        x = lambda: 1e7/ss_plan.wl_list[:ss_plan.wl_idx]
         self.bot_plot = ObserverPlot(
-                obs=obs,
-                signal=ss_plan.sigPointRead,
-                x=x,
+                obs=[get_ref],
+                signal=scan_plan.sigPointRead,
+                x = wn,
         )
+
         self.top_plot.plotItem.setLabel('bottom', 'Wavelength / nm')
         self.bot_plot.plotItem.setLabel('bottom', 'Wavenumber / cm-1')
         self.setLayout(vlay([self.top_plot, self.bot_plot]))
@@ -58,11 +57,10 @@ class WavelengthParameter(pTypes.GroupParameter):
         self.wn.sigValueChanged.connect(self.bChanged)
 
     def aChanged(self):
-        self.b.setValue(1e7 / self.a.value(), blockSignal=self.bChanged)
+        self.wn.setValue(1e7 / self.wl.value(), blockSignal=self.bChanged)
 
     def bChanged(self):
-        self.a.setValue(1e7 / self.b.value(), blockSignal=self.aChanged)
-
+        self.wl.setValue(1e7 / self.wn.value(), blockSignal=self.aChanged)
 
 class ScanSpectrumStarter(PlanStartDialog):
     experiment_type = 'ScanSpec'
@@ -76,8 +74,9 @@ class ScanSpectrumStarter(PlanStartDialog):
                 'step': 100, 'value': 100},
                WavelengthParameter(name='Min.'),
                WavelengthParameter(name='Max.'),
-               dict(name='Steps', type='int', min=2, value=30),
-               dict(name='Linear Axis', type='list', values=['nm', 'cm-1']),
+               {'name': 'Steps', 'type': 'int', 'min': 2, 'value': 30},
+               {'name': 'Linear Axis', 'type': 'list', 'values': [ 'cm-1','nm']},
+               {'name': 'timeout', 'type': 'float', 'value': 3}
                ]
 
         self.candidate_cams = {c.cam.name: c for c in self.controller.cam_list if c.cam.changeable_wavelength}
@@ -87,7 +86,6 @@ class ScanSpectrumStarter(PlanStartDialog):
                          children=tmp)
         params = [samp, p]
         self.paras = pt.Parameter.create(name='Scan Spectrum', type='group', children=params)
-        self.para.sigPara
         self.save_defaults()
 
     def create_plan(self, controller: Controller):
@@ -98,14 +96,14 @@ class ScanSpectrumStarter(PlanStartDialog):
         wl_list = np.linspace(p.child('Min.')[unit],
                             p.child('Max.')[unit],
                             p['Steps'])
-
-        if len(wl_list) == 0 or wl_list.min()-wl_list.max()==0:
-            raise ValueError('Zero Steps')
-        ss = ScanSpectrum(
+        if p['Linear Axis'] == 'cm-1':
+            wl_list = 1e7/wl_list
+        scan = ScanSpectrum(
                 name=p['Filename'],
                 cam=self.candidate_cams[p['Cam']],
                 meta=s,
                 wl_list=wl_list,
+                timeout = p['timeout']
         )
 
-        return ss
+        return scan

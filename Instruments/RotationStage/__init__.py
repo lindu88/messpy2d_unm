@@ -43,17 +43,22 @@ class RotationStage(IRotationStage):
     @rot.default
     def _default_rs(self):
         rot = serial.Serial(self.comport, baudrate = 115200 * 8, xonxoff = 1)
-        rot.timeout = 0.5
+        rot.timeout = 3
+
         return rot
+    #def __attrs_post_init__(self):
+    #    self.rot.write(b'1OR\r\n')
 
     def w(self,x):
-        writer_str = str(x) + '\r\n'
-        self.rot.write(writer_str.encode())
+        writer_str = f'{x}\r\n'
+        self.rot.write(writer_str.encode('utf-8'))
+        self.rot.timeout = 3
 
     def set_degrees(self, pos):
         """Set absolute position of the roatation stage"""
-        setter_str = '1PA' + str(pos) + '\r\n'
-        self.rot.write(setter_str.encode())
+        setter_str = f'1PA{pos}\r\n'
+        self.rot.write(setter_str.encode('utf-8'))
+        self.rot.timeout = 3
 
     def get_degrees(self):
         """Returns the position"""
@@ -82,8 +87,16 @@ class RotationStage(IRotationStage):
 rs = RotationStage()
 
 if __name__ == '__main__':
+    import time
+    print('change first')
+    rs.set_degrees(30)
+    time.sleep(8)
     deg = rs.get_degrees()
-    rs.set_degrees(20)
+    print(f'first pol:{deg}')
+    rs.set_degrees(50)
+    time.sleep(8)
+    deg = rs.get_degrees()
+    print(f'second pol:{deg}')
 
 
 

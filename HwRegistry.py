@@ -48,6 +48,7 @@ elif pc_name == 'ir-2d':
     _rot_stage = rs
 
 
+
 elif pc_name == 'helmholm' and not TESTING:
     from Instruments.stresing_cam.ESLS import Cam
     #from Instruments.delay_line_serial import dl as _dl
@@ -59,5 +60,5 @@ elif pc_name == 'helmholm' and not TESTING:
     _cam2 = None
     logging.info("Init RotationStage and Shutter (rpc)")
     from Instruments.remotes import RotationStage, Shutter
-    _rot_stage = RotationStage()
+    #_rot_stage = RotationStage()
     _shutter = Shutter()

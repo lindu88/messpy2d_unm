@@ -33,7 +33,6 @@ class Cam:
 
 
     def __attrs_post_init__(self):
-        self.load_bg()
         self.read_cam()
         c = self.cam
         self.channels = c.channels
@@ -72,8 +71,8 @@ class Cam:
         #self.sigReadCompleted.emit()
         return rd
 
-    def set_wavelength(self, wl):
-        self.cam.set_wavelength(wl)
+    def set_wavelength(self, wl, timeout = 5):
+        self.cam.set_wavelength(wl, timeout = timeout)
         self.sigWavelengthChanged.emit(wl)
 
     def get_wavelength(self):
@@ -82,15 +81,10 @@ class Cam:
     def get_wavelengths(self, center_wl=None):
         return self.cam.get_wavelength_array(center_wl)
 
-    def load_bg(self):
-        try:
-            self.cam.background = pickle.load(open('bg_temp', "rb"))
-        except:
-            pass
 
     def get_bg(self):
-        pickle.dump(self.last_read.lines, open('bg_temp', "wb"))
         self.cam.set_background(self.last_read.lines)
+
 
 
     def remove_bg(self):
