@@ -66,6 +66,7 @@ class PT_MCT:
         return TempK[0]
 
     def read_cam(self):
+        self.start_acq()
         self.reader.shots = self.shots
         return self.reader.read_cam(self.shots)
 
