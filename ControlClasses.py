@@ -7,11 +7,13 @@ from HwRegistry import _cam, _cam2, _dl, _dl2, _rot_stage, _shutter
 import Instruments.interfaces as I
 from Signal import Signal
 import pickle
+
 Reading = I.Reading
 
 from qtpy.QtWidgets import QApplication
 from qtpy.QtCore import QThread, QTimer
 import asyncio as aio
+
 
 @attrs(cmp=False)
 class Cam:
@@ -31,7 +33,6 @@ class Cam:
     sigWavelengthChanged: Signal = attrib(Factory(Signal))
     sigSlitChanged: Signal = attrib(Factory(Signal))
 
-
     def __attrs_post_init__(self):
         self.read_cam()
         c = self.cam
@@ -41,7 +42,7 @@ class Cam:
         self.name = c.name
         self.changeable_wavelength = c.changeable_wavelength
         self.wavelengths = self.get_wavelengths()
-        self.wavenumbers = 1e7/self.wavelengths
+        self.wavenumbers = 1e7 / self.wavelengths
         self.disp_axis = self.wavelengths.copy()
 
         self.sigWavelengthChanged.connect(self._update_wl_arrays)
@@ -68,11 +69,11 @@ class Cam:
     def read_cam(self):
         rd = self.cam.make_reading()
         self.last_read = rd
-        #self.sigReadCompleted.emit()
+        # self.sigReadCompleted.emit()
         return rd
 
-    def set_wavelength(self, wl, timeout = 5):
-        self.cam.set_wavelength(wl, timeout = timeout)
+    def set_wavelength(self, wl, timeout=5):
+        self.cam.set_wavelength(wl, timeout=timeout)
         self.sigWavelengthChanged.emit(wl)
 
     def get_wavelength(self):
@@ -81,14 +82,11 @@ class Cam:
     def get_wavelengths(self, center_wl=None):
         return self.cam.get_wavelength_array(center_wl)
 
-
     def get_bg(self):
-        self.cam.set_background(self.last_read.lines)
-
-
+        self.cam.set_background(self.shots)
 
     def remove_bg(self):
-        self.cam.set_background(None)
+        self.cam.remove_background()
 
     def set_slit(self, slit):
         self.cam.set_slit(slit)
@@ -97,6 +95,7 @@ class Cam:
 
     def get_slit(self):
         return self.cam.get_slit()
+
 
 @attrs(cmp=False)
 class Delayline:
@@ -155,8 +154,6 @@ class Delayline:
 arr_factory = Factory(lambda: np.zeros(16))
 
 
-
-
 class Controller:
     """Class which controls the main loop."""
     cam: Cam
@@ -165,8 +162,6 @@ class Controller:
     shutter: T.Optional[I.IShutter]
     delay_line: Delayline
     rot_stage: T.Optional[I.IRotationStage]
-
-
 
     def __init__(self):
         self.cam = Cam()
@@ -186,7 +181,6 @@ class Controller:
         self.delay_line = Delayline(dl=_dl)
         self.rot_stage = _rot_stage
 
-
         if _dl2:
             self.delay_line_second = Delayline(dl=_dl2)
         else:
@@ -196,7 +190,7 @@ class Controller:
         self.pause_plan = False
         self.running_step = False
         self.thread = None
-        #self.loop = lambda: next(self.loop_gen())
+        # self.loop = lambda: next(self.loop_gen())
 
     def loop(self):
         if self.plan is None or self.pause_plan:
@@ -204,7 +198,6 @@ class Controller:
             t1.start()
             t2 = threading.Thread()
             if self.cam2:
-
                 t2 = threading.Thread(target=self.cam2.read_cam)
                 t2.start()
 
@@ -223,7 +216,7 @@ class Controller:
                 self.pause_plan = True
         self.loop_finnished.emit()
 
-        #print(time.time() - t)
+        # print(time.time() - t)
 
     def shutdown(self):
         if _dl2 is not None:

@@ -203,10 +203,18 @@ class CommandMenu(QWidget):
         self.start_but.clicked.connect(lambda: self._sp.show())
         self.plan_label = QLabel('Default loop')
         self.plan_label.setAlignment(Qt.AlignHCenter)
+        self.pause_plan_but = QPushButton("Pause plan")
+        self.pause_plan_but.setCheckable(True)
+        c = self.parent().controller  # type: Controller
+        def switch_pause(ev):
+            c.pause_plan = self.pause_plan_but.isChecked()
+        self.pause_plan_but.clicked.connect(switch_pause)
+
         self.reopen_planview_but = QPushButton('Reopen Planview')
         self.reopen_planview_but.setEnabled(False)
         self.reopen_planview_but.clicked.connect(self.parent().show_planview)
-        for w in (self.start_but, self.plan_label, self.reopen_planview_but):
+        for w in (self.start_but, self.plan_label,
+                  self.reopen_planview_but, self.pause_plan_but):
             self._layout.addWidget(w)
 
     def add_ext_view(self):
