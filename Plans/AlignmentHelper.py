@@ -14,8 +14,6 @@ class AlignmentHelper(QWidget):
         self.time_max = 20
         self.t0 = time.time()
         self.controller = controller
-        cam1_obs = (controller.cam.last_read)
-
 
         self.graph_layouter = pg.GraphicsLayoutWidget()
         self.setLayout(qh.hlay([self.graph_layouter]))
@@ -25,22 +23,39 @@ class AlignmentHelper(QWidget):
 
         for cam in controller.cam_list:
             amp_plot = self.graph_layouter.addPlot()
-            std_plot = self.graph_layouter.addPlot()
-            self.graph_layouter.nextRow()
-            for l in range(cam.lines):
-                self.amp_lines[(cam, l)] = amp_plot.plot()
-                self.std_lines[(cam, l)] = std_plot.plot()
+            for line_name in range(len(cam.cam.line_names)):
+                c = pg.mkPen(color=qh.col[line_name])
+                self.amp_lines[(cam, line_name)] = amp_plot.plot(pen=c), []
 
-            cam.sigReadCompleted.connect(self.update_plots)
+            std_plot = self.graph_layouter.addPlot()
+            for std_name in range(len(cam.cam.std_names)):
+                c = pg.mkPen(color=qh.col[std_name])
+                self.std_lines[(cam, std_name)] = std_plot.plot(pen=c), []
+            self.graph_layouter.nextRow()
+        controller.loop_finnished.connect(self.update_plots)
 
     def update_plots(self):
+
         t = time.time()
         self.times.append(t-self.t0)
-        if t-self.times[0] > 20:
-            self.times.pop(0)
 
-        for (cam, line), p in self.amp_lines.items():
-            p.setData(cam.last_ )
+        if self.times[-1] - self.times[0] > self.time_max:
+            self.times = self.times[1:]
+            do_pop = True
+        else:
+            do_pop = False
+
+        for (cam, line), (p, data) in self.amp_lines.items():
+            data.append(cam.last_read.lines[line].mean())
+            if do_pop:
+                data.pop(0)
+            p.setData(self.times, data)
+
+        for (cam, line), (p, data) in self.std_lines.items():
+            data.append(cam.last_read.stds[line].mean())
+            if do_pop:
+                data.pop(0)
+            p.setData(self.times, data)
 
 
 if __name__ == '__main__':
