@@ -83,8 +83,12 @@ class ICam(IDevice):
     def get_background(self):
         return self.background
 
-    def set_background(self, back):
-        self.background = back
+    def remove_background(self):
+        self.background = 0
+
+    @abc.abstractmethod
+    def set_background(self, shots):
+        pass
 
     def record_background(self):
         r = self.make_reading()
