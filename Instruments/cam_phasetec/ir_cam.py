@@ -29,7 +29,7 @@ BINNING_MODES = [(128, 128), (128, 64), (128, 56), (128, 32), (128, 16),
 @attr.s(auto_attribs=True)
 class PT_MCT:
     shots: int = attr.ib(40)
-    int_time_us: int = attr.ib(5)
+    int_time_us: int = attr.ib(100)
     binning_mode: int = attr.ib(0)
     gain: int = attr.ib(8)
     offset: int = attr.ib(165)
@@ -66,7 +66,6 @@ class PT_MCT:
         return TempK[0]
 
     def read_cam(self):
-        self.start_acq()
         self.reader.shots = self.shots
         return self.reader.read_cam(self.shots)
 
@@ -101,7 +100,7 @@ if __name__ == '__main__':
         t = time.time()
         a = pt.read_cam()
         print(time.time()-t)
-        wid.setImage(a[0])
+        wid.setImage(a[0].T, autoLevels=False)
 
     timer.timeout.connect(update)
     timer.start(30)
