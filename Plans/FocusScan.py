@@ -159,19 +159,23 @@ class FocusScan():
 
     def get_name(self, data_path=False):
         if data_path:
-            p = Path(data_path)
+            p = Path(config.data_directory)
         else:
             p = r"C:\Users\2dir\messpy2d\data_temps"
         dname = p + f"\{self.name}_focusScan.npz"
-
-        if os.path.exists(dname):
-            name_exists = True
-            i = 0
-            while name_exists == True:
-                dname = p + f"\{self.name}{i}_focusScan.npz"
-                i += 1
-                if os.path.exists(dname) == False:
-                    name_exists = False
+        i = 0
+        while dname.is_file():
+            dname = p +f"\{self.name}{i}_focusScan.npz"
+            i = i + 1
+        self._name = dname
+        #if os.path.exists(dname):
+        #    name_exists = True
+        #    i = 0
+        #    while name_exists == True:
+        #        dname = p + f"\{self.name}{i}_focusScan.npz"
+        #        i += 1
+        #        if os.path.exists(dname) == False:
+        #            name_exists = False
         self._name = dname
         return self._name
 
@@ -186,7 +190,7 @@ class FocusScan():
         if self.scan_y:
             data['scan y'] = np.vstack((self.pos_y, self.probe_y, self.ref_y))
         try:
-            name = self.get_name(data_path=config.data_directory)
+            name = self.get_name(data_path=True)
             np.savez(name, **data)
             # fig.savefig(name[:-4] + '.png')
             print('saved in results')

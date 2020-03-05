@@ -100,11 +100,11 @@ class FocusScanStarter(PlanStartDialog):
                {'name': 'Shots', 'type': 'int', 'max': 2000, 'value': 100},
                {'name': 'Scan x', 'type': 'bool', 'value': True},
                {'name': 'Scan y', 'type': 'bool', 'value': True},
-               {'name': 'Start x', 'type': 'float', 'value': 0},
-               {'name': 'End x', 'type': 'float', 'value': 1},
-               {'name': 'Start y', 'type': 'float', 'value': 0},
-               {'name': 'End y', 'type': 'float', 'value': 1},
-               {'name': 'steps', 'type': 'float', 'value': 0.1}
+               {'name': 'Start x', 'type': 'float', 'value': 0, 'step': 0.1},
+               {'name': 'End x', 'type': 'float', 'value': 1, 'step': 0.1},
+               {'name': 'Start y', 'type': 'float', 'value': 0, 'step': 0.1},
+               {'name': 'End y', 'type': 'float', 'value': 1, 'step': 0.1},
+               {'name': 'steps', 'type': 'float', 'value': 0.02, 'step': 0.01}
                ]
 
         self.candidate_cams = {c.cam.name: c for c in self.controller.cam_list}

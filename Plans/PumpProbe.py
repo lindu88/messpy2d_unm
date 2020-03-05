@@ -174,7 +174,7 @@ class PumpProbePlan:
         data['t'] = np.array(self.t_list)
         data['rot'] = self.rot_at_scan
         np.savez(name, **data)
-            
+
 
 
 @attrs(auto_attribs=True, cmp=False)

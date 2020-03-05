@@ -137,10 +137,17 @@ class MainWindow(QMainWindow):
         pp.clicked.connect(plan_starter(FocusScanStarter))
         tb.addWidget(pp)
 
+        asl_icon = qta.icon('mdi.chart-line', color='white')
+        pp = QPushButton('Germanium', icon=asl_icon)
+        pp.clicked.connect(plan_starter(GermaniumStarter))
+        tb.addWidget(pp)
+
         alg_icon = qta.icon('mdi.chart-line', color='white')
         pp = QPushButton('Show alignment helper')
         pp.clicked.connect(self.show_alignment_helper)
         tb.addWidget(pp)
+
+
 
     def toggle_run(self, bool):
         if bool:

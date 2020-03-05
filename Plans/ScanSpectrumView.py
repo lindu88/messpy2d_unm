@@ -20,18 +20,18 @@ class ScanSpectrumView(QWidget):
         get_ref = lambda :scan_plan.ref[:scan_plan.wl_idx, 64]
         #x = lambda: scan_plan.wls[:scan_plan.wl_idx, 64]
         wn = lambda: 1e7/scan_plan.wls[:scan_plan.wl_idx, 64]
-
+        nm = lambda: scan_plan.wls[:scan_plan.wl_idx, 64]
 
         self.top_plot = ObserverPlot(
-                obs=[get_probe],
+                obs=[get_probe, get_ref],
                 signal=scan_plan.sigPointRead,
                 x = wn,
         )
 
         self.bot_plot = ObserverPlot(
-                obs=[get_ref],
+                obs=[get_probe, get_ref],
                 signal=scan_plan.sigPointRead,
-                x = wn,
+                x = nm,
         )
 
         self.top_plot.plotItem.setLabel('bottom', 'Wavelength / nm')
@@ -105,5 +105,5 @@ class ScanSpectrumStarter(PlanStartDialog):
                 wl_list=wl_list,
                 timeout = p['timeout']
         )
-
+        self.save_defaults()
         return scan
