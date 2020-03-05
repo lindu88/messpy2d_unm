@@ -8,7 +8,7 @@ from imaq_cffi import IMAQ_Reader
 p = Path(__file__).parent
 PT_DLL = cffi.FFI()
 
-with open(p/'pt_2dmct.h') as f:
+with open(p / 'pt_2dmct.h') as f:
     cdefs = f.readlines()[4:51]
     PT_DLL.cdef(''.join(cdefs))
 """ Binning Modes
@@ -29,7 +29,7 @@ BINNING_MODES = [(128, 128), (128, 64), (128, 56), (128, 32), (128, 16),
 @attr.s(auto_attribs=True)
 class PT_MCT:
     shots: int = attr.ib(40)
-    int_time_us: int = attr.ib(5)
+    int_time_us: int = attr.ib(100)
     binning_mode: int = attr.ib(0)
     gain: int = attr.ib(8)
     offset: int = attr.ib(165)
@@ -40,7 +40,6 @@ class PT_MCT:
         self.setup_cam()
         self.reader = IMAQ_Reader()
 
-
     def _errchk(self, err):
         if err != 0:
             errStr = PT_DLL.new('char[500]')
@@ -48,7 +47,7 @@ class PT_MCT:
             print(PT_DLL.string(errStr))
 
     def load_dll(self):
-        self._dll = PT_DLL.dlopen(str(p/'pt_2dmct.dll'))
+        self._dll = PT_DLL.dlopen(str(p / 'pt_2dmct.dll'))
 
     def setup_cam(self):
         ec = self._errchk
@@ -71,16 +70,16 @@ class PT_MCT:
 
     def read_cam2(self):
         rows, cols = BINNING_MODES[self.binning_mode]
-        #p = PT_DLL.new('Uint16Array***', init=self._data)
+        # p = PT_DLL.new('Uint16Array***', init=self._data)
         self.arr = np.zeros((rows, cols, self.shots), dtype=np.uint16)
         p = PT_DLL.from_buffer(self.arr)
-        #t = time.time()
-        self.offset = 16384*np.ones_like(self.arr)
+        # t = time.time()
+        self.offset = 16384 * np.ones_like(self.arr)
         self._errchk(self._dll.PT_2DMCT_GetFrames(self.shots, cols, rows, self.use_trigger, p, self.arr.size))
-        #print("DLL CALL", time.time()-t)
-        #self.arr += self.arr
+        # print("DLL CALL", time.time()-t)
+        # self.arr += self.arr
         self.offset -= self.arr
-        #self.arr *= -1
+        # self.arr *= -1
         return self.offset.T
 
 
@@ -88,19 +87,22 @@ if __name__ == '__main__':
     import pyqtgraph as pg
     from pyqtgraph.Qt import QtCore
     import time
+
     app = pg.mkQApp()
     timer = QtCore.QTimer()
     wid = pg.ImageView()
     pt = PT_MCT()
-    #print(pt.get_tempK())
+    # print(pt.get_tempK())
     pt.read_cam()
     import numpy as np
+
 
     def update():
         t = time.time()
         a = pt.read_cam()
-        print(time.time()-t)
-        wid.setImage(a[0])
+        print(time.time() - t)
+        wid.setImage(a[0].T, autoLevels=False)
+
 
     timer.timeout.connect(update)
     timer.start(30)
