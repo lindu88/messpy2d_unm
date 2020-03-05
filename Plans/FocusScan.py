@@ -32,22 +32,18 @@ def gauss_int(x, x0, amp, back, sigma):
 FitResult = namedtuple('FitResult', ['success', 'params', 'model'])
 
 def fit_curve(pos, val):
-    try:
-        pos = np.array(pos)
-        val = np.array(val)
-        a = val[np.argmax(pos)]
-        b = val[np.argmin(pos)]
-        x0 = [pos[np.argmin(np.abs(val - (a - b) / 2))], a - b, b, 0.1]
-        print(x0)
+    pos = np.array(pos)
+    val = np.array(val)
+    a = val[np.argmax(pos)]
+    b = val[np.argmin(pos)]
+    x0 = [pos[np.argmin(np.abs(val - (a - b) / 2))], a - b, b, 0.1]
+    def helper(p):
+        return np.array(val) - gauss_int(pos, *p)
 
-        def f(p):
-            return np.array(val) - gauss_int(pos, *p)
+    res = opt.leastsq(helper, x0)
+    fit = gauss_int(pos, *res[0])
+    return FitResult(success=res[1], params=res[0], model=fit)
 
-        res = opt.leastsq(f, x0)
-        fit = gauss_int(pos, *res[0])
-        return FitResult(success=res[1], params=res[0], model=fit)
-    except:
-        raise
 
 def make_text(name, fr):
     text = '%s\n4*sigma: %2.3f mm \nFWHM %2.3f mm\nPOS %2.2f'% (name, 4*fr.params[-1], 2.355 * fr.params[-1], fr.params[0])
