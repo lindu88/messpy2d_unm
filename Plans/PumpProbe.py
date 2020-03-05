@@ -95,10 +95,11 @@ class PumpProbePlan:
     def make_step_gen(self):
         c = self.controller
         rs = self.controller.rot_stage
-        rs.set_degrees(self.rot_stage_angles[self.rot_idx])
-        while rs.is_moving():
-            rs.sigDegreesChanged.emit(rs.get_degrees())
-            yield
+        if rs and self.use_rot_stage:
+            rs.set_degrees(self.rot_stage_angles[self.rot_idx])
+            while rs.is_moving():
+                rs.sigDegreesChanged.emit(rs.get_degrees())
+                yield
         while True:
             # --- Pre Scan
 
