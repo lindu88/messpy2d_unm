@@ -57,6 +57,9 @@ class CamMock(ICam):
         self.center_wl = wl
         state.wl = wl
 
+    def set_background(self, shots):
+        pass
+
     def get_wavelength(self):
         return self.center_wl
 
@@ -85,9 +88,6 @@ class DelayLineMock(IDelayLine):
     def get_pos_mm(self):
         if self.moving:
             time_passed = self.current_move[0] - time.time()
-
-
-
         return self.pos_mm
 
 
