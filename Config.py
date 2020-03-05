@@ -30,10 +30,15 @@ class Config:
 config = Config()
 config_available = os.path.exists(p)
 if config_available:
-    f = attr.asdict(Config.load(p))
-    for key, val in f.items():
-        setattr(config, key, val)
-config.data_directory = Path('D:\\') / 'results'
+    try:
+        f = attr.asdict(Config.load(p))
+        for key, val in f.items():
+            setattr(config, key, val)
+    except (EOFError,IOError):
+        pass
+
+
+config.data_directory = Path('D:/') / 'results'
 
 
 

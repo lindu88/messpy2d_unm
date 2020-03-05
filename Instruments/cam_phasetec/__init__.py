@@ -9,8 +9,11 @@ from spec_sp2500i import SP2500i
 from typing import List, Optional
 import pickle
 
-PROBE_RANGE = (65, 127)
-REF_RANGE = (1, 63)
+PROBE_CENTER = 98
+REF_CENTER = 34
+k = 5
+PROBE_RANGE = (PROBE_CENTER-k, PROBE_CENTER+k+1)
+REF_RANGE = (REF_CENTER-k, REF_CENTER+k+1)
 
 
 @attr.s(auto_attribs=True)
@@ -42,7 +45,7 @@ class PhaseTecCam(ICam):
     def make_reading(self):
         arr = self._cam.read_cam()
 
-        if self.background:
+        if self.background is not None:
             arr = arr - self.background[None, :, :]
 
         probe = np.nanmean(arr[:, PROBE_RANGE[0]:PROBE_RANGE[1], :], 1)
@@ -71,7 +74,7 @@ class PhaseTecCam(ICam):
 
     def set_background(self, shots=0):
         arr = self._cam.read_cam()
-        back_probe = self.nanmean(arr[:, :, :], 0)
+        back_probe = np.nanmean(arr[:, :, :], 0)
         self.background = back_probe
 
     def remove_background(self):
@@ -82,7 +85,7 @@ class PhaseTecCam(ICam):
         if center_wl == 0:
             return np.arange(-64, 64, 1)
         else:
-            return 1e7 / ((np.arange(-64, 64, 1) * 0.67) + 1e7 / center_wl)
+            return 1e7 / ((-np.arange(-64, 64, 1) * 0.67) + 1e7 / center_wl)
 
 
 _ircam = PhaseTecCam()
