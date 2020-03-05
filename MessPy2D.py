@@ -111,7 +111,6 @@ class MainWindow(QMainWindow):
                     self.cm.reopen_planview_but.setEnabled(True)
 
                     self.toggle_run(True)
-
             return f
 
         asl_icon = qta.icon('fa.percent', color='white')
@@ -138,6 +137,11 @@ class MainWindow(QMainWindow):
         pp.clicked.connect(plan_starter(FocusScanStarter))
         tb.addWidget(pp)
 
+        alg_icon = qta.icon('mdi.chart-line', color='white')
+        pp = QPushButton('Show alignment helper')
+        pp.clicked.connect(self.show_alignment_helper)
+        tb.addWidget(pp)
+
     def toggle_run(self, bool):
         if bool:
             self.timer.start(10)
@@ -153,6 +157,12 @@ class MainWindow(QMainWindow):
             self.view.show()
         else:
             self.view = self.plan_class.viewer(self.controller.plan)
+
+    def show_alignment_helper(self):
+        self._ah = AlignmentHelper(self.controller)
+        self._ah.show()
+        #dw = QDockWidget(self._ah)
+        #self.addDockWidget(Qt.LeftDockWidgetArea, dw)
 
     def closeEvent(self, *args, **kwargs):
         config.save()
@@ -193,10 +203,18 @@ class CommandMenu(QWidget):
         self.start_but.clicked.connect(lambda: self._sp.show())
         self.plan_label = QLabel('Default loop')
         self.plan_label.setAlignment(Qt.AlignHCenter)
+        self.pause_plan_but = QPushButton("Pause plan")
+        self.pause_plan_but.setCheckable(True)
+        c = self.parent().controller  # type: Controller
+        def switch_pause(ev):
+            c.pause_plan = self.pause_plan_but.isChecked()
+        self.pause_plan_but.clicked.connect(switch_pause)
+
         self.reopen_planview_but = QPushButton('Reopen Planview')
         self.reopen_planview_but.setEnabled(False)
         self.reopen_planview_but.clicked.connect(self.parent().show_planview)
-        for w in (self.start_but, self.plan_label, self.reopen_planview_but):
+        for w in (self.start_but, self.plan_label,
+                  self.reopen_planview_but, self.pause_plan_but):
             self._layout.addWidget(w)
 
     def add_ext_view(self):
@@ -302,10 +320,9 @@ class CommandMenu(QWidget):
 
 
 if __name__ == '__main__':
-
     import sys
     import numpy as np
-    #from enaml.qt.qt_application import QtApplication
+    from enaml.qt.qt_application import QtApplication
 
     app = QApplication([])
 
