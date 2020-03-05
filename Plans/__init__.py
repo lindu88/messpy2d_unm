@@ -7,6 +7,8 @@ from .ScanSpectrumView import ScanSpectrumView, ScanSpectrumStarter
 from .AlignmentHelper import AlignmentHelper
 from.FocusScan import FocusScan
 from.FocusScanView import FocusScanView,FocusScanStarter
+from .GermaniumPlan import GermaniumPlan
+from .GermaniumView import GermaniumView, GermaniumStarter
 #__all__ = [PumpProbePlan, PumpProbeViewer, pump_probe_starter,  TwoDViewer, TwoDStarter]
 
 import abc

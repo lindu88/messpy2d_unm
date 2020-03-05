@@ -33,10 +33,6 @@ class ScanSpectrum:
 
         gen = self.make_step_gen()
         self.make_step = lambda: next(gen)
-        
-
-
-
 
     def make_step_gen(self):
         self.cam.set_wavelength(self.wl_list[0])
@@ -46,8 +42,6 @@ class ScanSpectrum:
             t.start()
             while t.is_alive():
                 yield
-
-
             wls = self.cam.get_wavelengths(wl)
             t = threading.Thread(target=self.cam.read_cam)
             t.start()
