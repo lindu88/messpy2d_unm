@@ -109,7 +109,7 @@ class MainWindow(QMainWindow):
                     self.viewer = PlanClass.viewer(plan)
                     self.viewer.show()
                     self.cm.reopen_planview_but.setEnabled(True)
-
+                    self.controller.pause_plan = False
                     self.toggle_run(True)
             return f
 

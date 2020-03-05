@@ -14,22 +14,26 @@ import threading
 import scipy.special as spec
 import scipy.optimize as opt
 from Instruments.faulhaber import XYSingleFaulhaber
+
 faulhaber = XYSingleFaulhaber()
 
-#class faul_sim():
+
+# class faul_sim():
 #    def __init__(self):
 #        pass
 #    def set_pos_mm(self,a,b,c):
 #        pass
 
 
-#faulhaber = faul_sim()
+# faulhaber = faul_sim()
 
 
 def gauss_int(x, x0, amp, back, sigma):
-    return 0.5*(1+amp*spec.erf((x-x0)/(sigma*2)))-back
+    return 0.5 * (1 + amp * spec.erf((x - x0) / (sigma * 2))) - back
+
 
 FitResult = namedtuple('FitResult', ['success', 'params', 'model'])
+
 
 def fit_curve(pos, val):
     try:
@@ -49,9 +53,12 @@ def fit_curve(pos, val):
     except:
         raise
 
+
 def make_text(name, fr):
-    text = '%s\n4*sigma: %2.3f mm \nFWHM %2.3f mm\nPOS %2.2f'% (name, 4*fr.params[-1], 2.355 * fr.params[-1], fr.params[0])
+    text = '%s\n4*sigma: %2.3f mm \nFWHM %2.3f mm\nPOS %2.2f' % (
+    name, 4 * fr.params[-1], 2.355 * fr.params[-1], fr.params[0])
     return text
+
 
 @attr.s(auto_attribs=True, cmp=False)
 class FocusScan():
@@ -70,10 +77,8 @@ class FocusScan():
     scan_x: bool = False
     scan_y: bool = False
 
-
-    #sigXStepDone = attr.ib(attr.Factory(Signal))
-    #sigYStepDone = attr.ib(attr.Factory(Signal))
-
+    # sigXStepDone = attr.ib(attr.Factory(Signal))
+    # sigYStepDone = attr.ib(attr.Factory(Signal))
 
     def __attrs_post_init__(self):
         if self.x_parameters != []:
@@ -88,17 +93,17 @@ class FocusScan():
             self.ref_y = []
 
         gen = self.make_scan_gen()
-        self.make_step =lambda: next(gen)
-
-
-
+        self.make_step = lambda: next(gen)
 
     def make_scan_gen(self):
         print('start scan focus')
         if self.scan_x:
             scan_axis = 'x'
-            self.fh.set_pos_mm(self.x_parameters[0],0, True)
-            for pos,probe,ref in self.scanner(self.x_parameters, scan_axis):
+            self.fh.set_pos_mm(self.x_parameters[0], 0, True)
+            for pos, probe, ref in self.scanner(self.x_parameters, scan_axis):
+                if pos is None:
+                    yield
+                    continue
                 self.pos_x.append(pos)
                 self.probe_x.append(probe)
                 self.ref_x.append(ref)
@@ -115,6 +120,10 @@ class FocusScan():
             scan_axis = 'y'
             self.fh.set_pos_mm(0, self.y_parameters[0], True)
             for pos, probe, ref in self.scanner(self.y_parameters, scan_axis):
+                print(pos)
+                if pos is None:
+                    yield
+                    continue
                 self.pos_y.append(pos)
                 self.probe_y.append(probe)
                 self.ref_y.append(ref)
@@ -131,8 +140,6 @@ class FocusScan():
         self.sigFitDone.emit()
         yield
 
-
-
     def scanner(self, parameters, axis):
         start_pos = parameters[0]
         end_pos = parameters[1]
@@ -145,18 +152,21 @@ class FocusScan():
                 self.fh.set_pos_mm(i, None, False)
             if axis == 'y':
                 self.fh.set_pos_mm(None, i, False)
-            self.cam.read_cam()
+
+            t = threading.Thread(target=self.cam.read_cam)
+            t.start()
+            while t.is_alive():
+                yield (None, None, None)
             val_probe = np.mean(self.cam.last_read.lines[0, :])
             val_ref = np.mean(self.cam.last_read.lines[1, :])
             yield i, val_probe, val_ref
 
-
-    def get_name(self, data_path = False):
+    def get_name(self, data_path=False):
         if data_path:
             p = Path(data_path)
         else:
             p = r"C:\Users\2dir\messpy2d\data_temps"
-        dname = p +f"\{self.name}_focusScan.npz"
+        dname = p + f"\{self.name}_focusScan.npz"
 
         if os.path.exists(dname):
             name_exists = True
@@ -164,7 +174,7 @@ class FocusScan():
             while name_exists == True:
                 dname = p + f"\{self.name}{i}_focusScan.npz"
                 i += 1
-                if os.path.exists(dname) ==  False:
+                if os.path.exists(dname) == False:
                     name_exists = False
         self._name = dname
         return self._name
@@ -172,20 +182,20 @@ class FocusScan():
     def save(self):
 
         print('save')
-        name =  self.get_name()
+        name = self.get_name()
         data = {'cam': self.cam.name}
-        #data['meta'] = self.meta
+        # data['meta'] = self.meta
         if self.scan_x:
-            data['scan x'] = np.vstack((self.pos_x,self.probe_x,self.ref_x))
+            data['scan x'] = np.vstack((self.pos_x, self.probe_x, self.ref_x))
         if self.scan_y:
-            data['scan y'] = np.vstack((self.pos_y,self.probe_y,self.ref_y))
+            data['scan y'] = np.vstack((self.pos_y, self.probe_y, self.ref_y))
         try:
             name = self.get_name(data_path=config.data_directory)
             np.savez(name, **data)
-            #fig.savefig(name[:-4] + '.png')
+            # fig.savefig(name[:-4] + '.png')
             print('saved in results')
         except:
             name = self.get_name()
             np.savez(name, **data)
-            #fig.savefig(name[:-4] + '.png')
+            # fig.savefig(name[:-4] + '.png')
             print('saved in local temp')

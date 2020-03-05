@@ -111,8 +111,8 @@ class FocusScanStarter(PlanStartDialog):
         tmp.append(dict(name='Cam', type='list', values=self.candidate_cams.keys()))
         self.p = pt.Parameter.create(name='Exp. Settings', type='group', children=tmp)
         params = [samp, self.p]
-        self.paras = pt.Parameter.create(name='Scan Spectrum', type='group', children=params)
-        self.save_defaults()
+        self.paras = pt.Parameter.create(name='Focus Scan', type='group', children=params)
+        #config.last_pump_probe = self.paras.saveState()
 
     def create_plan(self, controller: Controller):
         p = self.paras.child('Exp. Settings')
@@ -125,6 +125,7 @@ class FocusScanStarter(PlanStartDialog):
         if p['Scan y']:
             y_stepper = [p['Start y'], p['End y'], p['steps']]
 
+        self.save_defaults()
         fs = FocusScan(
             name=p['Filename'],
             cam=self.candidate_cams[p['Cam']],

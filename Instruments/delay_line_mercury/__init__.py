@@ -141,7 +141,7 @@ class DelayLine(IDelayLine):
         self.home_pos = self.get_pos_mm()
         with open('zeropos', 'w') as f:
             f.writelines(str(self.home_pos))
-        return True
+        return self.home_pos
 
     def get_home(self):
         return self.home_pos

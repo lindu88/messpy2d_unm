@@ -1,5 +1,8 @@
 import cffi
 import threading
+import numba
+import numpy as np
+
 
 ffi = cffi.FFI()
 defs = ffi.cdef("""
@@ -22,7 +25,10 @@ typedef int USER_FUNC;
 #define  IMG_LAST_BUFFER                     0xFFFFFFFE
 #define  IMG_OLDEST_BUFFER                   0xFFFFFFFD
 #define  IMG_CURRENT_BUFFER                  0xFFFFFFFC
-
+#define  IMG_TRIG_DRIVE_FRAME_START          8
+#define  IMG_TRIG_DRIVE_FRAME_DONE           9
+#define  IMG_TRIG_POLAR_ACTIVEH              0
+#define  IMG_TRIG_POLAR_ACTIVEL              1
 
 typedef enum {
     IMG_SIGNAL_NONE                 = 0xFFFFFFFF,
@@ -65,18 +71,12 @@ USER_FUNC imgSessionCopyBufferByNumber(SESSION_ID sid, uInt32 bufNumber, void* u
 
 int imgShowError(int err, char* msg); 
 
-            
-
-
-
-
 USER_FUNC imgSessionTriggerConfigure2(SESSION_ID sid, IMG_SIGNAL_TYPE triggerType, 
     uInt32 triggerNumber, uInt32 polarity, uInt32 timeout, uInt32 action);
+USER_FUNC imgSessionTriggerDrive2(SESSION_ID sid, IMG_SIGNAL_TYPE triggerType,
+    uInt32 triggerNumber, uInt32 polarity, uInt32 source);
+
 """)
-
-print(defs)
-
-import numpy as np
 
 
 class IMAQ_Reader:
@@ -88,6 +88,8 @@ class IMAQ_Reader:
         self.ec(self.lib.imgSessionOpen(Iid[0], Sid))
         self.ec(self.lib.imgSessionTriggerConfigure2(Sid[0], self.lib.IMG_SIGNAL_EXTERNAL, 0, 0,
                                                      10000, self.lib.IMG_TRIG_ACTION_CAPTURE))
+        self.ec(self.lib.imgSessionTriggerDrive2(Sid[0], self.lib.IMG_SIGNAL_RTSI, 1, self.lib.IMG_TRIG_POLAR_ACTIVEH,
+                                                 self.lib.IMG_TRIG_DRIVE_FRAME_START                                                     ))
         self.read_lock = threading.Lock()
         s = Sid[0]
         self.s = s
@@ -175,10 +177,10 @@ class IMAQ_Reader:
 
             # self.ec(lib.imgSessionReleaseBuffer(sid))
         # print(arr.shape)
-        lost = self.get_lost()
+        #lost = self.get_lost()
 
         self.ec(lib.imgSessionStopAcquisition(sid))
-        self.last_valid = self.get_last_valid()
+        #self.last_valid = self.get_last_valid()
         # print(fc, "fc", self.get_last_valid(), "val", lost , "lost")
         self.read_lock.release()
 
@@ -189,6 +191,17 @@ class IMAQ_Reader:
         self.ec(self.lib.imgGetAttribute(self.s, 0x0074 + 0x3FF60000, fcount))
         # print(fcount[0])
         return fcount[0] > 0
+
+@numba.njit
+def read_loop(shots, lib, sid, ptr, buf_idx):
+    for i in range(shots):
+        ba = bytearray(128*128*2)
+        #    print(self.get_last_valid())
+        x = lib.imgSessionCopyBufferByNumber(sid, i, ffi.from_buffer(ba),
+                                                 lib.IMG_OVERWRITE_FAIL, ptr, buf_idx)
+        bi = np.frombuffer(ba).view('u2')
+        a = np.swapaxes(bi.reshape(32, 128, 4), 0, 1).reshape(128, 128)
+        arr[i, :, :] = (1 << 14) - a.T
 
 
 if __name__ == '__main__':

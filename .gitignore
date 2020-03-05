@@ -3,3 +3,5 @@
 .spyproject/
 *.npy
 results/*
+/zeropos
+/messpy_config
