@@ -399,6 +399,20 @@ class FaulhaberControl(HasTraits):
 
 if __name__ == '__main__':
 #    joy = Joystick(joystick_id=0)
-    fhc = FaulhaberControl(joy=joy, fh=fh)
-    fhc.moving = True
-    fhc.configure_traits()
+    #fhc = FaulhaberControl(joy=joy, fh=fh)
+    #fhc.moving = True
+    #fhc.configure_traits()
+    fh = XYSingleFaulhaber()
+    from time import time, sleep
+    t0 = time()
+    from math import cos, sin, pi
+    x_amp = 5/2.
+    y_amp = 3/2.
+
+    while True:
+        t = time() - t0
+        x = x_amp * cos(1.2*t*2*pi)
+        y = y_amp * cos(1.5*t*2*pi)
+        fh.set_pos_mm(x, y, wait_for_move=False)
+        sleep(0.02)
+        fh.x_mot.ser.flush()
