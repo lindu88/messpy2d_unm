@@ -120,7 +120,7 @@ class IMAQ_Reader:
         return fcount[0]
 
     def start_acq(self):
-        N = 500
+        N = 1000
         self.buflist = ffi.new("void *[]", [ffi.NULL] * N)
         self.ec(self.lib.imgRingSetup(self.s, N, ffi.cast("void **", self.buflist), 0, 0))
         #self
