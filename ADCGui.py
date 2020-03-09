@@ -24,6 +24,8 @@ params = [
     {'name': 'Bot. Probe', 'value': 35, **row_paras},
     {'name': 'Top Ref', 'value': 93, **row_paras},
     {'name': 'Bot. Ref', 'value': 103, **row_paras},
+    {'name': 'Record BG', 'type': 'action'},
+    {'name': 'Delete BG', 'type': 'action'},
 ]
 
 
@@ -143,7 +145,7 @@ class GuiOptionsWindow(QWidget):
         a, b = self.params['Top Ref'], self.params['Bot. Ref']
         self.ref_mean.setData(x=x, y=img[b:a, :].mean(0) / MAX_VAL * 100 + 128)
 
-    def gen_mask(self):
+    def get_best_pixel(self):
         pass
 
 if __name__ == '__main__':
