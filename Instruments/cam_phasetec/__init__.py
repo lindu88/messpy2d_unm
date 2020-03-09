@@ -82,7 +82,7 @@ class PhaseTecCam(ICam):
         if center_wl == 0:
             return np.arange(-64, 64, 1)
         else:
-            return 1e7 / ((np.arange(-64, 64, 1) * 0.67) + 1e7 / center_wl)
+            return np.arange(-64, 64, 1) * 7.67 + center_wl
 
 
 _ircam = PhaseTecCam()
