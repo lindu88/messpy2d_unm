@@ -28,17 +28,18 @@ class GermaniumView(QWidget):
         )
 
         pen = pg.mkPen(color='#e377c2', width=2)
-
+        self.button = QPushButton('Set time zero', self)
         def plotGer():
-            self.plot.plotItem.plot(germanium_plan.t, germanium_plan.fit.model, pen=pen)
-            text = pg.TextItem(f'Zero_pos:{int(germanium_plan.fit.params[0])}', anchor=(0, 1.0))
-            self.plot.plotItem.addItem(text)
-
+            if germanium_plan.fit.success is True:
+                self.plot.plotItem.plot(germanium_plan.t, germanium_plan.fit.model, pen=pen)
+                text = pg.TextItem(f'Zero_pos:{int(germanium_plan.fit.params[0])}', anchor=(0, 1.0))
+                self.plot.plotItem.addItem(text)
+                self.button.setEnabled(False)
+                self.button.clicked.connect(lambda: germanium_plan.make_zero())
         germanium_plan.sigGerDone.connect(lambda: plotGer())
 
-        self.button = QPushButton('Set time zero', self)
-        self.button.setEnabled(False)
-        self.button.clicked.connect(lambda: germanium_plan.make_zero())
+
+
         germanium_plan.sigGerDone.connect(lambda: self.button.setEnabled(True))
         self.plot.plotItem.setLabel('bottom', 'time [fs]')
         layout = QVBoxLayout(self)

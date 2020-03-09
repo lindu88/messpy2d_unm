@@ -1,4 +1,4 @@
-import serial, attr, time, logging, contextlib
+import serial, attr, time, logging, contextlib, atexit
 
 
 @attr.s(auto_attribs=True)
@@ -60,6 +60,8 @@ class SP2500i:
         self._write(b'MONO-RESET')
 
 
+
+
 if __name__ == "__main__":
     log = logging.getLogger()
     log.setLevel(logging.DEBUG)
@@ -69,3 +71,4 @@ if __name__ == "__main__":
     #print(f'Current wavelength {spec.get_wavelength()}')
     #print(f'Current grating {spec.get_grating()}')
     spec.set_wavelength(wl + 200)
+    atexit.register()

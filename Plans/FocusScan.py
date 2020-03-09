@@ -15,7 +15,7 @@ import scipy.special as spec
 import scipy.optimize as opt
 from Instruments.faulhaber import XYSingleFaulhaber
 
-faulhaber = XYSingleFaulhaber()
+#faulhaber = XYSingleFaulhaber()
 
 
 # class faul_sim():
@@ -69,7 +69,7 @@ class FocusScan():
     y_parameters: list = attr.ib()
     sigStepDone: Signal = attr.Factory(Signal)
     sigFitDone: Signal = attr.Factory(Signal)
-    fh: object = faulhaber
+    #fh: object = faulhaber
     scan_x: bool = False
     scan_y: bool = False
 
