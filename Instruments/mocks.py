@@ -69,6 +69,8 @@ class CamMock(ICam):
         x = (np.arange(self.channels)-self.channels//2)
         return x*0.5 + center_wl
 
+    def set_background(self, shots):
+        pass
 
 @attr.s(auto_attribs=True)
 class DelayLineMock(IDelayLine):
