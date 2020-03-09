@@ -52,9 +52,11 @@ class PTMock:
     def set_gain(self, gain: int):
         self.gain = gain
 
-    def set_background(self, bg):
-        print(bg)
+    def set_background_level(self, bg):
         self.background = bg
+
+    def delete_bg(self):
+        self.background = 0
 
     def read_all(self):
         out = np.zeros((y.size, x.size), dtype=np.uint16)
@@ -108,27 +110,31 @@ class GuiOptionsWindow(QWidget):
         self.timer.start(50)
 
         self.image.setLevels([0, MAX_VAL])
+        self.setup_connections()
+        self.params = p
 
+    def setup_connections(self):
+        p = self.params
         f = lambda val: pm.set_gain(val.value())
         p.child('Gain').sigValueChanged.connect(f)
-
-        f = lambda val: pm.set_background(val.value())
+        f = lambda val: pm.set_background_level(val.value())
         p.child('Background').sigValueChanged.connect(f)
 
         def update_pr_regions(reg: LinearRegionItem):
             mi, ma = sorted(reg.getRegion())
             p.child('Top Probe').setValue(ma)
             p.child('Bot. Probe').setValue(mi)
-
         self.pr_reg.sigRegionChangeFinished.connect(update_pr_regions)
 
         def update_ref_regions(reg: LinearRegionItem):
             mi, ma = sorted(reg.getRegion())
             p.child('Top Ref').setValue(ma)
             p.child('Bot. Ref').setValue(mi)
-
         self.ref_reg.sigRegionChangeFinished.connect(update_ref_regions)
-        self.params = p
+
+        p.child('Record BG').sigValueChanged
+        p.child('Delete BG').sigValueChanged
+
 
     def update(self):
         img = pm.read_all()
