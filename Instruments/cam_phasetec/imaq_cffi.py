@@ -173,6 +173,8 @@ class IMAQ_Reader:
             bi = np.frombuffer(ba).view('u2')
             a = np.swapaxes(bi.reshape(32, 128, 4), 0, 1).reshape(128, 128)
             arr[i, :, :] = (1 << 14) - a.T
+            if self.get_fcount() > shots:
+                self.ec(lib.imgSessionStopAcquisition(sid))
             # arr = np.swapaxes(arr, 1, 2)
 
             # self.ec(lib.imgSessionReleaseBuffer(sid))

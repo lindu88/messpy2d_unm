@@ -12,7 +12,7 @@ from QtHelpers import dark_palette, ControlFactory, make_groupbox, \
 from pyqtgraph import PlotWidget, ImageItem, PlotCurveItem, LinearRegionItem, mkBrush, mkPen
 import pyqtgraph.parametertree as pt
 import numpy as np
-
+from Instruments.cam_phasetec import ir_cam
 row_paras = {'type': 'int', 'step': 1, 'min': 0, 'max': 128,
              'readonly': True}
 
@@ -42,38 +42,12 @@ lut = (colormap._lut * 255).view(np.ndarray)  # Convert matplotlib colormap from
 
 
 # Apply the colormap
+pm =  ir_cam.PT_MCT()
 
 
-class PTMock:
-    def __init__(self):
-        self.gain = 8
-        self.background = 128
-
-    def set_gain(self, gain: int):
-        self.gain = gain
-
-    def set_background_level(self, bg):
-        self.background = bg
-
-    def delete_bg(self):
-        self.background = 0
-
-    def read_all(self):
-        out = np.zeros((y.size, x.size), dtype=np.uint16)
-        # print(out.shape, Y.shape, X.shape)
-        ref_sig = np.exp(-(Y - (X - 64) * 0.03 - 83) ** 2 / 50) * 4000 * self.gain / 8
-        out += np.uint16(ref_sig)
-        pr_sig = np.exp(-(Y - (X - 64) * 0.03 - 33) ** 2 / 50) * self.gain / 8 * 4000
-        out += np.uint16(pr_sig)
-
-        out += np.uint16(np.random.poisson(lam=1500, size=out.shape))
-        out -= self.background * 1000 + 128000
-
-        np.clip(out, 0, MAX_VAL - 1, out)
-        return out
 
 
-pm = PTMock()
+
 
 MAX_VAL = 1 << 14
 
@@ -137,7 +111,7 @@ class GuiOptionsWindow(QWidget):
 
 
     def update(self):
-        img = pm.read_all()
+        img = pm.read_cam().mean(0)
         # print(img.shape)
         self.image.setImage(img.T, autoLevels=False)
         # print(np.median(img))
