@@ -132,6 +132,7 @@ class FocusScanStarter(PlanStartDialog):
             meta=s,
             x_parameters=x_stepper,
             y_parameters=y_stepper,
+            fh=controller.sample_holder,
         )
         return fs
 

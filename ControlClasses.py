@@ -3,7 +3,7 @@ from attr import attrs, attrib, Factory
 from Config import config
 import threading, time
 import typing as T
-from HwRegistry import _cam, _cam2, _dl, _dl2, _rot_stage, _shutter
+from HwRegistry import _cam, _cam2, _dl, _dl2, _rot_stage, _shutter, _sh
 import Instruments.interfaces as I
 from Signal import Signal
 import pickle
@@ -162,6 +162,7 @@ class Controller:
     shutter: T.Optional[I.IShutter]
     delay_line: Delayline
     rot_stage: T.Optional[I.IRotationStage]
+    sample_holder : T.Optional[I.ILissajousScanner]
 
     def __init__(self):
         self.cam = Cam()
@@ -186,6 +187,10 @@ class Controller:
         else:
             self.delay_line_second = None
 
+        if _sh:
+            self.sample_holder = _sh
+        else:
+            self.sample_holder = None
         self.plan = None
         self.pause_plan = False
         self.running_step = False

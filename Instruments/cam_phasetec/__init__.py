@@ -46,7 +46,7 @@ class PhaseTecCam(ICam):
     def make_reading(self):
         arr = self._cam.read_cam()
 
-        if self.background:
+        if self.background is not None:
             arr = arr - self.background[None, :, :]
 
         probe = np.nanmean(arr[:, PROBE_RANGE[0]:PROBE_RANGE[1], :], 1)
@@ -57,10 +57,13 @@ class PhaseTecCam(ICam):
         ref_mean = np.nanmean(ref, 0)
         ref_std = 100 * np.std(ref, 0) / ref_mean
 
-        normed = probe / ref
-        norm_std = 100 * np.nanstd(normed, 0) / np.nanmean(normed, 0)
 
-        sig = -1000 * np.log10(normed.T[:, ::2].mean(1) / normed.T[:, 1::2].mean(1))
+        with np.errstate(invalid='ignore', divide='ignore'):
+            normed = probe / ref
+            norm_std = 100 * np.nanstd(normed, 0) / np.nanmean(normed, 0)
+            pu = trim_mean(normed.T[:, ::2], 0.1, 1)
+            not_pu = trim_mean(normed.T[:, 1::2], 0.1, 1)
+            sig = -1000 * np.log10(pu/not_pu)
         # print(sig.shape, ref_mean.shape, norm_std.shape, probe_mean.shape)
         reading = Reading(lines=np.stack((probe_mean, ref_mean)),
                           stds=np.stack((probe_std, ref_std, norm_std)),
@@ -75,7 +78,7 @@ class PhaseTecCam(ICam):
 
     def set_background(self, shots=0):
         arr = self._cam.read_cam()
-        back_probe = self.nanmean(arr[:, :, :], 0)
+        back_probe = np.nanmean(arr[:, :, :], 0)
         self.background = back_probe
 
     def remove_background(self):
@@ -83,10 +86,11 @@ class PhaseTecCam(ICam):
 
     def get_wavelength_array(self, center_wl):
         center_wl = self.get_wavelength()
-        if center_wl == 0:
+        disp = 7.69
+        center_ch = 63
+        if center_wl < 1000:
             return np.arange(-64, 64, 1)
         else:
-            return 1e7 / ((np.arange(-64, 64, 1) * 0.67) + 1e7 / center_wl)
-
+            return (np.arange(128)-center_ch)*disp+center_wl
 
 _ircam = PhaseTecCam()

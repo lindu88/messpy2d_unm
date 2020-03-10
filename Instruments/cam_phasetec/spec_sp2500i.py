@@ -5,13 +5,14 @@ import serial, attr, time, logging, contextlib, atexit
 class SP2500i:
     comport: str = 'COM4'
     pos_nm: float = 0
-    port: object = attr.ib()
+    port: serial.Serial = attr.ib()
 
     @port.default
     def serial_connect(self):
         logging.info(f'SP2500i: Connecting to {self.comport}')
         port = serial.Serial(self.comport)
         port.timeout = 2
+        atexit.register(self.disconnect)
         return port
 
     def _write(self, cmd: bytes, await_resp: bool = True,
@@ -59,6 +60,8 @@ class SP2500i:
     def reset(self):
         self._write(b'MONO-RESET')
 
+    def disconnect(self):
+        self.port.close()
 
 
 
@@ -71,4 +74,3 @@ if __name__ == "__main__":
     #print(f'Current wavelength {spec.get_wavelength()}')
     #print(f'Current grating {spec.get_grating()}')
     spec.set_wavelength(wl + 200)
-    atexit.register()
