@@ -63,7 +63,7 @@ class RotationStage(IRotationStage):
     def get_degrees(self):
         """Returns the position"""
         self.w('1TP')
-        self.rot.timeout = 0.1
+        self.rot.timeout = 0.5
         ans = self.rot.readall().decode()
         return float(ans[ans.find("TP")+2:-2])
 

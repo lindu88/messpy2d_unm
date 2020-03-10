@@ -9,6 +9,7 @@ import qtawesome as qta
 from Plans import *
 from QtHelpers import dark_palette, ControlFactory, make_groupbox, \
     ObserverPlot, ValueLabels
+from SampleMoveWidget import MoveWidget
 from ControlClasses import Controller
 
 START_QT_CONSOLE = False
@@ -201,7 +202,8 @@ class CommandMenu(QWidget):
 
         if c.rot_stage:
             self.add_rot_stage(c.rot_stage)
-
+        self.move_wid = MoveWidget(c.sample_holder)
+        self._layout.addWidget(self.move_wid)
         #self.add_ext_view()
 
     def add_plan_controls(self):

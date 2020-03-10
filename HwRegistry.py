@@ -15,12 +15,6 @@ _sh = None
 pc_name = platform.node()
 
 if pc_name == '2dir-PC':
-    from Instruments.ircam_16 import irdaq
-    _cam = irdaq.cam
-
-    #from Instruments.spec_triax import spec
-    #_spec = spec
-
     from Instruments.delay_line_mercury import dl
     _dl = dl
     hp = config.__dict__.get('Delay 1 Home Pos.', 8.80)
@@ -48,6 +42,8 @@ elif pc_name == 'ir-2d':
     _shutter = sh
     from Instruments.RotationStage import rs
     _rot_stage = rs
+    from Instruments.sample_holder_PI import SampleHolder
+    _sh = SampleHolder()
 
 
 

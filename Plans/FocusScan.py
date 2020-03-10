@@ -13,7 +13,7 @@ from ControlClasses import Cam, Controller
 import threading
 import scipy.special as spec
 import scipy.optimize as opt
-from Instruments.faulhaber import XYSingleFaulhaber
+from Instruments.interfaces import ILissajousScanner
 
 #faulhaber = XYSingleFaulhaber()
 
@@ -65,11 +65,12 @@ class FocusScan():
     name: str
     meta: dict
     cam: Cam
+    fh: ILissajousScanner
     x_parameters: list = attr.ib()
     y_parameters: list = attr.ib()
     sigStepDone: Signal = attr.Factory(Signal)
     sigFitDone: Signal = attr.Factory(Signal)
-    #fh: object = faulhaber
+
     scan_x: bool = False
     scan_y: bool = False
 
@@ -88,6 +89,7 @@ class FocusScan():
             self.probe_y = []
             self.ref_y = []
 
+        self.start_pos = self.fh.get_pos_mm()
         gen = self.make_scan_gen()
         self.make_step = lambda: next(gen)
 
@@ -95,7 +97,7 @@ class FocusScan():
         print('start scan focus')
         if self.scan_x:
             scan_axis = 'x'
-            self.fh.set_pos_mm(self.x_parameters[0], 0, True)
+            self.fh.set_pos_mm(self.x_parameters[0], self.start_pos[1])
             for pos, probe, ref in self.scanner(self.x_parameters, scan_axis):
                 if pos is None:
                     yield
@@ -114,7 +116,7 @@ class FocusScan():
 
         if self.scan_y:
             scan_axis = 'y'
-            self.fh.set_pos_mm(0, self.y_parameters[0], True)
+            self.fh.set_pos_mm(self.start_pos[0], self.y_parameters[0])
             for pos, probe, ref in self.scanner(self.y_parameters, scan_axis):
                 print(pos)
                 if pos is None:
@@ -132,7 +134,7 @@ class FocusScan():
             self.ytext_ref = make_text('y ref', self.fit_yref)
             print(self.ytext_ref)
         self.save()
-        self.fh.set_pos_mm(0, 0, True)
+        self.fh.set_pos_mm(0, 0)
         self.sigFitDone.emit()
         yield
 
@@ -145,9 +147,9 @@ class FocusScan():
         steps = np.arange(start_pos, end_pos, sign * step)
         for i in steps:
             if axis == 'x':
-                self.fh.set_pos_mm(i, None, False)
+                self.fh.set_pos_mm(i, None)
             if axis == 'y':
-                self.fh.set_pos_mm(None, i, False)
+                self.fh.set_pos_mm(None, i)
 
             t = threading.Thread(target=self.cam.read_cam)
             t.start()
@@ -161,7 +163,7 @@ class FocusScan():
         if data_path:
             p = Path(config.data_directory)
         else:
-            p = r"C:\Users\2dir\messpy2d\data_temps"
+            p = Path(r"C:\Users\2dir\messpy2d\data_temps")
         dname = p + f"\{self.name}_focusScan.npz"
         i = 0
         while dname.is_file():
