@@ -2,7 +2,7 @@ from Instruments.interfaces import ILissajousScanner
 import threading
 import pipython
 from pipython import pitools, fastaligntools
-import typing
+import typing, time
 
 
 
@@ -17,8 +17,10 @@ class SampleHolder(ILissajousScanner):
     def __init__(self):
         t = threading.Thread(target=self.init_m414)
         t.start()
-        self.init_mag()
+        t2 = threading.Thread(target=self.init_mag)
+        t2.start()
         t.join()
+        t2.join()
 
     def init_m414(self):
         c843.CST('2',  'M-414.1PD')
@@ -34,6 +36,7 @@ class SampleHolder(ILissajousScanner):
                     break
             c843.errcheck = True
             c843.isavailable
+            time.sleep(0.3)
         c843.ACC('2', 500)
         c843.DEC('2', 500)
 
@@ -45,7 +48,9 @@ class SampleHolder(ILissajousScanner):
         if not mag.qFRF('1'):
             mag.FRF('1')
             pitools.waitonreferencing(mag)
-            mag.SVO()
+        mag.SVO('1', True)
+        mag.VEL('1', 700)
+        mag.ACC('1', 5000)
 
     def set_pos_mm(self, x=None, y=None):
         if x is not None:
@@ -63,10 +68,10 @@ class SampleHolder(ILissajousScanner):
         b = mag.qMOV('1')['1']
         return a, b
 
-    def start_wave
+
 if __name__ == '__main__':
     sh = SampleHolder()
     print(sh.get_pos_mm())
     sh.is_moving()
-    sh.set_pos_mm(-20, 50)
+    sh.set_pos_mm(-0, 80)
     print(sh.is_moving())
