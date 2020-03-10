@@ -57,6 +57,16 @@ class PT_MCT:
         ec(self._dll.PT_2DMCT_SetGainOffset(self.gain, self.offset))
         ec(self._dll.PT_2DMCT_SetWindowSize(self.binning_mode))
 
+    def set_gain(self, gain):
+        ec = self._errchk
+        self.gain = gain
+        ec(self._dll.PT_2DMCT_SetGainOffset(self.gain, self.offset))
+
+    def set_offset(self, offset):
+        ec = self._errchk
+        self.offset = offset
+        ec(self._dll.PT_2DMCT_SetGainOffset(self.gain, self.offset))
+
     def get_tempK(self):
         text = PT_DLL.new('char[100]')
         TempK = PT_DLL.new('double*')
