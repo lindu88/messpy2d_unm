@@ -10,6 +10,7 @@ _dl = DelayLineMock()
 _dl2 = None
 _rot_stage = None
 _shutter = None
+_sh = None
 
 pc_name = platform.node()
 
@@ -30,7 +31,8 @@ if pc_name == '2dir-PC':
     #hp = config.__dict__.get('Delay 2 Home Pos.', 8.80)
     #_dl2.home_pos = hp
     #_dl2 = None
-
+    from Instruments.sample_holder_PI import SampleHolder
+    _sh = SampleHolder()
     #from Instruments.FringeCounter import fc
     #_fc = fc
 elif pc_name == 'ir-2d':
