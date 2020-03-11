@@ -23,7 +23,6 @@ params = [
     {'name': 'Delete BG', 'type': 'action'},
 ]
 
-
 x = np.arange(128)
 y = np.arange(128)
 colormap = cm.get_cmap('viridis')
@@ -91,10 +90,11 @@ class CamOptions(QWidget):
 
         self.ref_reg.sigRegionChangeFinished.connect(update_ref_regions)
 
-        p.child('Record BG').sigValueChanged.connect(self.cam)
-        p.child('Delete BG').sigValueChanged.connect()
+        p.child('Record BG').sigValueChanged.connect(self.cam.set_background)
+        p.child('Delete BG').sigValueChanged.connect(self.cam.remove_background)
 
     def update(self):
+        pm = self.cam
         img = pm.read_cam().mean(0)
         # print(img.shape)
         self.image.setImage(img.T, autoLevels=False)
@@ -111,6 +111,7 @@ class CamOptions(QWidget):
 
     def get_best_pixel(self):
         pass
+
 
 if __name__ == '__main__':
     app = QApplication([])
