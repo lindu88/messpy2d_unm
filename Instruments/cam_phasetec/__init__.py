@@ -3,13 +3,12 @@ import wrapt
 from Instruments.interfaces import ICam, Reading
 from Config import config
 import attr
-from imaq_cffi import IMAQ_Reader
+
 from ir_cam import PT_MCT
 from spec_sp2500i import SP2500i
-from typing import List, Optional
-import pickle
+from typing import List, Optional, Tuple
 from scipy.stats import trim_mean
-
+from ADCGui import CamOptions
 PROBE_CENTER = 98
 REF_CENTER = 34
 k = 2
@@ -20,6 +19,8 @@ REF_RANGE = (REF_CENTER-k, REF_CENTER+k+1)
 @attr.s(auto_attribs=True)
 class PhaseTecCam(ICam):
     _spec: SP2500i = attr.ib()
+    probe_rows: Tuple[float, float] = attr.ib()
+    ref_rows: Tuple[float, float] = attr.ib()
     name: str = 'Phasetec Array'
     shots: int = config.shots
     line_names: List[str] = ['Probe', 'Ref']
@@ -30,8 +31,22 @@ class PhaseTecCam(ICam):
     changeable_wavelength: bool = True
     changeable_slit: bool = False
     background: Optional[tuple] = None
-
+    extra_widget: CamOptions = CamOptions
     _cam: PT_MCT = attr.ib(factory=PT_MCT)
+
+    @probe_rows.default
+    def _probe_rows_default(self):
+        if hasattr(config, 'probe_rows'):
+            return config.probe_rows
+        else:
+            return PROBE_RANGE
+
+    @ref_rows.default
+    def _ref_rows_default(self):
+        if hasattr(config, 'probe_rows'):
+            return config.probe_rows
+        else:
+            return REF_RANGE
 
     @_spec.default
     def _default_spec(self):
@@ -48,15 +63,15 @@ class PhaseTecCam(ICam):
 
         if self.background is not None:
             arr = arr - self.background[None, :, :]
-
-        probe = np.nanmean(arr[:, PROBE_RANGE[0]:PROBE_RANGE[1], :], 1)
-        ref = np.nanmean(arr[:, REF_RANGE[0]:REF_RANGE[1], :], 1)
+        pr_range = self.probe_rows
+        ref_range = self.ref_rows
+        probe = np.nanmean(arr[:, pr_range[0]:pr_range[1], :], 1)
+        ref = np.nanmean(arr[:, ref_range[0]:ref_range[1], :], 1)
 
         probe_mean = np.nanmean(probe, 0)
         probe_std = 100 * np.std(probe, 0) / probe_mean
         ref_mean = np.nanmean(ref, 0)
         ref_std = 100 * np.std(ref, 0) / ref_mean
-
 
         with np.errstate(invalid='ignore', divide='ignore'):
             normed = probe / ref

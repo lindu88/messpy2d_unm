@@ -1,25 +1,20 @@
-# from Config import config
-from qtpy.QtCore import QTimer, Qt, QThread
-from qtpy.QtGui import QFont, QIntValidator
-from qtpy.QtWidgets import (QMainWindow, QApplication, QWidget, QDockWidget,
-                            QPushButton, QLabel, QVBoxLayout, QSizePolicy, QFormLayout,
-                            QToolBar, QCheckBox)
-import qtawesome as qta
-
-from QtHelpers import dark_palette, ControlFactory, make_groupbox, \
-    ObserverPlot, ValueLabels, vlay, hlay
-# from ControlClasses import Controller
-from pyqtgraph import PlotWidget, ImageItem, PlotCurveItem, LinearRegionItem, mkBrush, mkPen
-import pyqtgraph.parametertree as pt
+from Config import config
 import numpy as np
-from Instruments.cam_phasetec import ir_cam
+import pyqtgraph.parametertree as pt
+from pyqtgraph import PlotWidget, ImageItem, PlotCurveItem, LinearRegionItem, mkBrush
+from qtpy.QtCore import QTimer
+from qtpy.QtWidgets import (QApplication, QWidget)
+from matplotlib import cm
+import typing as T
+from QtHelpers import hlay
+if T.TYPE_CHECKING:
+    from Instruments.cam_phasetec import PT_MCT, PhaseTecCam
+
 row_paras = {'type': 'int', 'step': 1, 'min': 0, 'max': 128,
              'readonly': True}
-
 params = [
-
     {'name': 'Gain', 'type': 'int', 'value': 8, 'min': 1, 'max': 8},
-    {'name': 'Background', 'type': 'int', 'value': 128, 'step': 1, 'min': 0, 'max': 255},
+    {'name': 'Offset', 'type': 'int', 'value': 128, 'step': 1, 'min': 0, 'max': 255},
     {'name': 'Top Probe', 'value': 30, **row_paras},
     {'name': 'Bot. Probe', 'value': 35, **row_paras},
     {'name': 'Top Ref', 'value': 93, **row_paras},
@@ -28,33 +23,18 @@ params = [
     {'name': 'Delete BG', 'type': 'action'},
 ]
 
-
 x = np.arange(128)
 y = np.arange(128)
-Y, X = np.meshgrid(y, x, indexing='ij')
-
-from matplotlib import cm
-
-colormap = cm.get_cmap('viridis')  # cm.get_cmap("CMRmap")
+colormap = cm.get_cmap('viridis')
 colormap._init()
-
 lut = (colormap._lut * 255).view(np.ndarray)  # Convert matplotlib colormap from 0-1 to 0 -255 for Qt
-
-
-# Apply the colormap
-pm =  ir_cam.PT_MCT()
-
-
-
-
-
-
 MAX_VAL = 1 << 14
 
 
-class GuiOptionsWindow(QWidget):
-    def __init__(self, parent=None):
-        super(GuiOptionsWindow, self).__init__(parent=parent)
+class CamOptions(QWidget):
+    def __init__(self, cam: PhaseTecCam, parent=None):
+        super(CamOptions, self).__init__(parent=parent)
+        self.cam = cam
         p = pt.Parameter.create(name='ADC Settings', type='group', children=params)
         self.paratree = pt.ParameterTree(self)
         self.paratree.setParameters(p)
@@ -89,10 +69,11 @@ class GuiOptionsWindow(QWidget):
 
     def setup_connections(self):
         p = self.params
-        f = lambda val: pm.set_gain(val.value())
+        pm = self.cam
+        f = lambda val: pm._cam.set_gain(val.value())
         p.child('Gain').sigValueChanged.connect(f)
-        f = lambda val: pm.set_background_level(val.value())
-        p.child('Background').sigValueChanged.connect(f)
+        f = lambda val: pm._cam.set_background_level(val.value())
+        p.child('Offset').sigValueChanged.connect(f)
 
         def update_pr_regions(reg: LinearRegionItem):
             mi, ma = sorted(reg.getRegion())
@@ -104,13 +85,16 @@ class GuiOptionsWindow(QWidget):
             mi, ma = sorted(reg.getRegion())
             p.child('Top Ref').setValue(ma)
             p.child('Bot. Ref').setValue(mi)
+            pm.ref_rows = p['Bot. Ref'], p['Top Ref']
+            config.ref_rows = pm.ref_rows
+
         self.ref_reg.sigRegionChangeFinished.connect(update_ref_regions)
 
-        p.child('Record BG').sigValueChanged
-        p.child('Delete BG').sigValueChanged
-
+        p.child('Record BG').sigValueChanged.connect(self.cam.set_background)
+        p.child('Delete BG').sigValueChanged.connect(self.cam.remove_background)
 
     def update(self):
+        pm = self.cam
         img = pm.read_cam().mean(0)
         # print(img.shape)
         self.image.setImage(img.T, autoLevels=False)
@@ -128,9 +112,10 @@ class GuiOptionsWindow(QWidget):
     def get_best_pixel(self):
         pass
 
+
 if __name__ == '__main__':
     app = QApplication([])
-    go = GuiOptionsWindow()
+    go = CamOptions()
 
     go.show()
     app.exec_()
