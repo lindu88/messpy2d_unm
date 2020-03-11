@@ -13,6 +13,7 @@ from qtpy.QtWidgets import (QWidget, QLineEdit, QLabel, QPushButton, QHBoxLayout
 
 from Config import config
 import typing as T
+
 if T.TYPE_CHECKING:
     from Signal import Signal
 
@@ -104,7 +105,7 @@ class ControlFactory(QWidget):
         self.edit_box = QLineEdit()
         self.edit_box.setMaxLength(7)
         self.edit_box.setMaximumWidth(100)
-        #self.edit_box.setValidator(QDoubleValidator())
+        # self.edit_box.setValidator(QDoubleValidator())
         self.edit_box.returnPressed.connect(lambda: apply_fn(self.edit_box.text()))
         self.apply_button.clicked.connect(lambda: apply_fn(self.edit_box.text()))
 
@@ -215,7 +216,6 @@ class PlanStartDialog(QDialog):
         pass
 
     def save_defaults(self, fname=None):
-
         d = self.paras.saveState(filter='user')
         d['date'] = datetime.datetime.now().isoformat()
         name = self.paras.child('Exp. Settings')['Filename']
@@ -235,18 +235,18 @@ class PlanStartDialog(QDialog):
         self.recent_settings = sorted(conf_dict.items(), key=lambda kv: kv[1]['date'])
 
         for (name, r) in self.recent_settings:
-            #tmp = pt.Parameter(name='tmp')
-            #s = r.copy()
-            #s.pop('date')
-            #tmp.restoreState(s)
-            #name = tmp.child('Exp. Settings')['Filename']
+            # tmp = pt.Parameter(name='tmp')
+            # s = r.copy()
+            # s.pop('date')
+            # tmp.restoreState(s)
+            # name = tmp.child('Exp. Settings')['Filename']
             self.recent_settings_list.addItem(name)
+        self.recent_settings_list.setCurrentIndex(name)
 
     def load_recent(self, new):
         settings = self.recent_settings[new][1].copy()
         settings.pop('date')
         self.paras.restoreState(settings)
-
 
     @classmethod
     def start_plan(cls, controller, parent=None):
@@ -257,7 +257,7 @@ class PlanStartDialog(QDialog):
         except ValueError as e:
             emsg = QErrorMessage(parent=parent)
             emsg.setWindowModality(Qt.WindowModal)
-            emsg.showMessage('Plan Creational Failed' +  str(e))
+            emsg.showMessage('Plan creation failed' + str(e))
             emsg.exec_()
             plan = None
 
@@ -304,7 +304,7 @@ class ObserverPlot(pg.PlotWidget):
         self.timer = QTimer()
         self.timer.setSingleShot(True)
         self.timer.timeout.connect(self.update_data)
-        self.timer.start(1000//60)
+        self.timer.start(1000 // 60)
         self.do_update = False
 
     def add_observed(self, single_obs):
@@ -318,11 +318,10 @@ class ObserverPlot(pg.PlotWidget):
         if not self.timer.isActive():
             self.timer.start(0)
 
-
     def update_data(self):
         self.use_inverse = False
         if self.x is not None and self.use_inverse:
-            x = 1e7/x
+            x = 1e7 / x
         else:
             x = self.x
 
@@ -332,11 +331,11 @@ class ObserverPlot(pg.PlotWidget):
         for o in self.observed:
             if callable(o):
                 y = o()
-                #print(x, y)
+                # print(x, y)
                 self.lines[o].setData(x=x, y=y)
             else:
                 y = getattr(*o)
-                #print(x)
+                # print(x)
                 if y is not None:
                     self.lines[o].setData(x=x, y=y)
         self.do_update = False
@@ -370,8 +369,6 @@ class ValueLabels(QWidget):
     def update_labels(self):
         for lbl, getter in self.obs.values():
             lbl.setText(self.fmt % getter())
-
-
 
 
 def make_groupbox(widgets, title=''):
