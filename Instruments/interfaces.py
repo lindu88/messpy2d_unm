@@ -5,12 +5,14 @@ import numpy as np
 from Signal import Signal
 T = typing
 import asyncio, contextlib
-#from qtpy.QtCore import Signal, Slot, QObject
+if T.TYPE_CHECKING:
+    from qtpy.QtWidgets import QWidget
 
 
 @attr.s
 class IDevice(abc.ABC):
     name: str = attr.ib()
+    extra_widget : T.Optional[QWidget] = None
 
     def init(self):
         pass
@@ -21,7 +23,7 @@ class IDevice(abc.ABC):
     @classmethod
     def create_remote(cls, *args, **kwargs):
         '''Creates an instance and puts it into a 
-        xmlrpc server which is started in a seperated thread.
+        xmlrpc server which is started in a separated thread.
         
         Returns (obj, server, thread)'''
         obj = cls(*args, **kwargs)
@@ -32,6 +34,7 @@ class IDevice(abc.ABC):
         return obj, server, thr
 
 
+    def extra_opts(self):
 
 @attr.s(auto_attribs=True, cmp=False)
 class Reading:
@@ -40,6 +43,7 @@ class Reading:
     stds: np.ndarray
     signals: np.ndarray
     valid: bool
+
 
 # Defining a minimal interface for each hardware
 @attr.s(auto_attribs=True, cmp=False)
