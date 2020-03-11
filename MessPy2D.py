@@ -291,9 +291,7 @@ class CommandMenu(QWidget):
 
     def add_sample_holder(self, saho):
         move_wid = MoveWidget(saho)
-        home_button = QPushButton('Set Home')
-        home_button.clicked.connect(lambda: saho.set_home())
-        gb = make_groupbox([move_wid, home_button], "Sample Holder")
+        gb = make_groupbox([move_wid], "Sample Holder")
         self._layout.addWidget(gb)
 
     def add_spec(self, cam):

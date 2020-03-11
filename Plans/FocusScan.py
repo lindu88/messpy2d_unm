@@ -122,7 +122,7 @@ class FocusScan():
             self.ytext_ref = make_text('y ref', self.fit_yref)
             print(self.ytext_ref)
         self.save()
-        self.fh.set_pos_mm(0, 0)
+        self.fh.set_pos_mm(*self.start_pos)
         self.sigFitDone.emit()
         yield
 
@@ -152,10 +152,10 @@ class FocusScan():
             p = Path(config.data_directory)
         else:
             p = Path(r"C:\Users\2dir\messpy2d\data_temps")
-        dname = p + f"\{self.name}_focusScan.npz"
+        dname = p /  f"{self.name}_focusScan.npz"
         i = 0
         while dname.is_file():
-            dname = p + f"\{self.name}{i}_focusScan.npz"
+            dname = p / f"{self.name}{i}_focusScan.npz"
             i = i + 1
         self._name = dname
         # if os.path.exists(dname):

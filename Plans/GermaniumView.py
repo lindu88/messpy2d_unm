@@ -36,7 +36,7 @@ class GermaniumView(QWidget):
                 self.plot.plotItem.addItem(text)
                 self.button.setEnabled(False)
                 self.button.clicked.connect(lambda: germanium_plan.make_zero())
-        germanium_plan.sigGerDone.connect(lambda: plotGer())
+        germanium_plan.sigGerDone.connect(plotGer)
 
 
 
