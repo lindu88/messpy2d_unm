@@ -236,8 +236,10 @@ class IRotationStage(IDevice):
             self.sigDegreesChanged.emit(deg)
             await asyncio.sleep(0.3)
 
-
+@attr.s
 class ILissajousScanner(IDevice):
+    pos_home: tuple = attr.ib()
+
     def init_motor(self):
         pass
 
@@ -257,4 +259,8 @@ class ILissajousScanner(IDevice):
 
     @abc.abstractmethod
     def is_moving(self) -> typing.Tuple[bool, bool]:
+        pass
+
+    @abc.abstractmethod
+    def set_home(self):
         pass
