@@ -202,8 +202,8 @@ class CommandMenu(QWidget):
 
         if c.rot_stage:
             self.add_rot_stage(c.rot_stage)
-        self.move_wid = MoveWidget(c.sample_holder)
-        self._layout.addWidget(self.move_wid)
+        if c.sample_holder:
+            self.add_sample_holder(c.sample_holder)
         #self.add_ext_view()
 
     def add_plan_controls(self):
@@ -287,6 +287,13 @@ class CommandMenu(QWidget):
         rs.sigDegreesChanged.connect(rsi.update_value)
         gb = make_groupbox([rsi], "Rotation Stage")
 
+        self._layout.addWidget(gb)
+
+    def add_sample_holder(self, saho):
+        move_wid = MoveWidget(saho)
+        home_button = QPushButton('Set Home')
+        home_button.clicked.connect(lambda: saho.set_home())
+        gb = make_groupbox([move_wid, home_button], "Sample Holder")
         self._layout.addWidget(gb)
 
     def add_spec(self, cam):

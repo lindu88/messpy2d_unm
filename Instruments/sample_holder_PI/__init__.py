@@ -3,6 +3,8 @@ import threading
 import pipython
 from pipython import pitools, fastaligntools
 import typing, time
+import json
+import attr
 
 
 
@@ -13,8 +15,21 @@ c843.dll.settimeout = lambda x: None
 c843.ConnectPciBoard(1)
 
 
+CONF_FILE = "sample_holder_conf.json"
+
+try:
+    with open(CONF_FILE, 'r') as f:
+        conf = json.load(f)
+        POS_LIST = conf['pos_list']
+
+except IOError:
+    POS_LIST = (0, 0)
+
+@attr.s(auto_attribs=True)
 class SampleHolder(ILissajousScanner):
-    def __init__(self):
+    pos_home: tuple = POS_LIST
+
+    def __attrs_post_init__(self):
         t = threading.Thread(target=self.init_m414)
         t.start()
         t2 = threading.Thread(target=self.init_mag)
@@ -67,6 +82,12 @@ class SampleHolder(ILissajousScanner):
         a = c843.qMOV('2')['2']
         b = mag.qMOV('1')['1']
         return a, b
+
+    def set_home(self):
+        p1,p2 = self.get_pos_mm()
+        self.pos_home = (p1, p2)
+        with open(CONF_FILE, 'w') as f:
+            json.dump(dict(pos_list=(p1, p2)), f)
 
 
 if __name__ == '__main__':

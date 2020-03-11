@@ -15,18 +15,6 @@ import scipy.special as spec
 import scipy.optimize as opt
 from Instruments.interfaces import ILissajousScanner
 
-#faulhaber = XYSingleFaulhaber()
-
-
-# class faul_sim():
-#    def __init__(self):
-#        pass
-#    def set_pos_mm(self,a,b,c):
-#        pass
-
-
-# faulhaber = faul_sim()
-
 
 def gauss_int(x, x0, amp, back, sigma):
     return 0.5 * (1 + amp * spec.erf((x - x0) / (sigma * 2))) - back
@@ -41,6 +29,7 @@ def fit_curve(pos, val):
     a = val[np.argmax(pos)]
     b = val[np.argmin(pos)]
     x0 = [pos[np.argmin(np.abs(val - (a - b) / 2))], a - b, b, 0.1]
+
     def helper(p):
         return np.array(val) - gauss_int(pos, *p)
 
@@ -49,10 +38,9 @@ def fit_curve(pos, val):
     return FitResult(success=res[1], params=res[0], model=fit)
 
 
-
 def make_text(name, fr):
     text = '%s\n4*sigma: %2.3f mm \nFWHM %2.3f mm\nPOS %2.2f' % (
-    name, 4 * fr.params[-1], 2.355 * fr.params[-1], fr.params[0])
+        name, 4 * fr.params[-1], 2.355 * fr.params[-1], fr.params[0])
     return text
 
 
@@ -89,7 +77,7 @@ class FocusScan():
             self.probe_y = []
             self.ref_y = []
 
-        self.start_pos = self.fh.get_pos_mm()
+        self.start_pos = self.fh.pos_home
         gen = self.make_scan_gen()
         self.make_step = lambda: next(gen)
 
@@ -97,7 +85,7 @@ class FocusScan():
         print('start scan focus')
         if self.scan_x:
             scan_axis = 'x'
-            self.fh.set_pos_mm(self.x_parameters[0], self.start_pos[1])
+            self.fh.set_pos_mm(self.start_pos[0] + self.x_parameters[0], self.start_pos[1])
             for pos, probe, ref in self.scanner(self.x_parameters, scan_axis):
                 if pos is None:
                     yield
@@ -116,7 +104,7 @@ class FocusScan():
 
         if self.scan_y:
             scan_axis = 'y'
-            self.fh.set_pos_mm(self.start_pos[0], self.y_parameters[0])
+            self.fh.set_pos_mm(self.start_pos[0], self.start_pos[1] + self.y_parameters[0])
             for pos, probe, ref in self.scanner(self.y_parameters, scan_axis):
                 print(pos)
                 if pos is None:
@@ -147,9 +135,9 @@ class FocusScan():
         steps = np.arange(start_pos, end_pos, sign * step)
         for i in steps:
             if axis == 'x':
-                self.fh.set_pos_mm(i, None)
+                self.fh.set_pos_mm(self.start_pos[0] + i, None)
             if axis == 'y':
-                self.fh.set_pos_mm(None, i)
+                self.fh.set_pos_mm(None, self.start_pos[1] + i)
 
             t = threading.Thread(target=self.cam.read_cam)
             t.start()
@@ -167,10 +155,10 @@ class FocusScan():
         dname = p + f"\{self.name}_focusScan.npz"
         i = 0
         while dname.is_file():
-            dname = p +f"\{self.name}{i}_focusScan.npz"
+            dname = p + f"\{self.name}{i}_focusScan.npz"
             i = i + 1
         self._name = dname
-        #if os.path.exists(dname):
+        # if os.path.exists(dname):
         #    name_exists = True
         #    i = 0
         #    while name_exists == True:
