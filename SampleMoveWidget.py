@@ -20,8 +20,14 @@ class MoveWidget(QWidget):
         self.scanner = sh
         self.timer = QTimer()
 
-    #def start_move(self, direction):
-    #    self.timer.connect
+        self.pos_label = QLabel()
+        self.home_button = QPushButton("Set Home")
+        self.home_button.clicked.connect(sh.set_home)
+        self.update_label()
+
+    def update_label(self):
+        x, y = self.scanner.get_pos_mm()
+        self.pos_label.setText(f"x: {x:2.3f} mm  y: {y:2.3f} ")
 
     def keyPressEvent(self, a0 : QKeyEvent) -> None:
         K = 0.5
@@ -44,7 +50,7 @@ class MoveWidget(QWidget):
 
         if move:
             self.scanner.set_pos_mm(*pos)
-
+            self.update_label()
 
 
 if __name__ == '__main__':
