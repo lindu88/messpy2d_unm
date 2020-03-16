@@ -46,8 +46,9 @@ class RotationStage(IRotationStage):
         rot.timeout = 3
 
         return rot
-    #def __attrs_post_init__(self):
-    #    self.rot.write(b'1OR\r\n')
+
+    def __attrs_post_init__(self):
+        self.rot.write(b'1OR\r\n')
 
     def w(self,x):
         writer_str = f'{x}\r\n'
@@ -89,11 +90,11 @@ rs = RotationStage()
 if __name__ == '__main__':
     import time
     print('change first')
-    rs.set_degrees(30)
+    rs.set_degrees(0)
     time.sleep(8)
     deg = rs.get_degrees()
     print(f'first pol:{deg}')
-    rs.set_degrees(50)
+    rs.set_degrees(80)
     time.sleep(8)
     deg = rs.get_degrees()
     print(f'second pol:{deg}')

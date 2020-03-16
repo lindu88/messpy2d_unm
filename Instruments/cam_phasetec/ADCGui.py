@@ -7,8 +7,8 @@ from qtpy.QtWidgets import (QApplication, QWidget)
 from matplotlib import cm
 import typing as T
 from QtHelpers import hlay
-if T.TYPE_CHECKING:
-    from Instruments.cam_phasetec import PT_MCT, PhaseTecCam
+
+from CamAndSpec import PhaseTecCam
 
 row_paras = {'type': 'int', 'step': 1, 'min': 0, 'max': 128,
              'readonly': True}
@@ -42,8 +42,8 @@ class CamOptions(QWidget):
         self.image = ImageItem()
         self.image.setLookupTable(lut)
 
-        self.pr_reg = LinearRegionItem(orientation="horizontal", pen="r")
-        self.ref_reg = LinearRegionItem(orientation="horizontal", pen="g")
+        self.pr_reg = LinearRegionItem(orientation=LinearRegionItem.Horizontal)
+        self.ref_reg = LinearRegionItem(orientation=LinearRegionItem.Horizontal)
         self.pr_reg.setBrush(mkBrush([0, 0, 0, 0]))
         self.ref_reg.setBrush(mkBrush([0, 0, 0, 0]))
         self.pr_mean = PlotCurveItem(pen="r")
@@ -64,8 +64,9 @@ class CamOptions(QWidget):
         self.timer.start(50)
 
         self.image.setLevels([0, MAX_VAL])
-        self.setup_connections()
         self.params = p
+        self.setup_connections()
+
 
     def setup_connections(self):
         p = self.params
@@ -114,8 +115,15 @@ class CamOptions(QWidget):
 
 
 if __name__ == '__main__':
+    from CamAndSpec import _ircam
+    import sys
+    sys._excepthook = sys.excepthook
+    def exception_hook(exctype, value, traceback):
+        sys._excepthook(exctype, value, traceback)
+        sys.exit(1)
+    sys.excepthook = exception_hook
     app = QApplication([])
-    go = CamOptions()
+    go = CamOptions(cam=_ircam)
 
     go.show()
     app.exec_()
