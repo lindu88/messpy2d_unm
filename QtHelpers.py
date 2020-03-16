@@ -241,7 +241,7 @@ class PlanStartDialog(QDialog):
             # tmp.restoreState(s)
             # name = tmp.child('Exp. Settings')['Filename']
             self.recent_settings_list.addItem(name)
-        self.recent_settings_list.setCurrentIndex(name)
+        #self.recent_settings_list.setCurrentIndex(name)
 
     def load_recent(self, new):
         settings = self.recent_settings[new][1].copy()

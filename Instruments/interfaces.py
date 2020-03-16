@@ -5,8 +5,8 @@ import numpy as np
 from Signal import Signal
 T = typing
 import asyncio, contextlib
-if T.TYPE_CHECKING:
-    from qtpy.QtWidgets import QWidget
+
+from qtpy.QtWidgets import QWidget
 
 
 @attr.s
@@ -35,6 +35,7 @@ class IDevice(abc.ABC):
 
 
     def extra_opts(self):
+        pass
 
 @attr.s(auto_attribs=True, cmp=False)
 class Reading:
