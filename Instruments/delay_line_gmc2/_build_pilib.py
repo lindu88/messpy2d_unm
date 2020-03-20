@@ -1,23 +1,24 @@
 # _build_foo.py
 from nicelib import build_lib
 from nicelib.process import cdecl_hook, declspec_hook
+from pathlib import Path
 
+dir = Path()
 header_info = {
     'win*': {
         'path': (
             r".",
-            r"{PROGRAMFILES}\Vendor\Product",
-            r"{PROGRAMFILES(X86)}\Vendor\Product",
+            r"C:\Users\Public\PI\C-843\PI_Programming_Files_C843_GCS_DLL",
         ),
         'header': 'C843_GCS_DLL.h'
     },
 }
 
-lib_names = {'win*:64': 'C843_GCS_DLL_x64', 'win*:32': 'C843_GCS_DLL'}
+lib_names = {'win*:64': r'C:\Users\Public\PI\C-843\PI_Programming_Files_C843_GCS_DLL', 'win*:32': 'C843_GCS_DLL'}
 
 pre = """
 #define WIN32
-
+#define 
 """
 
 #re = 'typedef unsiged int'

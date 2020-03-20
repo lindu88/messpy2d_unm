@@ -1,8 +1,9 @@
-import typing, abc, time, attr, threading
+import typing, abc, time, attr, threading, multiprocessing
 import xmlrpc.server as rpc
 from enum import auto
 import numpy as np
 from Signal import Signal
+
 T = typing
 import asyncio, contextlib
 
@@ -12,7 +13,7 @@ from qtpy.QtWidgets import QWidget
 @attr.s
 class IDevice(abc.ABC):
     name: str = attr.ib()
-    extra_widget : T.Optional[QWidget] = None
+    extra_widget: T.Optional[QWidget] = None
 
     def init(self):
         pass
@@ -21,21 +22,29 @@ class IDevice(abc.ABC):
         pass
 
     @classmethod
-    def create_remote(cls, *args, **kwargs):
+    def create_remote(cls, addr, type='process', *args, **kwargs):
         '''Creates an instance and puts it into a 
         xmlrpc server which is started in a separated thread.
         
         Returns (obj, server, thread)'''
-        obj = cls(*args, **kwargs)
-        server = rpc.SimpleXMLRPCServer('')
-        server.register_instance(obj)
-        server.register_introspection_functions()
-        thr = threading.Thread(target=server.serve_forever)
-        return obj, server, thr
 
+        def create_obj():
+            obj = cls(*args, **kwargs)
+            server = rpc.SimpleXMLRPCServer(addr, allow_none=True)
+            server.register_instance(obj)
+            server.register_introspection_functions()
+            server.serve_forever()
+
+        if type == 'process':
+            thr = multiprocessing.Process(target=create_obj)
+        else:
+            thr = threading.Thread(target=create_obj)
+
+        return thr
 
     def extra_opts(self):
         pass
+
 
 @attr.s(auto_attribs=True, cmp=False)
 class Reading:
@@ -116,8 +125,10 @@ class ICam(IDevice):
 
     async def async_make_read(self):
         out = []
+
         def reader():
             out.append(self.make_reading())
+
         thread = threading.Thread(target=reader)
         thread.start()
         while thread.is_alive():
@@ -153,12 +164,12 @@ class IDelayLine(IDevice):
         pass
 
     def get_pos_fs(self):
-        return self.pos_sign * mm_to_fs((self.get_pos_mm()-self.home_pos)*2.)
+        return self.pos_sign * mm_to_fs((self.get_pos_mm() - self.home_pos) * 2.)
 
     def move_fs(self, fs, do_wait=False, *args, **kwargs):
-        mm = self.pos_sign*fs_to_mm(fs)
-        #print('mm', mm+self.home_pos)
-        self.move_mm(mm/2.+self.home_pos, *args, **kwargs)
+        mm = self.pos_sign * fs_to_mm(fs)
+        # print('mm', mm+self.home_pos)
+        self.move_mm(mm / 2. + self.home_pos, *args, **kwargs)
         if do_wait:
             while self.is_moving():
                 time.sleep(0.1)
@@ -212,7 +223,6 @@ class IShutter(IDevice):
         self.close()
 
 
-
 @attr.s
 class IRotationStage(IDevice):
     sigDegreesChanged: Signal = attr.ib(attr.Factory(Signal))
@@ -241,9 +251,11 @@ class IRotationStage(IDevice):
             self.sigDegreesChanged.emit(deg)
             await asyncio.sleep(0.3)
 
+
 @attr.s
 class ILissajousScanner(IDevice):
     pos_home: tuple = attr.ib()
+    has_zaxis: bool = False
 
     def init_motor(self):
         pass
@@ -268,4 +280,13 @@ class ILissajousScanner(IDevice):
 
     @abc.abstractmethod
     def set_home(self):
+        pass
+
+    def set_zpos_mm(self, mm: float):
+        pass
+
+    def get_zpos_mm(self) -> float:
+        pass
+
+    def is_zmoving(self) -> bool:
         pass

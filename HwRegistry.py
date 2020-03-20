@@ -35,15 +35,16 @@ elif pc_name == 'ir-2d':
     #from Instruments.delay_line_gmc2 import DelayL
     #from Instruments.delay_line_mercury import dl
     from Instruments.delay_line_xmlrpc import _dl
-    hp = config.__dict__.get('Delay 1 Home Pos.', 8.80)
-    _dl.home_pos = hp
+    #hp = config.__dict__.get('Delay 1 Home Pos.', 8.80)
+    #_dl.home_pos = hp
     logging.info("Init RotationStage and Shutter (rpc)")
     from Instruments.shutter import sh
     _shutter = sh
     from Instruments.RotationStage import rs
     _rot_stage = rs
-    from Instruments.sample_holder_PI import SampleHolder
-    _sh = SampleHolder()
+    from Instruments.remotes import Faulhaber
+    _sh = Faulhaber()
+    _sh.set_pos_mm(*_sh.pos_home)
 
 
 

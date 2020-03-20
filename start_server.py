@@ -4,8 +4,12 @@
 #from Instruments.RotationStage import rs
 from Instruments.delay_line_mercury import _dl
 import threading
+
 import xmlrpc.server
 
+from Instruments.sample_holder_PI import SampleHolder
+thr = SampleHolder.create_remote(('', 8001), 'thread')
+thr.start()
 
 if __name__ == '__main__':
     server_dl = xmlrpc.server.SimpleXMLRPCServer(('', 8000))
