@@ -128,7 +128,7 @@ class PumpProbePlan:
                     t = threading.Thread(target=pp.read_point, args=(self.t_idx,))
                     t.start()
                     threads.append(t)
-                while any([t.isAlive() for t in threads]):
+                while any([t.is_alive() for t in threads]):
                     yield
                 for pp in self.cam_data:
                     pp.sigStepDone.emit()
@@ -224,7 +224,8 @@ class PumpProbeData:
             self.mean_scans = self.completed_scans.mean(0)
             self.plan.save()
         next_wl = self.cwl[self.wl_idx]
-        self.cam.set_wavelength(next_wl)
+        if len(self.cwl) > 1:
+            self.cam.set_wavelength(next_wl)
         self.sigWavelengthChanged.emit()
 
     def read_point(self, t_idx):

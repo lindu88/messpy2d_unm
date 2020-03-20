@@ -21,6 +21,7 @@ params = [
     {'name': 'Bot. Ref', 'value': 103, **row_paras},
     {'name': 'Record BG', 'type': 'action'},
     {'name': 'Delete BG', 'type': 'action'},
+    {'name': 'Temp', 'type': 'float', 'readonly': True}
 ]
 
 x = np.arange(128)
@@ -73,7 +74,7 @@ class CamOptions(QWidget):
         pm = self.cam
         f = lambda val: pm._cam.set_gain(val.value())
         p.child('Gain').sigValueChanged.connect(f)
-        f = lambda val: pm._cam.set_background_level(val.value())
+        f = lambda val: pm._cam.set_offset(val.value())
         p.child('Offset').sigValueChanged.connect(f)
 
         def update_pr_regions(reg: LinearRegionItem):
@@ -88,15 +89,30 @@ class CamOptions(QWidget):
             p.child('Bot. Ref').setValue(mi)
             pm.ref_rows = p['Bot. Ref'], p['Top Ref']
             config.ref_rows = pm.ref_rows
-
         self.ref_reg.sigRegionChangeFinished.connect(update_ref_regions)
 
-        p.child('Record BG').sigValueChanged.connect(self.cam.set_background)
-        p.child('Delete BG').sigValueChanged.connect(self.cam.remove_background)
+        p.child('Temp').setValue(self.cam._cam.get_tempK())
+
+        def update_temp():
+            p.child('Temp').setValue(self.cam._cam.get_tempK())
+        self.temp_timer = QTimer()
+        self.temp_timer.timeout.connect(update_temp)
+        self.temp_timer.start(10000)
+        p.child('Record BG').sigActivated.connect(lambda: self.cam.set_background())
+        p.child('Delete BG').sigActivated.connect(self.cam.remove_background)
 
     def update(self):
         pm = self.cam
-        img = pm.read_cam().mean(0)
+        import threading
+        t = threading.Thread(target=pm.read_cam)
+        t.start()
+        while t.is_alive():
+            QApplication.processEvents()
+
+        if pm.background is not None:
+            img = pm._cam.data.mean(0) - pm.background
+        else:
+            img = pm._cam.data.mean(0)
         # print(img.shape)
         self.image.setImage(img.T, autoLevels=False)
         # print(np.median(img))
@@ -104,10 +120,13 @@ class CamOptions(QWidget):
         self.left_line.setData(x=-(img[:, 0] / MAX_VAL * 100), y=y)
         self.right_line.setData(x=-(img[:, -1] / MAX_VAL * 100), y=y)
 
-        a, b = self.params['Top Probe'], self.params['Bot. Probe']
+        a, b = int(self.params['Top Probe']), int(self.params['Bot. Probe'])
+
         self.pr_mean.setData(x=x, y=img[b:a, :].mean(0) / MAX_VAL * 100 + 128)
 
+
         a, b = self.params['Top Ref'], self.params['Bot. Ref']
+        a, b = int(a), int(b)
         self.ref_mean.setData(x=x, y=img[b:a, :].mean(0) / MAX_VAL * 100 + 128)
 
     def get_best_pixel(self):

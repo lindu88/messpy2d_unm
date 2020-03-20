@@ -3,18 +3,20 @@ from Config import config
 from Instruments.interfaces import IDelayLine
 import wrapt
 import logging
-
+import attr
 
 config.dl_server = 'http://130.133.30.223:8000'
 
 dlproxy = ServerProxy(config.dl_server)
 
-
+@attr.s(auto_attribs=True)
 class DelayLine(IDelayLine):
+    name : str =  f"Remote DelayLine xmlrpc {config.dl_server}"
+    pos_sign : float = -1
+    home_pos : float = dlproxy.get_home()
 
     def __init__(self):
-        self.name = f"Remote DelayLine xmlrpc {config.dl_server}"
-        super().__init__(name=self.name, pos_sign=-1, home_pos=dlproxy.get_home())
+        super().__init__(name=self.name, pos_sign=-1)
 
     @wrapt.synchronized
     def move_mm(self, mm, *args, **kwargs):

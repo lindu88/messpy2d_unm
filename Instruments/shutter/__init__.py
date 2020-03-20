@@ -31,7 +31,7 @@ class Shutter(object):
         self.port.write(b'ens?\r')
         ans = self.port.read(6)
 
-        if ans[-1] == '1':
+        if ans[-1:] == b'1':
             return True
         else:
             return False
@@ -42,6 +42,7 @@ class Shutter(object):
         """
         self.port.write(b'ens\r')
         self.port.read(4)
+
 
     def open(self):
         if not self.is_open():

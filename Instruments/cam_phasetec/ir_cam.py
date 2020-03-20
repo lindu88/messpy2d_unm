@@ -29,7 +29,7 @@ BINNING_MODES = [(128, 128), (128, 64), (128, 56), (128, 32), (128, 16),
 @attr.s(auto_attribs=True)
 class PT_MCT:
     shots: int = attr.ib(40)
-    int_time_us: int = attr.ib(700)
+    int_time_us: int = attr.ib(1)
     binning_mode: int = attr.ib(0)
     gain: int = attr.ib(9)
     offset: int = attr.ib(164)
@@ -58,14 +58,19 @@ class PT_MCT:
         ec(self._dll.PT_2DMCT_SetWindowSize(self.binning_mode))
 
     def set_gain(self, gain):
-        ec = self._errchk
-        self.gain = gain
-        ec(self._dll.PT_2DMCT_SetGainOffset(self.gain, self.offset))
+        with self.reader.read_lock:
+            print(gain)
+            ec = self._errchk
+            self.gain = gain
+            ec(self._dll.PT_2DMCT_SetGainOffset(self.gain, self.offset))
 
     def set_offset(self, offset):
-        ec = self._errchk
-        self.offset = offset
-        ec(self._dll.PT_2DMCT_SetGainOffset(self.gain, self.offset))
+        with self.reader.read_lock:
+
+            ec = self._errchk
+            self.offset = offset
+            ec(self._dll.PT_2DMCT_SetGainOffset(self.gain, self.offset))
+
 
     def get_tempK(self):
         text = PT_DLL.new('char[100]')
@@ -76,7 +81,8 @@ class PT_MCT:
 
     def read_cam(self):
         self.reader.shots = self.shots
-        return self.reader.read_cam(self.shots)
+        self.data = self.reader.read_cam(self.shots)
+        return self.data
 
     def read_cam2(self):
         rows, cols = BINNING_MODES[self.binning_mode]

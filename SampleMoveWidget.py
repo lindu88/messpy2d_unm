@@ -13,7 +13,7 @@ from Instruments.interfaces import ILissajousScanner
 
 
 class MoveWidget(QWidget):
-    def __init__(self, sh : ILissajousScanner):
+    def __init__(self, sh: ILissajousScanner):
         super().__init__()
         self.scanner = sh
         self.setFocusPolicy(Qt.StrongFocus)
@@ -23,32 +23,38 @@ class MoveWidget(QWidget):
         self.move_button.setCheckable(True)
         self.move_button.setChecked(False)
         self.move_button.toggled.connect(self.mover)
-        buttons = hlay([home_button,self.move_button])
+
+        buttons = hlay([home_button, self.move_button])
         pos_str = str(self.scanner.pos_home)
-        self.home_label= QLabel(pos_str)
-        self.setLayout(vlay([self.home_label,buttons]))
+        self.home_label = QLabel(pos_str)
+        self.setLayout(vlay([self.home_label, buttons]))
         self.timer = QTimer()
-        self.K = 0.025
+        self.K = 0.1
         self.x_settings = 3
-        self.y_settings = [2,0.2]
+        self.y_settings = [2, 0.2]
+
+    def show_xy(self):
+        pass
 
     def mover(self):
         if self.move_button.isChecked():
-            if self.x_settings == None and self.y_settings == None:
-                setwid = SettingsMoveWidget(mw=self)
-                setwid.show()
-            else:
-                self.scanner.start_contimove(self.x_settings,self.y_settings)
+            self.setwid = SettingsMoveWidget(mw=self)
+            self.setwid.show()
+
         if self.move_button.isChecked() == False:
             self.scanner.stop_contimove()
-            #self.x_settings = None
-            #self.y_settings = None
+            # self.x_settings = None
+            # self.y_settings = None
 
-    def keyPressEvent(self, a0 : QKeyEvent) -> None:
+    def keyPressEvent(self, a0: QKeyEvent) -> None:
         key = a0.key()
         pos = list(self.scanner.get_pos_mm())
+
+        if self.scanner.has_zaxis:
+            z_pos = self.scanner.get_zpos_mm()
+
         move = True
-        K =  self.K
+        K = self.K
         if key == Qt.Key_Left:
             pos[0] += K
         elif key == Qt.Key_Right:
@@ -65,12 +71,24 @@ class MoveWidget(QWidget):
             move = False
             self.close()
 
+        if self.scanner.has_zaxis:
+            z_pos = self.scanner.get_zpos_mm()
+            if key == Qt.Key_R:
+                z_pos += 0.3
+                move = False
+            if key == Qt.Key_F:
+                z_pos -= 0.3
+                move = False
+
+            self.scanner.set_zpos_mm(z_pos)
+
         if move:
             self.scanner.set_pos_mm(*pos)
-            self.label_updater(pos)
+        self.label_updater(pos, z_pos)
 
-    def label_updater(self,new_pos):
-        self.home_label.setText(f' x: {new_pos[0]:.3f}, y: {new_pos[1]:.3f}')
+    def label_updater(self, new_pos, zpos):
+        self.home_label.setText(f' x: {new_pos[0]:.3f}, y: {new_pos[1]:.3f}, z: {zpos: .1f}')
+
 
 class SettingsMoveWidget(QWidget):
     def __init__(self, mw: MoveWidget, *args, **kwargs):
@@ -78,17 +96,16 @@ class SettingsMoveWidget(QWidget):
         self.mw = mw
         self.x_button = QPushButton('Set x:')
         self.x_button.clicked.connect(self.x_click)
-        self.xlim_label = QLabel('x limit')
+        self.xlim_label = QLabel('X amp.')
         self.edit_box_x = QLineEdit()
         self.edit_box_x.setMaxLength(3)
         self.edit_box_x.setMaximumWidth(100)
         self.x_limbox = vlay([self.xlim_label, self.edit_box_x])
-        self.xsteps_label = QLabel('x steps')
-        self.edit_box_xstep = QLineEdit()
-        self.edit_box_xstep.setMaxLength(3)
-        self.edit_box_xstep.setMaximumWidth(100)
-        self.x_stepbox = vlay([self.xsteps_label, self.edit_box_xstep])
-        self.x_setter = hlay([self.x_button,self.x_limbox,self.x_stepbox])
+        #self.xsteps_label = QLabel('x steps')
+        #self.edit_box_xstep = QLineEdit()
+        #self.edit_box_xstep.setMaxLength(3)
+        #self.edit_box_xstep.setMaximumWidth(100)
+        self.x_setter = hlay([self.x_button, self.x_limbox])
 
         self.y_button = QPushButton('Set y:')
         self.y_button.clicked.connect(self.y_click)
@@ -97,27 +114,33 @@ class SettingsMoveWidget(QWidget):
         self.edit_box_y.setMaxLength(3)
         self.edit_box_y.setMaximumWidth(100)
         self.y_limbox = vlay([self.ylim_label, self.edit_box_y])
-        self.ysteps_label = QLabel('y steps')
-        self.edit_box_ystep = QLineEdit()
-        self.edit_box_ystep.setMaxLength(3)
-        self.edit_box_ystep.setMaximumWidth(100)
-        self.y_stepbox = vlay([self.ysteps_label, self.edit_box_ystep])
-        self.y_setter = hlay([self.y_button,self.y_limbox,self.y_stepbox])
+        #self.ysteps_label = QLabel('y steps')
+        #self.edit_box_ystep = QLineEdit()
+        #self.edit_box_ystep.setMaxLength(3)
+        #self.edit_box_ystep.setMaximumWidth(100)
+        #self.y_stepbox = vlay([self.ysteps_label, self.edit_box_ystep])
+        self.y_setter = hlay([self.y_button, self.y_limbox])
         self.start_button = QPushButton('Start Movement:')
         self.start_button.clicked.connect(self.start_move)
-        self.setLayout(vlay([self.x_setter,self.y_setter,self.start_button]))
+        self.setLayout(vlay([self.x_setter, self.y_setter, self.start_button]))
 
     def x_click(self):
-        self.mw.x_settings = [self.edit_box_x.text(),self.edit_box_xstep.text()]
+        self.mw.x_settings = float(self.edit_box_x.text())
+
     def y_click(self):
-        self.mw.y_settings = [self.edit_box_y.text(),self.edit_box_ystep.text()]
+        self.mw.y_settings = float(self.edit_box_y.text())
+
     def start_move(self):
+        self.mw.x_settings = float(self.edit_box_x.text())
+        self.mw.y_settings = float(self.edit_box_y.text())
         self.mw.scanner.start_contimove(self.mw.x_settings, self.mw.y_settings)
         print(self.mw.x_settings, self.mw.y_settings)
         self.close()
 
+
 if __name__ == '__main__':
     from Instruments.sample_holder_PI import SampleHolder
+
     sh = SampleHolder()
     app = QApplication([])
     mwid = MoveWidget(sh)
