@@ -6,6 +6,7 @@ results/*
 /zeropos
 /messpy_config
 .mypy_cache/
-Instruments/deformable_mirror/_tldfmlib.py
-Instruments/deformable_mirror/lextab.py
 .vscode
+yacctab.py
+lextab.py
+_*lib.py
