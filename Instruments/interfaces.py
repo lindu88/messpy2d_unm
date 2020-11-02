@@ -124,16 +124,20 @@ class ICam(IDevice):
         return 0
 
     async def async_make_read(self):
-        out = []
+        
+
+        out = asyncio.Queue()
 
         def reader():
             out.append(self.make_reading())
+            
 
         thread = threading.Thread(target=reader)
         thread.start()
         while thread.is_alive():
             await asyncio.sleep(0.01)
-        return out[0]
+        
+        return await out.get()
 
 
 def mm_to_fs(pos_in_mm):

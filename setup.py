@@ -1,8 +1,8 @@
 from distutils.core import setup
 
 setup(
-    name='2D_IR',
-    version='0.1',
+    name='MessPy2d',
+    version='1.0',
     packages=['Plans'],
     url='',
     requires=['qtpy', 'qtawesome', 'nicelib', 'dynaconf',

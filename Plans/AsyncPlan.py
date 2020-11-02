@@ -4,7 +4,7 @@ import attr
 import os
 
 os.environ['QT_API'] = 'PyQt5'
-from Instruments.interfaces import ILissajousScanner, ICam, IDelayLine
+from Messpy2D.Instruments.interfaces import ILissajousScanner, ICam, IDelayLine
 from typing import List, Callable, Tuple
 from asyncqt import QEventLoop, asyncClose, asyncSlot
 from qtpy.QtWidgets import *
@@ -50,8 +50,8 @@ class FocusScan(QObject):
 class FocusScanView(QWidget):
     def __init__(self, focus_scan: FocusScan, *args, **kwargs):
         super().__init__( *args, **kwargs)
-        self.focus_scan = focus_scan
         self.info_label = QLabel('BLa')
+        self.focus_scan = focus_scan        
         self.focus_scan.sigStepDone.connect(self.update_view)
         self.setLayout(QHBoxLayout())
         self.start_button = QPushButton('start')
