@@ -96,6 +96,8 @@ class Cam:
     def get_slit(self):
         return self.cam.get_slit()
 
+    def calibrate_ref(self):
+        self.cam.calibrate_ref()
 
 @attrs(cmp=False)
 class Delayline:
