@@ -154,11 +154,19 @@ def fs_to_mm(t_fs):
     return pos_m * 1000.
 
 
+def _try_load():
+    import json
+    with open("home_pos", 'r') as f:
+        h = json.load(f)['home']
+    return h
+
+
 @attr.s(auto_attribs=True)
 class IDelayLine(IDevice):
-    home_pos: float = attr.ib(0.)
+    home_pos: float = attr.Factory(_try_load)
     pos_sign: float = 1
-
+  
+  
     @abc.abstractmethod
     def move_mm(self, mm, *args, **kwargs):
         pass
@@ -183,8 +191,16 @@ class IDelayLine(IDevice):
         return False
 
     def def_home(self):
+        import json
         self.home_pos = self.get_pos_mm()
+        with open("home_pos", 'w') as f:
+            json.dump(dict(home=self.home_pos), f)
 
+    def load_home(self):
+        import json
+        with open("home_pos", 'r') as f:
+            self.home_pos = json.load(f)['home']
+        
     async def async_move_mm(self, mm, do_wait=False):
         self.move_mm(mm)
         if do_wait:
