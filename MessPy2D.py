@@ -138,10 +138,10 @@ class MainWindow(QMainWindow):
         pp.clicked.connect(plan_starter(FocusScanStarter))
         tb.addWidget(pp)
 
-        asl_icon = qta.icon('mdi.chart-line', color='white')
-        pp = QPushButton('Germanium', icon=asl_icon)
-        pp.clicked.connect(plan_starter(GermaniumStarter))
-        tb.addWidget(pp)
+        #asl_icon = qta.icon('mdi.chart-line', color='white')
+        #pp = QPushButton('Germanium', icon=asl_icon)
+        #pp.clicked.connect(plan_starter(GermaniumStarter))
+        #tb.addWidget(pp)
 
         alg_icon = qta.icon('mdi.chart-line', color='white')
         pp = QPushButton('Show alignment helper')
@@ -152,7 +152,7 @@ class MainWindow(QMainWindow):
 
     def toggle_run(self, bool):
         if bool:
-            self.timer.start(10)
+            self.timer.start(30)
         else:
             self.timer.stop()
 
@@ -248,6 +248,8 @@ class CommandMenu(QWidget):
 
     def add_cam(self, c: Controller):
         bg_buttons = [('Record BG', c.cam.get_bg)]
+        if hasattr(c.cam, 'calibrate_ref'):
+            bg_buttons.append(('Record Ref. Calib.', c.cam.calibrate_ref))
         if c.cam2:
             bg_buttons.append(('Record BG2', c.cam2.get_bg))
         sc = ControlFactory('Shots', c.cam.set_shots, format_str='%d',
@@ -255,6 +257,7 @@ class CommandMenu(QWidget):
         sc.edit_box.setValidator(QIntValidator(10, 50000))
         c.cam.sigShotsChanged.connect(sc.update_value)
         c.cam.set_shots(config.shots)
+
         gb = make_groupbox([sc], "ADC")
         return gb
 
