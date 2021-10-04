@@ -24,7 +24,9 @@ class SP2500i:
             resp = self._readline(timeout=timeout)
             if resp[-2:] != b'ok':
                 raise IOError(f"Command not responded with OK, got '{resp}' instead")
-        return resp
+            return resp
+        else:
+            return 
 
     def _readline(self, timeout=None) -> bytes:
         logging.debug(f'SP2500i: Reading line')
@@ -41,17 +43,17 @@ class SP2500i:
         resp = self._write(b'?NM')
         return float(resp.strip(b' ').split(b' ')[0])
 
-    def set_wavelength(self, nm: float, timeout: float):
+    def set_wavelength(self, nm: float, timeout: float = 1):
         self._write(b'%.3f GOTO' % nm, timeout=timeout)
 
     def get_installed_gratings(self) -> str:
-        self._write(b'GRATINGS?')
+        self._write(b'?GRATINGS', False)
         resp = self.port.read(1000)
         return resp.decode('utf-8')
 
     def get_grating(self) -> int:
-        self._write(b'GRATING?')
-        resp = self._readline()
+        self._write(b'?GRATING', False)
+        resp = self._readline()[:-2]
         return int(resp)
 
     def set_grating(self, grating: int):
@@ -70,7 +72,7 @@ if __name__ == "__main__":
     log.setLevel(logging.DEBUG)
     spec = SP2500i()
     wl = spec.get_wavelength()
-    #print(spec.get_installed_gratings())
+    print(spec.get_installed_gratings())
     #print(f'Current wavelength {spec.get_wavelength()}')
-    #print(f'Current grating {spec.get_grating()}')
+    print(f'Current grating {spec.get_grating()}')
     spec.set_wavelength(wl + 200)
