@@ -61,3 +61,9 @@ elif pc_name == 'helmholm' and not TESTING:
     from Instruments.remotes import RotationStage, Shutter
     #_rot_stage = RotationStage()
     _shutter = Shutter()
+
+elif pc_name == 'DESKTOP-BBLLUO7':
+    from Instruments.cam_phasetec import _ircam as _cam
+    _cam2 = None
+    from Instruments.delay_line_apt import DelayLine 
+    _dl = DelayLine("VisDelay")
