@@ -4,7 +4,7 @@ from itertools import cycle
 
 import pyqtgraph as pg
 import pyqtgraph.parametertree as pt
-import yaml
+
 from qtpy.QtCore import Qt, Signal, Slot, QTimer
 from qtpy.QtGui import QPalette, QColor, QDoubleValidator
 from qtpy.QtWidgets import (QWidget, QLineEdit, QLabel, QPushButton, QHBoxLayout,
