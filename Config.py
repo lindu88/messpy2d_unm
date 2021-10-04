@@ -14,7 +14,7 @@ class Config:
                              'Semi-Conductor', 'Cph1']
     exp_settings: dict = attr.Factory(lambda: defaultdict(dict))
     conf_path: str = p
-    data_directory: Path = Path('D:') / 'results'
+    data_directory: Path = Path('C:') / 'results'
     testing = False
 
     def save(self, fname=p):
@@ -38,7 +38,7 @@ if config_available:
         pass
 
 
-config.data_directory = Path('D:/') / 'results'
+config.data_directory = Path('C:/') / 'results'
 
 
 
