@@ -57,12 +57,12 @@ class Cam:
             self.task.close()
         task = nidaqmx.Task()        
         if first == "Chopper":
-            task.ai_channels.add_ai_voltage_chan('Dev1/AI1',  name_to_assign_to_channel='Chopper', min_val=0, max_val=5)
-            task.ai_channels.add_ai_voltage_chan('Dev1/AI0',  name_to_assign_to_channel='Shaper', min_val=0, max_val=1)
+            task.ai_channels.add_ai_voltage_chan('Dev1/AI0', min_val=0, max_val=2)
+            task.ai_channels.add_ai_voltage_chan('Dev1/AI1', min_val=0, max_val=5)
         else:
             task.ai_channels.add_ai_voltage_chan('Dev1/AI0',  name_to_assign_to_channel='Shaper', min_val=0, max_val=1)
             task.ai_channels.add_ai_voltage_chan('Dev1/AI1',  name_to_assign_to_channel='Chopper', min_val=0, max_val=5)
-        task.timing.cfg_samp_clk_timing(1000, 'PFI0', c.Edge.RISING, sample_mode=c.AcquisitionType.FINITE, samps_per_chan=20)        
+        task.timing.cfg_samp_clk_timing(1000, 'PFI0', c.Edge.RISING, sample_mode=c.AcquisitionType.FINITE, samps_per_chan=20)
 
         #task.triggers.start_trigger.cfg_anlg_edge_start_trig("APFI0", trigger_level=2.5)
         task.triggers.start_trigger.cfg_dig_edge_start_trig("PFI0")
