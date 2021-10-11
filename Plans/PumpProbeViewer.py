@@ -179,6 +179,7 @@ class PumpProbeDataViewer(QWidget):
         <dt>Scan:<dd>{s.scan}
         <dt>Wl pos:<dd>{s.wl_idx+1}/{len(s.cwl)}        
         {rot_stage_pos}
+        <dt>T pos:<dd>{s.t_idx}/{len(s.t_list)}
         <dt>Time per scan<dd>{p.time_per_scan}
         </dl>
         </big>
@@ -272,7 +273,7 @@ class PumpProbeStarter(PlanStartDialog):
                dict(name="Num pre-zero points", type='int', value=10, min=0, max=20),
                dict(name="Pre-Zero pos", type='float', value=-60., suffix='ps'),
                dict(name='Use Shutter', type='bool', value=True, enabled=has_shutter, visible=has_shutter),
-               dict(name='Use Rotation Stage', type='bool', value=True, enabled=has_rot, visible=has_rot),
+               dict(name='Use Rotation Stage', type='bool', value=has_rot, enabled=has_rot, visible=has_rot),
                dict(name='Angles in deg.', type='str', value='0, 45', enabled=has_rot, visible=has_rot)]
 
         for c in self.controller.cam_list:
