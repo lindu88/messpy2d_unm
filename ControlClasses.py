@@ -66,7 +66,7 @@ class Cam:
         config.shots = shots
         self.sigShotsChanged.emit(shots)
 
-    def read_cam(self):
+    def read_cam(self, two_dim=False):
         rd = self.cam.make_reading()
         self.last_read = rd
         # self.sigReadCompleted.emit()
@@ -101,6 +101,7 @@ class Cam:
 class Delayline:
     sigPosChanged = attrib(Factory(Signal))
     pos = attrib(0)
+    moving = attrib(False)
     _dl = attrib(I.IDelayLine)
     _thread = attrib(None)
 
@@ -115,13 +116,14 @@ class Delayline:
             pos_fs = float(pos_fs)
         except ValueError:
             raise
+        self.moving = True
         self._dl.move_fs(pos_fs, do_wait=do_wait)
         if not do_wait:
             self.wait_and_update()
         else:
             while _dl.is_moving():
                 time.sleep(0.1)
-
+            self.moving = False
         self.pos = self._dl.get_pos_fs()
         self.sigPosChanged.emit(self.pos)
 
@@ -131,6 +133,8 @@ class Delayline:
         self.sigPosChanged.emit(self.pos)
         if self._dl.is_moving():
             QTimer.singleShot(50, self.wait_and_update)
+        else:
+            self.moving = False
 
     def get_pos(self) -> float:
         return self._dl.get_pos_fs()

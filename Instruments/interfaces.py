@@ -2,6 +2,7 @@ import typing, abc, time, attr, threading, multiprocessing
 import xmlrpc.server as rpc
 from enum import auto
 import numpy as np
+from numpy.lib.mixins import NDArrayOperatorsMixin
 from Signal import Signal
 
 T = typing
@@ -9,10 +10,11 @@ import asyncio, contextlib
 
 from qtpy.QtWidgets import QWidget
 
+from scipy.constants import c
 
 @attr.s
 class IDevice(abc.ABC):
-    name: str = attr.ib()
+    name: str = 'IDevice'
     extra_widget: T.Optional[QWidget] = None
 
     def init(self):
@@ -23,11 +25,10 @@ class IDevice(abc.ABC):
 
     @classmethod
     def create_remote(cls, addr, type='process', *args, **kwargs):
-        '''Creates an instance and puts it into a 
+        '''Creates an instance and puts it into a
         xmlrpc server which is started in a separated thread.
-        
-        Returns (obj, server, thread)'''
 
+        Returns (obj, server, thread)'''
         def create_obj():
             obj = cls(*args, **kwargs)
             server = rpc.SimpleXMLRPCServer(addr, allow_none=True)
@@ -54,6 +55,10 @@ class Reading:
     signals: np.ndarray
     valid: bool
 
+@attr.s(auto_attribs=True, cmp=False)
+class Reading2D(Reading):
+    "Has the shape (pixel, t2)"
+    signals_2D: object
 
 # Defining a minimal interface for each hardware
 @attr.s(auto_attribs=True, cmp=False)
@@ -90,6 +95,10 @@ class ICam(IDevice):
     def make_reading(self) -> Reading:
         pass
 
+    def make_2D_reading(self) -> Reading2D:
+        pass
+
+
     @abc.abstractmethod
     def set_shots(self, shots):
         pass
@@ -124,19 +133,17 @@ class ICam(IDevice):
         return 0
 
     async def async_make_read(self):
-        
 
         out = asyncio.Queue()
 
         def reader():
             out.append(self.make_reading())
-            
 
         thread = threading.Thread(target=reader)
         thread.start()
         while thread.is_alive():
             await asyncio.sleep(0.01)
-        
+
         return await out.get()
 
 
@@ -144,7 +151,7 @@ def mm_to_fs(pos_in_mm):
     "converts mm to femtoseconds"
     speed_of_light = 299792458.
     pos_in_meters = pos_in_mm / 1000.
-    pos_sec = pos_in_meters / speed_of_light
+    pos_sec = pos_in_meters / c
     return pos_sec * 1e15
 
 
@@ -168,7 +175,8 @@ class IDelayLine(IDevice):
         pass
 
     def get_pos_fs(self):
-        return self.pos_sign * mm_to_fs((self.get_pos_mm() - self.home_pos) * 2.)
+        return self.pos_sign * mm_to_fs(
+            (self.get_pos_mm() - self.home_pos) * 2.)
 
     def move_fs(self, fs, do_wait=False, *args, **kwargs):
         mm = self.pos_sign * fs_to_mm(fs)
@@ -237,7 +245,7 @@ class IRotationStage(IDevice):
         pass
 
     def set_degrees_and_wait(self, deg: float):
-        self.set_degrees(float)
+        self.set_degrees(deg)
         while self.is_moving():
             time.sleep(0.1)
 
@@ -294,3 +302,131 @@ class ILissajousScanner(IDevice):
 
     def is_zmoving(self) -> bool:
         pass
+
+
+@attr.s
+class PulseShaper(IDevice):
+    pixel: np.array
+    freqs: np.ndarray
+    nu0: float
+
+    @abc.abstractmethod
+    def set_mask(self, amp, phase):
+        pass
+
+    def set_calibration(self, p0):
+        self.freqs = np.polyval(p0, self.pixel)
+
+
+def THz2cm(nu):
+    return (nu * 1e10) / c
+
+
+def cm2THz(nu):
+    return c / (nu * 1e10)
+
+def double_pulse_mask(nu: np.ndarray, nu_rf: float, tau: float, phi1: float, phi2: float):
+    """
+    Return the mask to generate a double pulse
+
+    Parameters
+    ----------
+    nu : array
+        freqs of the shaper pixels in THz
+    nu_rf : float
+        rotating frame freq of the scanned pulse in THz
+    tau : float
+        Interpulse distance in ps
+    phi1 : float
+        Phase shift of the scanned pulse
+    phi2 : float
+        Phase shift of the fixed pulse
+    """
+    double = 0.5 * (np.exp(-1j * (nu - nu_rf) * 2 * np.pi * tau) *
+                    np.exp(+1j * phi1) + np.exp(1j * phi2))
+    return double
+
+
+def dispersion(nu, nu0, GVD, TOD, FOD):
+    x = nu - nu0
+    x *= (2 * np.pi)
+    facs = np.array([GVD, TOD, FOD]) / np.array([2, 6, 24])
+    return x**2 * facs[0] + x**3 * TOD * facs[1] + x**3 * FOD * facs[2]
+
+
+class DAC(abc.ABC):
+    @abc.abstractmethod
+    def set_power(self, power):
+        pass
+
+    @abc.abstractmethod
+    def get_power(self) -> float:
+        pass
+
+    @abc.abstractmethod
+    def upload(self, masks):
+        pass
+
+    @property
+    @abc.abstractmethod
+    def running(self):
+        pass
+
+
+@attr.s
+class IAOMPulseShaper(PulseShaper):
+    dac: DAC
+    disp: T.Optional[np.ndarray]
+    use_brag: bool = False
+    ac_freq: float = 75e6
+    dac_freq: float = 1.2e9
+    t: np.ndarray = attr.ib()
+    grating_1 : T.Optional[IRotationStage]
+    grating_2 : T.Optional[IRotationStage]
+
+    @t.default
+    def _t_def(self):
+        return np.arange(self.pixel) / self.dac_freq
+
+    def set_running(self, running: bool):
+        pass
+
+    def set_mask(self, amp, phase):
+        return super().set_mask(amp, phase)
+
+    def mask_wfn(self, masks):
+        wfn = np.zeros((self.pixel, len(masks)))
+        for i, m in enumerate(masks):
+            wfn[i, :] = np.cos(2 * np.pi * self.t * self.ac_freq - np.angle(m)) * np.abs(m)
+        self.dac.upload(wfn)
+
+    def set_disp_mask(self, mask):
+        pass
+
+    def set_two_d_mask(self, tau_max, tau_step, rot_frame, phase_cycling=4):
+        taus = np.arange(0, tau_max+1e-3, tau_step)
+        phase = np.array([(1, 0), (1, 1), (0, 1), (0, 0)]) * np.pi
+        if phase_cycling == 4:
+            phase = np.array([(1, 0), (1, 1), (0, 1), (0, 0)]) * np.pi
+            phase = np.repeat(phase, repeats=taus, axis=0)
+            phi1 = phase[:, 0]
+            phi2 = phase[:, 1]
+            taus = taus.repeat(4)
+        masks = double_pulse_mask(self.freqs[:, None], rot_frame, taus[None, :], phi1[None, :], phi2[None, :])
+
+    def set_mode(self, chopped=True, phase_cycling=False):
+        mask1 = np.ones(self.pixel)
+        mask2 = np.zeros(self.pixel)
+        if self.disp is not None:
+            mask1 *= self.disp
+        m = [mask1, mask2]
+        if phase_cycling:
+            mask3 = mask1 * np.exp(1j * np.pi)
+            m.append(mask3)
+            m.append(mask1)
+        if not chopped:
+            m = m[0, 2]
+        self.mask_wfn(m)
+
+    def set_grating_angle(self, ang1=None, ang2=None):
+        NotImplement
