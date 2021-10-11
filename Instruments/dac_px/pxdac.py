@@ -1,5 +1,5 @@
 from nicelib import load_lib, NiceLib, Sig, NiceObject, RetHandler, ret_ignore, ret_return
-
+import logging
 
 @RetHandler(num_retvals=0)
 def ret_errcode(retval, funcargs, niceobj):
@@ -59,12 +59,6 @@ class PXDAC(NiceLib):
         IsTransferInProgressXD48 = Sig('in', ret=ret_return)
 
 
-        @Sig('in', 'in', 'inout')
-        def GETBOARDVAL(self, pcc_val):
-            data = ffi.new('DWORD*')
-            self._autofunc_GETBOARDVAL(pcc_val, ffi.cast('void*', data))
-            return data[0]
-
         IssueSoftwareTriggerXD48 = Sig('in')
 
         def get_output_voltage(self):
@@ -89,49 +83,77 @@ class PXDAC(NiceLib):
             if ch4 is not None:                
                 self.SetOutputVoltageCh4XD48(check(ch4))
 
+import sys
+logging.basicConfig(level=logging.INFO)
+log = logging.getLogger('pxdac')
+handler = logging.StreamHandler(sys.stdout)
+handler.filter('pxdac')
+log.addHandler(handler)
+
+class AOM:
+    def __init__(self):
+        dac = PXDAC.DAC(1)
+        dac.SetDacSampleSizeXD48(2)
+        log.info("Size: %s ", dac.GetDacSampleSizeXD48(1))
+        log.info("Format: %s", dac.GetDacSampleFormatXD48(1))
+        log.info("Output Voltage %s", dac.get_output_voltage())
+        dac.set_output_voltage(ch1=1000, ch2=1000)
+        log.info("Output Voltage %s", dac.get_output_voltage())
+        dac.SetExternalTriggerEnableXD48(1)
+        log.info("ExtTigger %s", dac.GetExternalTriggerEnableXD48(1))
+        dac.SetTriggerModeXD48(0)
+        dac.SetActiveChannelMaskXD48(0x1 | 0x2)
+        self.dac = dac
+
+    def amplitude(self, i: int):
+        if (0<i<1023):
+            raise ValueError('i')
+        self.dac.set_output_voltage(ch1=i)
+
+    def load_mask(self, mask):
+        self.mask = mask
+        assert(mask.size % (4096*3) == 0)
+        self.end_playback()
+        self.dac.LoadRamBufXD48(0, mask.size * 2, mask.ctypes.data, 0)
+        self.dac.BeginRamPlaybackXD48(0, mask.size * 2, 4096 * 3 * 2 * 2)
+
+    def start_playback(self):
+        self.dac.BeginRamPlaybackXD48(0, self.mask.size * 2, 4096 * 3 * 2 * 2)
+
+    def end_playback(self):
+        self.dac.EndRamPlaybackXD48()
+
+    def make_calib_mask(self):
+        import numpy as np
+        #mask1 = np.ones(4096 * 3, dtype=np.int16)
+        b14max = (1 << 15) - 1
+        fc = (1/16)
+
+        fn = ()
+        mask2 = np.cos(np.arange(4096*3)/16*2*np.pi)*b14max
+        mask21 = mask2.copy()
+        for i in range(0, mask2.size, 500):
+            mask21[i+150:i+500] = 0
+        i = 6000
+        mask22 = np.zeros_like(mask21)
+        mask22[i:i+150] = mask2[i:i+150]
+        mask2 = np.hstack((mask21, mask22))
+        mask1 = np.ones((4096*3), dtype=np.int16)*b14max
+        mask1 = np.hstack((mask1, 0*mask1))
+
+        #mask2 = np.ones(4096 * 3, dtype=np.int16)
+        #mask2 = np.tile(mask2, 1000).reshape(mask2.size, 1000)
+        # mask2.ravel("f")
+        #amps = np.linspace(-b14max, b14max, 1000)
+        # amps[::2] = 0
+        #mask1 = np.tile(mask1, amps.size).reshape(mask1.size, amps.size)
+        mask2 = mask2.astype('int')
+        #mask1 = mask1.flatten('f')
+        mask = np.zeros(mask2.size * 2, dtype=np.int16)
+        mask[1::2] = mask1
+        mask[::2] = mask2
+        return mask
+
 if __name__ == '__main__':
-    px = PXDAC
-    dac = PXDAC.DAC(1)
-    dac.SetDacSampleSizeXD48(2)
-    print("Size:",dac.GetDacSampleSizeXD48(1))
-    print("Format:", dac.GetDacSampleFormatXD48(1))
-
-    print(dac.get_output_voltage())
-    dac.set_output_voltage(ch1=1023, ch2=100)
-    print(dac.get_output_voltage())
-    dac.SetExternalTriggerEnableXD48(1)
-    print("ExtTigger", dac.GetExternalTriggerEnableXD48(1))
-    dac.SetTriggerModeXD48(0)
-    dac.SetActiveChannelMaskXD48(0x1|0x2)
-    b14max = (1<<15)-1
-    print(b14max)
-    import numpy as np
-    mask1 = np.ones(4096*3, dtype=np.int16)
-    #mask2 = np.sin(np.arange(4096*3)/16*2*np.pi)*b14max
-    mask2 = np.ones(4096*3, dtype=np.int16)   
-    mask2 = np.tile(mask2, 1000).reshape(mask2.size, 1000)
-    #mask2.ravel("f")
-    amps = np.linspace(-b14max, b14max, 1000)
-    #amps[::2] = 0
-    mask1 = np.tile(mask1, amps.size).reshape(mask1.size, amps.size)    
-    mask1 *= amps.astype('int')
-    mask1 = mask1.flatten('f')
-    mask = np.empty(mask1.size*2, dtype=np.int16)
-
-    
-    import matplotlib.pyplot as plt
-    #plt.plot(mask1)
-    #plt.show()
-    
-    mask[::2] = mask1
-    mask[1::2] = mask1
-
-
-    #out = np.zeros(masks*12
-    #buf = PXDAC._ffi.from_buffer(dual_buf)
-    lib = PXDAC._info._ffilib
-    #lib.LoadRamBufXD48
-    dac.LoadRamBufXD48(0, mask.size*2, mask.ctypes.data, 0)
-    dac.BeginRamPlaybackXD48(0,  mask.size*2, 4096*3*2*2)
-    #dac.IssueSoftwareTriggerXD48()
-    
+    A = AOM()
+    A.load_mask(A.make_calib_mask())
