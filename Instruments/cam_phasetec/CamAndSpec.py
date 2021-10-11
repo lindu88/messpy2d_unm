@@ -148,9 +148,9 @@ class PhaseTecCam(ICam):
             if self.beta1 is not None:
                 dp = np.diff(probe, axis=1)
                 dp2 = np.diff(probe2, axis=1)
-                dr = np.diff(ref, axis=1)
-                dp = (dp.T -  dr.T @ self.beta1).T
-                dp2 = (dp2.T -  dr.T @ self.beta2).T
+                dr = np.diff(ref[::16, :], axis=1)
+                dp = (dp - self.beta1 @ dr)
+                dp2 = (dp2 - self.beta2 @ dr)
                 dp[:, ::2] *= -1
                 dp2[:, ::2] *= -1
                 sig = f/LOG10*np.log1p(dp.mean(1)/probe.mean(1))
@@ -163,7 +163,7 @@ class PhaseTecCam(ICam):
 
     def calibrate_ref(self):
         tmp_shots = self.shots
-        self._cam.set_shots(20000)
+        self._cam.set_shots(10000)
         arr, ch = self._cam.read_cam()
         self._cam.set_shots(tmp_shots)
         if self.background is not None:
@@ -174,13 +174,15 @@ class PhaseTecCam(ICam):
         dp1 = np.diff(probe, axis=1) 
         ref = np.nanmean(arr[ref_range[0]:ref_range[1],:, :], 0)
       
-        dr = np.diff(ref, axis=1)
+        dr = np.diff(ref[::16, :], axis=1)
         self.beta1 = np.linalg.lstsq(dp1.T, dr.T)[0]
-        
+        self.deltaK1 = 1000/LOG10*np.log1p((dp1 - self.beta1 @ dr).mean(1)/probe.mean(1))
+
         if TWO_PROBES:
             probe2 = np.nanmean(arr[PROBE2_RANGE[0]:PROBE2_RANGE[1],:, :], 0)
             dp2 = np.diff(probe2, axis=1)  
             self.beta2 = np.linalg.lstsq(dp2.T, dr.T)[0]
+            self.deltaK2 = 1000/LOG10*(dp2 - self.beta2 @ dr).mean(1)/probe2.mean(1)
 
         
 
