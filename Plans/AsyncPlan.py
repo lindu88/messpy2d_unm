@@ -1,14 +1,17 @@
 import asyncio as aio
 import attr
 #from PyQt5.QtWidgets import QWidget
-import os
+import os, sys
 
 os.environ['QT_API'] = 'PyQt5'
-from Messpy2D.Instruments.interfaces import ILissajousScanner, ICam, IDelayLine
+sys.path.append('../')
+from Instruments.interfaces import ILissajousScanner, ICam, IDelayLine
 from typing import List, Callable, Tuple
-from asyncqt import QEventLoop, asyncClose, asyncSlot
+from qasync import QEventLoop, asyncClose, asyncSlot
 from qtpy.QtWidgets import *
 from qtpy.QtCore import QObject, Signal
+import pyqtgraph as pg
+import numpy as np
 
 @attr.s(auto_attribs=True, cmp=False)
 class FocusScan(QObject):
@@ -58,8 +61,9 @@ class FocusScanView(QWidget):
         self.layout().addWidget(self.info_label)
         self.layout().addWidget(self.start_button)
         self.start_button.clicked.connect(self.start)
-
-
+        self.plot = pg.PlotWidget(self)
+        self.layout().addWidget(self.plot)
+        
     def start(self):
         loop = aio.get_event_loop()
         loop.create_task(self.focus_scan.step())
@@ -67,7 +71,10 @@ class FocusScanView(QWidget):
     @asyncSlot()
     async def update_view(self):
         print('update')
-        self.info_label.setText(str(self.focus_scan.amps[-1]))
+        plan = self.focus_scan
+        self.info_label.setText(str(plan.amps[-1]))
+        self.plot.plotItem.clear()
+        self.plot.plotItem.plot(np.array(plan.amps)[:, 0])
 
 if __name__ == '__main__':
     from Instruments.mocks import CamMock, DelayLineMock

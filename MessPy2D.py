@@ -6,6 +6,7 @@ from qtpy.QtWidgets import (QMainWindow, QApplication, QWidget, QDockWidget,
                             QPushButton, QLabel, QVBoxLayout, QSizePolicy, QFormLayout,
                             QToolBar, QCheckBox)
 import qtawesome as qta
+from Instruments.interfaces import IAOMPulseShaper
 from Plans import *
 from QtHelpers import dark_palette, ControlFactory, make_groupbox, \
     ObserverPlot, ValueLabels
@@ -332,6 +333,29 @@ class CommandMenu(QWidget):
         cb.clicked.connect(cam.set_disp_wavelengths)
         return gb
 
+    def add_shaper(self, sh : IAOMPulseShaper):
+        l = []
+        if sh.grating_1 is not None:
+            cf1 = ControlFactory('Grating 1', sh.grating_1.set_degrees, sh.grating_2.sigDegreesChanged)
+            cf2 = ControlFactory('Grating 2', sh.grating_2.set_degrees, sh.grating_2.sigDegreesChanged)
+            l += [cf1, cf2]
+
+
+        cb_chopped = QCheckBox('Chopped')
+        cb_phase_cycled = QCheckBox('Phase Cycling')
+        cb_running = QCheckBox('Active')
+
+        def set_mode():
+            sh.set_mode(cb_chopped.isChecked(), cb_phase_cycled.isChecked())
+            sh.set_running(cb_running.isChecked())
+
+        cb_chopped.stateChanged.connect(set_mode)
+        cb_phase_cycled.stateChanged.connect(set_mode)
+        cb_running.stateChanged.connect(set_mode)
+        l += [cb_chopped, cb_phase_cycled, cb_running]
+        gb = make_groupbox(l, 'Shaper')
+        return gb
+
 
 if __name__ == '__main__':
     import sys
@@ -394,5 +418,4 @@ if __name__ == '__main__':
     # fv.activate_proxy()
     # fv.proxy.widget.show()
 
-    app.aboutToQuit = lambda x: controller.shutdown()
-    app.exec_()
+    app.aboutToQuit = lambda x: controller.shut 
