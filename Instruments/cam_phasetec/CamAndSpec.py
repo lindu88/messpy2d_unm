@@ -4,17 +4,23 @@ from Instruments.interfaces import ICam, Reading
 from Config import config
 import attr
 
-from ir_cam import PT_MCT
-from spec_sp2500i import SP2500i
+#from ir_cam import PT_MCT
+from .imaq_nicelib import Cam
+from .spec_sp2500i import SP2500i
 from typing import List, Optional, Tuple
 from scipy.stats import trim_mean
 
-PROBE_CENTER = 94
-REF_CENTER = 44
-k = 2
+
+LOG10 = np.log(10)
+PROBE_CENTER = 115
+PROBE_CENTER_2 = 70
+REF_CENTER = 26
+k = 3
 PROBE_RANGE = (PROBE_CENTER-k, PROBE_CENTER+k+1)
+PROBE2_RANGE = (PROBE_CENTER_2-k, PROBE_CENTER_2+k+1)
 REF_RANGE = (REF_CENTER-k, REF_CENTER+k+1)
 
+TWO_PROBES = True
 
 @attr.s(auto_attribs=True)
 class PhaseTecCam(ICam):
@@ -23,15 +29,23 @@ class PhaseTecCam(ICam):
     ref_rows: Tuple[float, float] = attr.ib()
     name: str = 'Phasetec Array'
     shots: int = config.shots
-    line_names: List[str] = ['Probe', 'Ref', 'max']
-    std_names: List[str] = ['Probe', 'Ref', 'Probe/Ref']
-    sig_names: List[str] = ['Sig']
+    if not TWO_PROBES:
+        line_names: List[str] = ['Probe', 'Ref', 'max']
+        std_names: List[str] = ['Probe', 'Ref', 'Probe/Ref']
+        sig_names: List[str] = ['Sig', 'SigNoRef']
+    else:
+        line_names: List[str] = ['Probe', 'Probe2', 'Ref', 'max']
+        std_names: List[str] = ['Probe', 'Probe2', 'Ref', 'Probe/Ref']
+        sig_names: List[str] = ['Sig', 'SigNoRef', 'Sig2', 'Sig2NoRef']
+    beta1 : Optional[object] = None
+    beta2 : Optional[object] = None
     channels: int = 128
     ext_channels: int = 0
     changeable_wavelength: bool = True
     changeable_slit: bool = False
-    background: Optional[tuple] = None
-    _cam: PT_MCT = attr.ib(factory=PT_MCT)
+    background: Optional[tuple] = attr.ib()
+    _cam: Cam = attr.ib(factory=Cam)
+    
 
     @probe_rows.default
     def _probe_rows_default(self):
@@ -51,41 +65,124 @@ class PhaseTecCam(ICam):
     def _default_spec(self):
         return SP2500i(comport='COM4')
 
+    @background.default
+    def _back_default(self):
+        try:
+            return np.load('back.npy')
+        except IOError:
+            pass        
+        return None
+
     def set_shots(self, shots: int):
-        self._cam.shots = shots
+        self._cam.set_shots(shots)
+        self.shots = shots
 
     def read_cam(self):
         return self._cam.read_cam()
 
     def make_reading(self):
-        arr = self._cam.read_cam()
+        arr, ch = self._cam.read_cam()
+       
 
         if self.background is not None:
-            arr = arr - self.background[None, :, :]
+            arr = arr - self.background[ :, :, None]
         pr_range = self.probe_rows
         ref_range = self.ref_rows
-        probe = np.nanmean(arr[:, pr_range[0]:pr_range[1], :], 1)
-        probemax = np.nanmax(arr[:, pr_range[0]:pr_range[1], :], 1)
-        ref = np.nanmean(arr[:, ref_range[0]:ref_range[1], :], 1)
+        probe = np.nanmean(arr[pr_range[0]:pr_range[1],:, :], 0)
+        probemax = np.nanmax(arr[pr_range[0]:pr_range[1],:, :], 0)
+        ref = np.nanmean(arr[ref_range[0]:ref_range[1], :, :], 0)
 
-        probe_mean = np.nanmean(probe, 0)
-        probe_std = 100 * np.std(probe, 0) / probe_mean
-        probe_max = np.nanmean(probemax, 0)
+        
 
-        ref_mean = np.nanmean(ref, 0)
-        ref_std = 100 * np.std(ref, 0) / ref_mean
+        probe_mean = np.nanmean(probe, 1)
+        probe_std = 100 * np.std(probe,1) / probe_mean
+        probe_max = np.nanmean(probemax, 1)
+
+        if TWO_PROBES:
+            probe2 = np.nanmean(arr[PROBE2_RANGE[0]:PROBE2_RANGE[1],:, :], 0)
+            probemax2 = np.nanmax(arr[PROBE2_RANGE[0]:PROBE2_RANGE[1],:, :], 0)
+            probe2_mean = np.nanmean(probe2, 1)
+            probe2_std = 100 * np.std(probe2,1) / probe2_mean
+            probe2_max = np.nanmean(probemax2, 1)
+
+        ref_mean = np.nanmean(ref, 1)
+        ref_std = 100 * np.std(ref, 1) / ref_mean
 
         with np.errstate(invalid='ignore', divide='ignore'):
             normed = probe / ref
-            norm_std = 100 * np.nanstd(normed, 0) / np.nanmean(normed, 0)
-            pu = trim_mean(normed.T[:, ::2], 0.2, 1)
-            not_pu = trim_mean(normed.T[:, 1::2], 0.2, 1)
-            sig = 1000 * np.log10(pu/not_pu)
+            norm_std = 100 * np.nanstd(normed, 1) / np.nanmean(normed, 1)
+
+            if ch[0][0] > 1:
+                f = 1000
+            else:
+                f = -1000
+
+            pu = trim_mean(normed[:, ::2], 0.2, 1)
+            not_pu = trim_mean(normed[:, 1::2], 0.2, 1)
+         
+            sig = f * np.log10(pu/not_pu)
+            
+            pu2 = trim_mean(probe[:, ::2], 0.2, 1)
+            not_pu2 = trim_mean(probe[:, 1::2], 0.2, 1)
+            sig2 = f * np.log10(pu2/not_pu2)
+
         # print(sig.shape, ref_mean.shape, norm_std.shape, probe_mean.shape)
-        reading = Reading(lines=np.stack((probe_mean, ref_mean, probe_max)),
-                          stds=np.stack((probe_std, ref_std, norm_std)),
-                          signals=sig[None, :], valid=True)
+        if not TWO_PROBES:
+          
+            reading = Reading(lines=np.stack((probe_mean, ref_mean, probe_max)),
+                            stds=np.stack((probe_std, ref_std, norm_std)),
+                            signals=np.stack((sig, sig2)), valid=True)
+       # print(ref_mean.shape, probe_max.shape, ref_mean.shape, si)
+        else:
+            normed2 = probe2 / ref            
+            norm_std2 = 100 * np.nanstd(normed2, 1) / np.nanmean(normed2, 1)
+            
+            pu2 = trim_mean(normed2[:, ::2], 0.2, 1)
+            not_pu2 = trim_mean(normed2[:, 1::2], 0.2, 1)
+            sig_pr2 = f * np.log10(pu2/not_pu2)
+            
+            pu2 = trim_mean(probe2[:, ::2], 0.2, 1)
+            not_pu2 = trim_mean(probe2[:, 1::2], 0.2, 1)
+            sig_pr2_noref = f * np.log10(pu2/not_pu2)
+
+            if self.beta1 is not None:
+                dp = np.diff(probe, axis=1)
+                dp2 = np.diff(probe2, axis=1)
+                dr = np.diff(ref, axis=1)
+                dp = (dp.T -  dr.T @ self.beta1).T
+                dp2 = (dp2.T -  dr.T @ self.beta2).T
+                dp[:, ::2] *= -1
+                dp2[:, ::2] *= -1
+                sig = f/LOG10*np.log1p(dp.mean(1)/probe.mean(1))
+                sig_pr2 = f/LOG10*np.log1p(dp2.mean(1)/probe2.mean(1))
+            reading = Reading(lines=np.stack((probe_mean, probe2_mean, ref_mean, probe_max)),
+                                stds=np.stack((probe_std, probe2_std, ref_std, norm_std)),
+                                signals=np.stack((sig, sig2, sig_pr2, sig_pr2_noref)), valid=True)
+            #
         return reading
+
+    def calibrate_ref(self):
+        tmp_shots = self.shots
+        self._cam.set_shots(20000)
+        arr, ch = self._cam.read_cam()
+        self._cam.set_shots(tmp_shots)
+        if self.background is not None:
+            arr = arr - self.background[ :, :, None]
+        pr_range = self.probe_rows
+        ref_range = self.ref_rows
+        probe = np.nanmean(arr[pr_range[0]:pr_range[1],:, :], 0)
+        dp1 = np.diff(probe, axis=1) 
+        ref = np.nanmean(arr[ref_range[0]:ref_range[1],:, :], 0)
+      
+        dr = np.diff(ref, axis=1)
+        self.beta1 = np.linalg.lstsq(dp1.T, dr.T)[0]
+        
+        if TWO_PROBES:
+            probe2 = np.nanmean(arr[PROBE2_RANGE[0]:PROBE2_RANGE[1],:, :], 0)
+            dp2 = np.diff(probe2, axis=1)  
+            self.beta2 = np.linalg.lstsq(dp2.T, dr.T)[0]
+
+        
 
     def get_wavelength(self):
         return self._spec.get_wavelength()
@@ -95,9 +192,10 @@ class PhaseTecCam(ICam):
 
     def set_background(self, shots=0):
         print("bla")
-        arr = self._cam.read_cam()
-        back_probe = np.nanmean(arr[:, :, :], 0)
+        arr = self._cam.read_cam()[0]
+        back_probe = np.nanmean(arr[:, :, :], 2)
         self.background = back_probe
+        np.save('back', back_probe)
 
     def remove_background(self):
         self.background = None
@@ -112,4 +210,3 @@ class PhaseTecCam(ICam):
             return (np.arange(128)-center_ch)*disp+center_wl
 
 _ircam = PhaseTecCam()
-print(_ircam._cam.get_tempK())

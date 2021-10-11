@@ -1,3 +1,5 @@
+import sys
+sys.path.append(r"C:\Users\MUELLER-WERKMEISTER\Downloads\download\messpy2d")
 from Config import config
 import numpy as np
 import pyqtgraph.parametertree as pt
