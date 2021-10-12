@@ -6,6 +6,7 @@ from pathlib import Path
 from imaq_cffi import IMAQ_Reader
 
 p = Path(__file__).parent
+p = Path(r'C:\Users\MUELLER-WERKMEISTER\Downloads\2DMCT_DLL_05_x64')
 PT_DLL = cffi.FFI()
 
 with open(p / 'pt_2dmct.h') as f:
@@ -56,6 +57,10 @@ class PT_MCT:
         ec(self._dll.PT_2DMCT_IntegrationTime(self.int_time_us, out))
         ec(self._dll.PT_2DMCT_SetGainOffset(self.gain, self.offset))
         ec(self._dll.PT_2DMCT_SetWindowSize(self.binning_mode))
+        text = PT_DLL.new('char[100]')
+        TempK = PT_DLL.new('double*')
+        err = self._dll.PT_2DMCT_GetFPATemp(text, TempK, 100)
+        print(TempK[0])
 
     def set_gain(self, gain):
         with self.reader.read_lock:
@@ -77,6 +82,7 @@ class PT_MCT:
         TempK = PT_DLL.new('double*')
         err = self._dll.PT_2DMCT_GetFPATemp(text, TempK, 100)
         self._errchk(err)
+        #print(text.asstr)
         return TempK[0]
 
     def read_cam(self):
@@ -109,14 +115,15 @@ if __name__ == '__main__':
     wid = pg.ImageView()
     wid2 = pg.ImageView()
     pt = PT_MCT()
-    # print(pt.get_tempK())
-    pt.read_cam()
+    #pt.get
+    print(pt.get_tempK())
+    #pt.read_cam()
     import numpy as np
 
 
     def update():
         t = time.time()
-        a = pt.read_cam()
+        a = pt.read_cam2()
         print(time.time() - t)
         wid.setImage(a.std(0).T, autoLevels=False)
         wid2.setImage(a.mean(0).T, autoLevels=False)

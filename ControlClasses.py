@@ -32,7 +32,7 @@ class Cam:
     sigReadCompleted: Signal = attrib(Factory(Signal))
     sigWavelengthChanged: Signal = attrib(Factory(Signal))
     sigSlitChanged: Signal = attrib(Factory(Signal))
-
+    sigRefCalibrationFinished = attrib(Factory(Signal))
     def __attrs_post_init__(self):
         self.read_cam()
         c = self.cam
@@ -98,6 +98,8 @@ class Cam:
 
     def calibrate_ref(self):
         self.cam.calibrate_ref()
+        self.sigRefCalibrationFinished.emit(self.cam.deltaK1, self.cam.deltaK2)
+
 
 @attrs(cmp=False)
 class Delayline:

@@ -95,6 +95,15 @@ class MainWindow(QMainWindow):
             self.splitDockWidget(dock_wigdets[2], dock_wigdets[5], Qt.Horizontal)
         self.setCentralWidget(self.cm)
         #self.obs_plot = [i.getWidget() for i in dock_wigdets]
+        self.controller.cam.sigRefCalibrationFinished.connect(self.plot_calib)
+
+    def plot_calib(self, k1, k2):
+        import pyqtgraph as pg
+        win = pg.PlotWindow()
+        win.plotItem.plot(k1)
+        win.plotItem.plot(k2)
+        win.show()
+        self._win = win
 
     def setup_toolbar(self):
         self.tb = self.addToolBar('Begin Plan')
