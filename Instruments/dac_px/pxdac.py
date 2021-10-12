@@ -91,7 +91,7 @@ handler = logging.StreamHandler(sys.stdout)
 handler.filter('pxdac')
 log.addHandler(handler)
 
-@attr()
+
 class AOM:
     def __init__(self):
         dac = PXDAC.DAC(1)
@@ -116,6 +116,7 @@ class AOM:
         self.dac.set_output_voltage(ch1=i)
 
     def set_calib(self, p):
+        pass
 
 
     def set_wave_amp(self, amp):
@@ -137,6 +138,7 @@ class AOM:
         assert(mask.size % (4096*3) == 0)
         self.end_playback()
         self.dac.LoadRamBufXD48(0, mask.size * 2, mask.ctypes.data, 0)
+        n_masks = (mask.size / (3*4096)/2)
         self.dac.BeginRamPlaybackXD48(0, mask.size * 2, 4096 * 3 * 2 * 2)
 
     def start_playback(self):
@@ -162,17 +164,19 @@ class AOM:
         mask22[i:i+150] = mask2[i:i+150]
         # Three frames: train, single and full
         mask2 = np.hstack((mask21, mask22, mask2))
+        mask2 = mask2.astype('int16')
 
         # Sync mask on channel 2: b14max 0 0 0 .....
         mask1 = np.ones((4096*3), dtype=np.int16)*b14max
         mask1 = np.hstack((mask1, 0*mask1, 0*mask1))
-        mask2 = mask2.astype('int')
+
 
         # Interleave
-        mask = np.zeros(mask2.size * 3, dtype=np.int16)
+        mask = np.zeros(mask2.size * 2, dtype=np.int16)
         mask[1::2] = mask1
         mask[::2] = mask2
         return self.amp_fac*mask
 
 if __name__ == '__main__':
-    A = AOM
+    A = AOM()
+    A.load_mask(A.make_calib_mask())

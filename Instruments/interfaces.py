@@ -13,10 +13,10 @@ from qtpy.QtWidgets import QWidget
 from scipy.constants import c
 import json
 
-@attr.s
+@attr.s(auto_attribs=True)
 class IDevice(abc.ABC):
-    name: str = 'IDevice'
-    extra_widget: T.Optional[QWidget] = None
+    name: str
+    #extra_widget: T.Optional[QWidget] = None
 
     def init(self):
         self.load_state()
@@ -69,7 +69,7 @@ class IDevice(abc.ABC):
 def stats(probe, probemax=None):
     probe_mean = np.nanmean(probe, 1)
     probe_std = 100 * np.std(probe, 1) / probe_mean
-    if probemax:
+    if probemax is not None:
         probe_max = np.nanmean(probemax, 1)
     else:
         probe_max = None
@@ -91,13 +91,15 @@ class Spectrum:
         mean, std, max = stats(data, data_max)
         if frames is not None:
             frame_data = np.empty((mean.shape[0], frames))
+
             for i in range(frames):
                 frame_data[:, i] = np.nanmean(data[:, i::frames], 1)
         else:
             frame_data = None
-        cls(data=data,
+        return cls(data=data,
             mean=mean,
             std=std,
+            name=name,
             max=max,
             frames=frames,
             frame_data=frame_data)
@@ -153,8 +155,13 @@ class ICam(IDevice):
     def make_reading(self) -> Reading:
         pass
 
+    @abc.abstractmethod
+    def get_spectra(self) -> T.Dict[str, Spectrum]:
+        pass
+
     def make_2D_reading(self) -> Reading2D:
         pass
+
 
     @abc.abstractmethod
     def set_shots(self, shots):
@@ -225,7 +232,7 @@ def _try_load():
             h = json.load(f)['home']
         return h
     except FileNotFoundError:
-        return None
+        return 0
 
 
 @attr.s(auto_attribs=True)
@@ -267,6 +274,7 @@ class IDelayLine(IDevice):
         import json
         with open("home_pos", 'r') as f:
             self.home_pos = json.load(f)['home']
+        print(self.home_pos)
 
     async def async_move_mm(self, mm, do_wait=False):
         self.move_mm(mm)

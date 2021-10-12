@@ -109,28 +109,35 @@ class PhaseTecCam(ICam):
     def read_cam(self):
         return self._cam.read_cam()
 
-    def get_spectrum(self, frames=None) -> Tuple[Dict[str, Spectrum], object]:
+    def get_spectra(self, frames=None) -> Tuple[Dict[str, Spectrum], object]:
         arr, ch = self._cam.read_cam()
         if self.background is not None:
             arr = arr - self.background[:, :, None]
+        if frames is not None:
+            i = np.argmax(np.array(ch[0]) > 1)
+            print(i, ch[0])
+            arr = np.roll(arr, -i, axis=2)
+
+
         pr_range = self.probe_rows
         pr2_range = self.probe2_rows
         ref_range = self.ref_rows
+
         probe = np.nanmean(arr[pr_range[0]:pr_range[1], :, :], 0)
         probemax = np.nanmax(arr[pr_range[0]:pr_range[1], :, :], 0)
         ref = np.nanmean(arr[ref_range[0]:ref_range[1], :, :], 0)
 
-        probe = Spectrum.create(probe, probemax, name='Probe1')
-        ref = Spectrum.create(ref, name='Ref Channel')
+        probe = Spectrum.create(probe, probemax, name='Probe1', frames=frames)
+        ref = Spectrum.create(ref, name='Ref', frames=frames)
         if TWO_PROBES:
             probe2 = np.nanmean(arr[pr2_range[0]:pr2_range[1], :, :], 0)
-            probe2 = Spectrum.create(probe2, name='Probe2')
+            probe2 = Spectrum.create(probe2, name='Probe2', frames=frames)
         return {i.name: i for i in (probe, probe2, ref)}, ch
 
     def make_reading(self, frame_data=None):
-        d, ch = self.get_spectrum()
-        probe = d['probe']
-        ref = d['ref']
+        d, ch = self.get_spectra()
+        probe = d['Probe1']
+        ref = d['Ref']
 
         with np.errstate(invalid='ignore', divide='ignore'):
             normed = probe.data / ref.data
@@ -159,7 +166,7 @@ class PhaseTecCam(ICam):
                               valid=True)
         # print(ref_mean.shape, probe_max.shape, ref_mean.shape, si)
         else:
-            probe2 = d['probe2']
+            probe2 = d['Probe2']
             normed2 = probe2.data / ref.data
             #norm_std2 = 100 * np.nanstd(normed2, 1) / np.nanmean(normed2, 1)
 
@@ -183,9 +190,7 @@ class PhaseTecCam(ICam):
 
             which = 1 if (ch[0][0] > 1) else 0
 
-            not_which = not which
-            frame_data = np.stack(
-                (probe2[:, which::2].mean(1), probe2[:, not which::2].mean(1)))
+
 
             reading = Reading(lines=np.stack(
                 (probe.mean, probe2.mean, ref.mean, probe.max)),
@@ -193,7 +198,6 @@ class PhaseTecCam(ICam):
                                   (probe.std, probe2.std, ref.std, norm_std)),
                               signals=np.stack(
                                   (sig, sig2, sig_pr2, sig_pr2_noref)),
-                              frame_data=frame_data,
                               valid=True)
             #
         return reading
@@ -239,10 +243,13 @@ class PhaseTecCam(ICam):
     def remove_background(self):
         self.background = None
 
-    def get_wavelength_array(self, center_wl):
-        center_wl = self.get_wavelength()
-        disp = 7.69
-        center_ch = 63
-        if center_wl < 1000:
-            return np.arange(-64, 64, 1)
-        el
+        def get_wavelength_array(self, center_wl):
+            center_wl = self.get_wavelength()
+            disp = 7.69
+            center_ch = 63
+            if center_wl < 1000:
+                return np.arange(-64, 64, 1)
+            else:
+                return (np.arange(128) - center_ch) * disp + center_wl
+
+_ircam = PhaseTecCam()
