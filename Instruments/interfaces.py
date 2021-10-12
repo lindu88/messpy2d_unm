@@ -11,7 +11,7 @@ import asyncio, contextlib
 from qtpy.QtWidgets import QWidget
 
 from scipy.constants import c
-
+import json
 
 @attr.s
 class IDevice(abc.ABC):
@@ -19,7 +19,7 @@ class IDevice(abc.ABC):
     extra_widget: T.Optional[QWidget] = None
 
     def init(self):
-        pass
+        self.load_state()
 
     def shutdown(self):
         pass
@@ -46,6 +46,24 @@ class IDevice(abc.ABC):
 
     def extra_opts(self):
         pass
+
+    def save_state(self):
+        pass
+
+    def load_state(self):
+        pass
+
+    def save_dict(self, d):
+        with open(self.name + '.cfg', 'w') as f:
+            json.dump(d, f)
+
+    def open_dict(self) -> dict:
+        try:
+            with open(self.name + '.cfg', 'r') as f:
+                d = json.load(f)
+            return d
+        except FileNotFoundError:
+            return None
 
 
 def stats(probe, probemax=None):
@@ -490,4 +508,4 @@ class IAOMPulseShaper(PulseShaper):
         self.mask_wfn(m)
 
     def set_grating_angle(self, ang1=None, ang2=None):
-        NotImplement
+        NotImplem
