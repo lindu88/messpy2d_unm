@@ -12,6 +12,7 @@ from qtpy.QtWidgets import QWidget
 
 from scipy.constants import c
 
+
 @attr.s
 class IDevice(abc.ABC):
     name: str = 'IDevice'
@@ -47,6 +48,43 @@ class IDevice(abc.ABC):
         pass
 
 
+def stats(probe, probemax=None):
+    probe_mean = np.nanmean(probe, 1)
+    probe_std = 100 * np.std(probe, 1) / probe_mean
+    if probemax:
+        probe_max = np.nanmean(probemax, 1)
+    else:
+        probe_max = None
+    return probe_mean, probe_std, probe_max
+
+
+@attr.s(auto_attribs=True)
+class Spectrum:
+    data: np.ndarray
+    mean: np.ndarray
+    std: np.ndarray
+    max: T.Optional[np.ndarray]
+    name: T.Optional[str] = None
+    frame_data: T.Optional[np.ndarray] = None
+    frames: T.Optional[int] = None
+
+    @classmethod
+    def create(cls, data, data_max=None, name=None, frames=None):
+        mean, std, max = stats(data, data_max)
+        if frames is not None:
+            frame_data = np.empty((mean.shape[0], frames))
+            for i in range(frames):
+                frame_data[:, i] = np.nanmean(data[:, i::frames], 1)
+        else:
+            frame_data = None
+        cls(data=data,
+            mean=mean,
+            std=std,
+            max=max,
+            frames=frames,
+            frame_data=frame_data)
+
+
 @attr.s(auto_attribs=True, cmp=False)
 class Reading:
     "Each array has the shape (n_type, pixel)"
@@ -55,10 +93,12 @@ class Reading:
     signals: np.ndarray
     valid: bool
 
+
 @attr.s(auto_attribs=True, cmp=False)
 class Reading2D(Reading):
     "Has the shape (pixel, t2)"
     signals_2D: object
+
 
 # Defining a minimal interface for each hardware
 @attr.s(auto_attribs=True, cmp=False)
@@ -97,7 +137,6 @@ class ICam(IDevice):
 
     def make_2D_reading(self) -> Reading2D:
         pass
-
 
     @abc.abstractmethod
     def set_shots(self, shots):
@@ -175,8 +214,7 @@ def _try_load():
 class IDelayLine(IDevice):
     home_pos: float = attr.Factory(_try_load)
     pos_sign: float = 1
-  
-  
+
     @abc.abstractmethod
     def move_mm(self, mm, *args, **kwargs):
         pass
@@ -211,7 +249,7 @@ class IDelayLine(IDevice):
         import json
         with open("home_pos", 'r') as f:
             self.home_pos = json.load(f)['home']
-        
+
     async def async_move_mm(self, mm, do_wait=False):
         self.move_mm(mm)
         if do_wait:
@@ -344,7 +382,9 @@ def THz2cm(nu):
 def cm2THz(nu):
     return c / (nu * 1e10)
 
-def double_pulse_mask(nu: np.ndarray, nu_rf: float, tau: float, phi1: float, phi2: float):
+
+def double_pulse_mask(nu: np.ndarray, nu_rf: float, tau: float, phi1: float,
+                      phi2: float):
     """
     Return the mask to generate a double pulse
 
@@ -400,8 +440,8 @@ class IAOMPulseShaper(PulseShaper):
     ac_freq: float = 75e6
     dac_freq: float = 1.2e9
     t: np.ndarray = attr.ib()
-    grating_1 : T.Optional[IRotationStage]
-    grating_2 : T.Optional[IRotationStage]
+    grating_1: T.Optional[IRotationStage]
+    grating_2: T.Optional[IRotationStage]
 
     @t.default
     def _t_def(self):
@@ -416,14 +456,15 @@ class IAOMPulseShaper(PulseShaper):
     def mask_wfn(self, masks):
         wfn = np.zeros((self.pixel, len(masks)))
         for i, m in enumerate(masks):
-            wfn[i, :] = np.cos(2 * np.pi * self.t * self.ac_freq - np.angle(m)) * np.abs(m)
+            wfn[i, :] = np.cos(2 * np.pi * self.t * self.ac_freq -
+                               np.angle(m)) * np.abs(m)
         self.dac.upload(wfn)
 
     def set_disp_mask(self, mask):
         pass
 
     def set_two_d_mask(self, tau_max, tau_step, rot_frame, phase_cycling=4):
-        taus = np.arange(0, tau_max+1e-3, tau_step)
+        taus = np.arange(0, tau_max + 1e-3, tau_step)
         phase = np.array([(1, 0), (1, 1), (0, 1), (0, 0)]) * np.pi
         if phase_cycling == 4:
             phase = np.array([(1, 0), (1, 1), (0, 1), (0, 0)]) * np.pi
@@ -431,7 +472,8 @@ class IAOMPulseShaper(PulseShaper):
             phi1 = phase[:, 0]
             phi2 = phase[:, 1]
             taus = taus.repeat(4)
-        masks = double_pulse_mask(self.freqs[:, None], rot_frame, taus[None, :], phi1[None, :], phi2[None, :])
+        masks = double_pulse_mask(self.freqs[:, None], rot_frame,
+                                  taus[None, :], phi1[None, :], phi2[None, :])
 
     def set_mode(self, chopped=True, phase_cycling=False):
         mask1 = np.ones(self.pixel)
