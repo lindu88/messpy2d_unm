@@ -57,7 +57,7 @@ class APTDelay:
 
 @attr.s(auto_attribs=True)
 class DelayLine(IDelayLine):
-    apt_delay : APTDelay = attr.Factory(APTDelay)
+    apt_delay: APTDelay = attr.Factory(APTDelay)
 
     def get_pos_mm(self) -> float:
         return 2*float(str(self.apt_delay.get_pos_mm()))

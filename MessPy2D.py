@@ -371,12 +371,9 @@ class CommandMenu(QWidget):
 
 if __name__ == '__main__':
     import sys
-    import numpy as np
-    from enaml.qt.qt_application import QtApplication
 
     app = QApplication([])
 
-    #enaml_app = QtApplication()
 
     sys._excepthook = sys.excepthook
     def exception_hook(exctype, value, traceback):
@@ -388,8 +385,6 @@ if __name__ == '__main__':
     controller = Controller()
 
 
-
-    #app = QGuiApplication([], platformName='minimalegl ')
 
     font = QFont()
 
@@ -406,28 +401,12 @@ if __name__ == '__main__':
     font.setStyleStrategy(QFont.PreferQuality)
     app.setFont(font)
     mw = MainWindow(controller=controller)
-    #mw.setWindowFlags(Qt.FramelessWindowHint)
 
-    from Plans.PumpProbeViewer import PumpProbeViewer
-    from Plans.PumpProbe import PumpProbePlan
-
-    #pp = PumpProbePlan(name='BlaBlub', controller=controller)
-    controller.plan = None
-    #pp.t_list = np.arange(-2, 5, 0.1)
-    #pp.center_wl_list = [300, 600]
-    #pi = PumpProbeViewer(pp)
-    #ppi.show()
-    #mw.showFullScreen()
     mw.showMaximized()
-    #
-    # from enaml import imports
-    # with imports():
-    #     from scan_spectrum import ScanSettingsView
-    #
-    # from EnamlModel import ScanSpectrumSettings, SampleInfo
-    # fv = ScanSettingsView(ss=ScanSpectrumSettings(), si=SampleInfo())
-    # fv.initialize()
-    # fv.activate_proxy()
-    # fv.proxy.widget.show()
+    app.exec()
 
-    app.aboutToQuit = lambda x: controller.shut 
+    #app.aboutToQuit = lambda x: controller.shutdown()
+
+
+
+

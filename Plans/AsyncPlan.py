@@ -57,8 +57,9 @@ class CalibPlan(QObject):
         #while self.sample_scanner.is_moving():
         #    await aio.sleep(0.01)
 
-        reading = await loop.run_in_executor(None, self.cam.make_reading)
-        self.amps.append(reading.frame_data[:, 67])
+        spectra, ch = await loop.run_in_executor(None, self.cam.get_spectra, 3)
+        print(spectra['Probe2'].frame_data.shape)
+        self.amps.append(spectra['Probe2'].frame_data[67, :])
 
 
 
@@ -77,9 +78,9 @@ class FocusScanView(QWidget):
 
 
         self.children = [
-            dict(name='start_wl', type='float', value=4000, step=500),
-            dict(name='end_wl', type='float',  value=6000, step=500),
-            dict(name='step', type='float',  value=10, step=2),
+            dict(name='start_wl', type='int', value=5000, step=500),
+            dict(name='end_wl', type='int',  value=7000, step=500),
+            dict(name='step', type='float',  value=20, step=2),
         ]
         param = Parameter.create(name='Calibration Scan',
                                 type='group',
@@ -96,7 +97,8 @@ class FocusScanView(QWidget):
                             type='group',
                             children=self.children2)
         self.params : Parameter = param
-        self.pt = ParameterTree(self.params)
+        self.pt = ParameterTree()
+        self.pt.setParameters(self.params)
         self.layout().addWidget(self.pt)
         self.start_button.clicked.connect(self.start)
         self.plot = pg.PlotWidget(self)
@@ -107,7 +109,7 @@ class FocusScanView(QWidget):
 
     def start(self):
         s = self.params.saveState()
-        start, stop, step = self.params['start_wl'].value, self.params['end_wl'].value, self.params['step'].value
+        start, stop, step = self.params['start_wl'], self.params['end_wl'], self.params['step']
         self.focus_scan.points = np.arange(start, stop, step)
         self.params.setReadonly(True)
 
@@ -123,9 +125,12 @@ class FocusScanView(QWidget):
         self.plot.plotItem.clear()
         n = len(plan.amps)
         x = plan.points[:n]
-        self.plot.plotItem.plot(x, np.array(plan.amps)[:, 1], pen='r')
-        self.plot.plotItem.plot(x, np.array(plan.amps)[:, 0], pen='g')
-        self.plot.plotItem.plot(x, np.array(plan.amps)[:, 0], pen='y')
+
+        y = np.array(plan.amps)
+        print(y.shape)
+        self.plot.plotItem.plot(x, y[:, 1], pen='r')
+        self.plot.plotItem.plot(x, y[:, 0], pen='g')
+        self.plot.plotItem.plot(x, y[:, 2], pen='y')
 
     def analyse(self):
         plan = self.focus_scan
@@ -148,11 +153,10 @@ if __name__ == '__main__':
     loop = QEventLoop(app)
     aio.set_event_loop(loop)
     cam = _ircam
-    cam.set_shots(50)
-    fs = FocusScan(cam=cam,
+    cam.set_shots(60)
+    fs = CalibPlan(cam=cam,
                    move_func=cam.set_wavelength,
                    points=np.arange(5500, 6500, 5))
     fv = FocusScanView(fs)
     fv.show()
-
-    loop.run
+    app.exec()

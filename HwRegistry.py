@@ -66,4 +66,4 @@ elif pc_name == 'DESKTOP-BBLLUO7':
     from Instruments.cam_phasetec import _ircam as _cam
     _cam2 = None
     from Instruments.delay_line_apt import DelayLine 
-    _dl = DelayLine("VisDelay")
+    _dl = DelayLine(name="VisDelay")

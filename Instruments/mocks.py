@@ -1,6 +1,6 @@
 import numpy as np
 import attr
-from Instruments.interfaces import ICam, IDelayLine, IRotationStage, IShutter, Reading
+from Instruments.interfaces import ICam, IDelayLine, IRotationStage, IShutter, Reading, Spectrum
 import time
 import threading
 
@@ -70,6 +70,9 @@ class CamMock(ICam):
         return x*0.5 + center_wl
 
     def set_background(self, shots):
+        pass
+
+    def get_spectra(self):
         pass
 
 @attr.s(auto_attribs=True)
