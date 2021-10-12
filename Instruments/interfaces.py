@@ -163,9 +163,12 @@ def fs_to_mm(t_fs):
 
 def _try_load():
     import json
-    with open("home_pos", 'r') as f:
-        h = json.load(f)['home']
-    return h
+    try:
+        with open("home_pos", 'r') as f:
+            h = json.load(f)['home']
+        return h
+    except FileNotFoundError:
+        return None
 
 
 @attr.s(auto_attribs=True)
