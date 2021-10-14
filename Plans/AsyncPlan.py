@@ -1,20 +1,20 @@
 import asyncio
 import asyncio as aio
-import attr
-#from PyQt5.QtWidgets import QWidget, QPushButton, QLabel, QHBoxLayout
-import os, sys
+import sys
 
-os.environ['QT_API'] = 'PyQt5'
+import attr
+
 sys.path.append('../')
-from Instruments.interfaces import ILissajousScanner, ICam, IDelayLine
+from Instruments.interfaces import ICam
+
 from typing import List, Callable, Tuple
-from qasync import QEventLoop, asyncClose, asyncSlot
+from qasync import QEventLoop, asyncSlot
 from qtpy.QtWidgets import *
 from qtpy.QtCore import QObject, Signal
 import pyqtgraph as pg
-from pyqtgraph.parametertree import Parameter, ParameterItem, ParameterTree
+from pyqtgraph.parametertree import Parameter, ParameterTree
 import numpy as np
-
+from .CalibView import CalibView
 
 @attr.s(auto_attribs=True, cmp=False)
 class CalibPlan(QObject):
@@ -135,18 +135,13 @@ class FocusScanView(QWidget):
     def analyse(self):
         plan = self.focus_scan
         x = np.array(plan.points)
+        y0 = np.array(plan.amps)[:, 0]
         y1 = np.array(plan.amps)[:, 1]
-        y2 = np.array(plan.amps)[:, 0]
+        y2 = np.array(plan.amps)[:, 2]
         np.save('calib.npy', np.column_stack((x, y1, y2)))
-        from scipy.signal import find_peaks
-        p1, _ = find_peaks(y1, height=4000, distance=5)
-        p2, _ = find_peaks(y1, height=4000, distance=5)
-        self.plot.plotItem.plot(x[p1], y1[p1])
-        self.plot.plotItem.plot(x[p2], y2[p2])
+        self._view = CalibView(x=x, y1=y2, y0=y1, y2=y2)
+        self._view.show()
 
-
-if __name__ == '__main__':
-    from Instruments.mocks import CamMock, DelayLineMock
     from Instruments.cam_phasetec import _ircam
 
     app = QApplication([])
