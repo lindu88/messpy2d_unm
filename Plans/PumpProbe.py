@@ -4,7 +4,7 @@ import numpy as np
 from attr import attrs, attrib, Factory
 from .common_meta import Plan
 from ControlClasses import Controller, Cam
-from Signal import Signal
+from qtpy.QtCore import QObject, Signal
 from pathlib import Path
 from Config import config
 import datetime
@@ -15,7 +15,7 @@ if TYPE_CHECKING:
 from qtpy.QtWidgets import QApplication
 
 @attrs(auto_attribs=True)
-class PumpProbePlan:
+class PumpProbePlan(QObject):
     """Plan used for pump-probe experiments"""
     controller: Controller
     t_list: Iterable[float] 
@@ -44,6 +44,7 @@ class PumpProbePlan:
             return np.lcm(*map(len, self.center_wl_list))
 
     def __attrs_post_init__(self):
+        QObject.__init__(self)
         self._name = None
         gen = self.make_step_gen()
         self.make_step = lambda: next(gen)

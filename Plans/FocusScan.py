@@ -8,13 +8,12 @@ import numpy as np
 from Plans.common_meta import Plan
 import typing as T
 from collections import namedtuple
-from Signal import Signal
 from ControlClasses import Cam, Controller
 import threading
 import scipy.special as spec
 import scipy.optimize as opt
 from Instruments.interfaces import ILissajousScanner
-
+from qtpy.QtCore import QObject, Signal
 
 def gauss_int(x, x0, amp, back, sigma):
     return 0.5 * (1 + amp * spec.erf((x - x0) / (sigma * 2))) - back
@@ -45,7 +44,7 @@ def make_text(name, fr):
 
 
 @attr.s(auto_attribs=True, cmp=False)
-class FocusScan():
+class FocusScan(QObject):
     """
     x_parameters and y_parameters are List [start, end, step];
     if list empty it is not measured
@@ -66,6 +65,7 @@ class FocusScan():
     # sigYStepDone = attr.ib(attr.Factory(Signal))
 
     def __attrs_post_init__(self):
+        QObject.__init__(self)
         if self.x_parameters != []:
             self.scan_x = True
             self.pos_x = []

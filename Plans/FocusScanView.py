@@ -2,12 +2,12 @@ import numpy as np
 import pyqtgraph.parametertree as pt
 import pyqtgraph as pg
 import typing as T
-from Signal import Signal
+
 from .FocusScan import FocusScan
 from Config import config
 from qtpy.QtWidgets import QWidget, QPushButton,QLayout, QSizePolicy, QLabel, QVBoxLayout, QHBoxLayout, QCheckBox, QApplication, QTabWidget
 from qtpy.QtGui import QPalette, QFont
-from qtpy.QtCore import Qt, QTimer
+from qtpy.QtCore import Qt, QTimer, QObject, Signal
 from ControlClasses import Controller, Cam
 from QtHelpers import vlay, hlay, PlanStartDialog, ObserverPlot
 from .common_meta import samp

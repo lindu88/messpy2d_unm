@@ -3,12 +3,13 @@ import xmlrpc.server as rpc
 from enum import auto
 import numpy as np
 from numpy.lib.mixins import NDArrayOperatorsMixin
-from Signal import Signal
+
 
 T = typing
 import asyncio, contextlib
 
 from qtpy.QtWidgets import QWidget
+from qtpy.QtCore import Signal, QObject
 
 from scipy.constants import c
 import json
@@ -16,7 +17,6 @@ import json
 @attr.s(auto_attribs=True)
 class IDevice(abc.ABC):
     name: str
-    #extra_widget: T.Optional[QWidget] = None
 
     def init(self):
         self.load_state()
@@ -427,7 +427,7 @@ def double_pulse_mask(nu: np.ndarray, nu_rf: float, tau: float, phi1: float,
     phi2 : float
         Phase shift of the fixed pulse
     """
-    double = 0.5 * (np.exp(-1j * (nu - nu_rf) * 2 * np.pi * tau) *
+    double = 0.5 * (np.exp(-1j * (nu-nu_rf) * 2*np.pi*tau) *
                     np.exp(+1j * phi1) + np.exp(1j * phi2))
     return double
 
@@ -477,7 +477,7 @@ class IAOMPulseShaper(PulseShaper):
         pass
 
     def set_mask(self, amp, phase):
-        return super().set_mask(amp, phase)
+        return dac.set_mask(amp, phase)
 
     def mask_wfn(self, masks):
         wfn = np.zeros((self.pixel, len(masks)))
