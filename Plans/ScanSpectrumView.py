@@ -1,13 +1,13 @@
 import numpy as np
 import pyqtgraph.parametertree as pt
 import typing as T
-from Signal import Signal
+
 from .ScanSpectrum import ScanSpectrum
 from .common_meta import samp
 from Config import config
 from qtpy.QtWidgets import QWidget, QSizePolicy, QLabel, QVBoxLayout, QHBoxLayout, QCheckBox, QApplication, QTabWidget
 from qtpy.QtGui import QPalette, QFont
-from qtpy.QtCore import Qt, QTimer
+from qtpy.QtCore import Qt, QTimer, QObject, Signal
 from ControlClasses import Controller, Cam
 from QtHelpers import vlay, hlay, PlanStartDialog, ObserverPlot
 

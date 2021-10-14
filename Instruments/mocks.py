@@ -53,7 +53,7 @@ class CamMock(ICam):
             valid=True,
         )
 
-    def set_wavelength(self, wl):
+    def set_wavelength(self, wl, timeout=None):
         self.center_wl = wl
         state.wl = wl
 

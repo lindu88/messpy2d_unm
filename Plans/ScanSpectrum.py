@@ -2,7 +2,7 @@ import attr
 import numpy as np
 from Plans.common_meta import Plan
 import typing as T
-from Signal import Signal
+
 from Config import config
 from pathlib import Path
 import os.path
@@ -10,7 +10,7 @@ import matplotlib.pyplot as plt
 import threading
 
 from ControlClasses import Cam, Controller
-
+from qtpy.QtCore import QObject, Signal
 
 
 @attr.s(auto_attribs=True, cmp=False)
@@ -25,6 +25,7 @@ class ScanSpectrum:
     sigPointRead: Signal = attr.Factory(Signal)
 
     def __attrs_post_init__(self):
+        QObject.__init__(self)
         n_wl = len(self.wl_list)
         self.wls = np.zeros((n_wl, self.n_lines))
         self.probe = np.zeros((n_wl, self.n_lines))

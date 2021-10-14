@@ -124,10 +124,10 @@ class MainWindow(QMainWindow):
                     self.toggle_run(True)
             return f
 
-        asl_icon = qta.icon('fa.percent', color='white')
-        pp = QPushButton('2D Experiment', icon=asl_icon)
-        pp.clicked.connect(plan_starter(TwoDStarter))
-        tb.addWidget(pp)
+        #asl_icon = qta.icon('fa.percent', color='white')
+        #pp = QPushButton('2D Experiment', icon=asl_icon)
+        #pp.clicked.connect(plan_starter(TwoDStarter))
+        #tb.addWidget(pp)
 
         asl_icon = qta.icon('ei.graph', color='white')
         pp = QPushButton('Pump Probe', icon=asl_icon)
@@ -352,7 +352,6 @@ class CommandMenu(QWidget):
             cf2 = ControlFactory('Grating 2', sh.grating_2.set_degrees, sh.grating_2.sigDegreesChanged)
             l += [cf1, cf2]
 
-
         cb_chopped = QCheckBox('Chopped')
         cb_phase_cycled = QCheckBox('Phase Cycling')
         cb_running = QCheckBox('Active')
@@ -371,10 +370,9 @@ class CommandMenu(QWidget):
 
 if __name__ == '__main__':
     import sys
-
+    import qasync
     app = QApplication([])
-
-
+    qasync.QEventLoop()
     sys._excepthook = sys.excepthook
     def exception_hook(exctype, value, traceback):
         sys._excepthook(exctype, value, traceback)
