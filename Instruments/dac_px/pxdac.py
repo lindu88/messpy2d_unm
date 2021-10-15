@@ -180,21 +180,20 @@ class AOM:
         self.dac.EndRamPlaybackXD48()
 
     def make_calib_mask(self, width=150, seperation=350, n_single=12):
-        mask2 = np.cos(np.arange(PIXEL)/16*2*np.pi)*MAX_16_Bit
-        mask21 = mask2.copy()
+        full_mask = np.cos(np.arange(PIXEL)/16*2*np.pi)*MAX_16_Bit
+        pulse_train_mask = full_mask.copy()
         total = width + seperation
-        for i in range(0, mask2.size, total):
-            mask21[i+width:i+seperation] = 0
+        for i in range(0, full_mask.size, total):
+            pulse_train_mask[i+width:i+seperation] = 0
         i = n_single*total
-        mask22 = np.zeros_like(mask21)
-        mask22[i:i+150] = mask2[i:i+150]
+        single_mask = np.zeros_like(full_mask)
+        single_mask[i:i+150] = single_mask[i:i+150]
 
         # Three frames: train, single and full
-        mask2 = np.hstack((mask21, mask22, mask2))
-        mask2 = mask2.astype('int16')
-
-        return self.amp_fac*mask2
+        mask = np.hstack((pulse_train_mask, single_mask, full_mask))
+        mask = (self.amp_fac*mask).astype('int16')
+        return self.amp_fac*mask
 
 if __name__ == '__main__':
     A = AOM()
-    A.load_mask(A.
+    A.load_mask(A
