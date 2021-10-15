@@ -1,6 +1,7 @@
 from attr import attr
 from nicelib import load_lib, NiceLib, Sig, NiceObject, RetHandler, ret_ignore, ret_return
 import logging
+import numpy as np
 
 @RetHandler(num_retvals=0)
 def ret_errcode(retval, funcargs, niceobj):
@@ -91,6 +92,17 @@ handler = logging.StreamHandler(sys.stdout)
 handler.filter('pxdac')
 log.addHandler(handler)
 
+PIXEL = 4096*3 # 12288
+MAX_16_Bit = (1 << 15) - 1
+
+
+from qtpy.QtCore import Signal, Slot
+
+def wf(amps, phase,  P, omega0, pixel=np.arange(PIXEL), dac_mHZ=1.2e3, rf_mHZ=75):
+    F = P.integ()
+    phi0 = F(0)
+    phase_term = phi0+2*np.pi*F(pixel)/omega0*rf_mHZ/dac_mHZ+phase
+    return amps*np.cos(phase_term)
 
 class AOM:
     def __init__(self):
@@ -109,15 +121,21 @@ class AOM:
         self.amp_fac = 1
         self.calib = None
         self.nu = None
+        self.nu0 =
+        self.t = np.arange(PIXEL)/1.2e9
 
     def voltage(self, i: int):
         if (0<i<1023):
             raise ValueError('i')
         self.dac.set_output_voltage(ch1=i)
 
+    @Slot(object)
     def set_calib(self, p):
-        pass
+        self.calib(p)
+        self.nu = np.polyval(p, self.arange(PIXEL))
 
+    def set_mask(self, amp, phase):
+        wf(amps, phase, self.calib, self.nu0)
 
     def set_wave_amp(self, amp):
         if not (0 < amp < 1):
@@ -135,8 +153,13 @@ class AOM:
 
     def load_mask(self, mask):
         self.mask = mask
-        assert(mask.size % (4096*3) == 0)
+        assert(mask.size % (PIXEL) == 0)
         self.end_playback()
+        mask1 = np.zeros_like(mask)
+        mask1[:PIXEL] = MAX_16_Bit
+        full_mask = np.zeros(mask.size * 2, dtype=np.int16)
+        full_mask[1::2] = mask1
+        full_mask[::2] = mask
         self.dac.LoadRamBufXD48(0, mask.size * 2, mask.ctypes.data, 0)
         n_masks = (mask.size / (3*4096)/2)
         self.dac.BeginRamPlaybackXD48(0, mask.size * 2, 4096 * 3 * 2 * 2)
@@ -153,7 +176,7 @@ class AOM:
         b14max = (1 << 15) - 1
 
 
-        mask2 = np.cos(np.arange(4096*3)/16*2*np.pi)*b14max
+        mask2 = np.cos(np.arange(4096*3)/16*2*np.pi)*MAX_16_Bit
         mask21 = mask2.copy()
         total = width + seperation
         for i in range(0, mask2.size, total):
@@ -166,17 +189,9 @@ class AOM:
         mask2 = np.hstack((mask21, mask22, mask2))
         mask2 = mask2.astype('int16')
 
-        # Sync mask on channel 2: b14max 0 0 0 .....
-        mask1 = np.ones((4096*3), dtype=np.int16)*b14max
-        mask1 = np.hstack((mask1, 0*mask1, 0*mask1))
 
-
-        # Interleave
-        mask = np.zeros(mask2.size * 2, dtype=np.int16)
-        mask[1::2] = mask1
-        mask[::2] = mask2
-        return self.amp_fac*mask
+        return self.amp_fac*mask2
 
 if __name__ == '__main__':
     A = AOM()
-    A.load_mask(A.make_calib_mask())
+    A.load_mask(A.
