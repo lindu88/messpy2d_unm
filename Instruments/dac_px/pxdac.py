@@ -1,4 +1,5 @@
 from attr import attr
+from numpy.core.numeric import full
 from nicelib import load_lib, NiceLib, Sig, NiceObject, RetHandler, ret_ignore, ret_return
 import logging
 import numpy as np
@@ -106,6 +107,16 @@ def wf(amps, phase,  P, omega0, pixel=np.arange(PIXEL), dac_mHZ=1.2e3, rf_mHZ=75
 
 class AOM:
     def __init__(self):
+        self.setup_dac()
+        self.amp_fac = 1
+        self.calib = None
+        self.nu = None
+        self.nu0_THz = 50
+        self.t = np.arange(PIXEL)/1.2e9
+        self.phase_correct = None
+        self.do_disp_comp = True
+
+    def setup_dac(self):
         dac = PXDAC.DAC(1)
         dac.SetDacSampleSizeXD48(2)
         log.info("Size: %s ", dac.GetDacSampleSizeXD48(1))
@@ -118,11 +129,6 @@ class AOM:
         dac.SetTriggerModeXD48(0)
         dac.SetActiveChannelMaskXD48(0x1 | 0x2)
         self.dac = dac
-        self.amp_fac = 1
-        self.calib = None
-        self.nu = None
-        self.nu0 =
-        self.t = np.arange(PIXEL)/1.2e9
 
     def voltage(self, i: int):
         if (0<i<1023):
@@ -134,8 +140,11 @@ class AOM:
         self.calib(p)
         self.nu = np.polyval(p, self.arange(PIXEL))
 
-    def set_mask(self, amp, phase):
-        wf(amps, phase, self.calib, self.nu0)
+    def generate_waveform(self, amp, phase):
+        if self.phase_correct is not None and self.do_disp_comp:
+            phase = phase + self.phase_correct
+        self.load_mask(wf(amp, phase, self.calib, self.nu0))
+
 
     def set_wave_amp(self, amp):
         if not (0 < amp < 1):
@@ -158,37 +167,31 @@ class AOM:
         mask1 = np.zeros_like(mask)
         mask1[:PIXEL] = MAX_16_Bit
         full_mask = np.zeros(mask.size * 2, dtype=np.int16)
-        full_mask[1::2] = mask1
         full_mask[::2] = mask
-        self.dac.LoadRamBufXD48(0, mask.size * 2, mask.ctypes.data, 0)
+        full_mask[1::2] = mask1
+        self.dac.LoadRamBufXD48(0, full_mask.size * 2, full_mask.ctypes.data, 0)
         n_masks = (mask.size / (3*4096)/2)
-        self.dac.BeginRamPlaybackXD48(0, mask.size * 2, 4096 * 3 * 2 * 2)
+        self.dac.BeginRamPlaybackXD48(0, full_mask.size * 2,  PIXEL * 2 * 2)
 
     def start_playback(self):
-        self.dac.BeginRamPlaybackXD48(0, self.mask.size * 2, 4096 * 3 * 2 * 2)
+        self.dac.BeginRamPlaybackXD48(0, self.mask.size * 2, PIXEL * 2 * 2)
 
     def end_playback(self):
         self.dac.EndRamPlaybackXD48()
 
-    def make_calib_mask(self, width=150, seperation=350, single=6000):
-        import numpy as np
-        #mask1 = np.ones(4096 * 3, dtype=np.int16)
-        b14max = (1 << 15) - 1
-
-
-        mask2 = np.cos(np.arange(4096*3)/16*2*np.pi)*MAX_16_Bit
+    def make_calib_mask(self, width=150, seperation=350, n_single=12):
+        mask2 = np.cos(np.arange(PIXEL)/16*2*np.pi)*MAX_16_Bit
         mask21 = mask2.copy()
         total = width + seperation
         for i in range(0, mask2.size, total):
-            mask21[i+150:i+500] = 0
-        i = single
+            mask21[i+width:i+seperation] = 0
+        i = n_single*total
         mask22 = np.zeros_like(mask21)
-
         mask22[i:i+150] = mask2[i:i+150]
+
         # Three frames: train, single and full
         mask2 = np.hstack((mask21, mask22, mask2))
         mask2 = mask2.astype('int16')
-
 
         return self.amp_fac*mask2
 
