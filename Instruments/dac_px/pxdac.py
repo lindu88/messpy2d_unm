@@ -187,13 +187,14 @@ class AOM:
             pulse_train_mask[i+width:i+seperation] = 0
         i = n_single*total
         single_mask = np.zeros_like(full_mask)
-        single_mask[i:i+150] = single_mask[i:i+150]
+        single_mask[i:i+150] = pulse_train_mask[i:i+150]
 
         # Three frames: train, single and full
-        mask = np.hstack((pulse_train_mask, single_mask, full_mask))
+        mask = np.hstack((pulse_train_mask, single_mask))
+        #, full_mask))
         mask = (self.amp_fac*mask).astype('int16')
         return self.amp_fac*mask
 
 if __name__ == '__main__':
     A = AOM()
-    A.load_mask(A
+    A.load_mask(A.make_calib_mask())

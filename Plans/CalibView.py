@@ -131,8 +131,9 @@ class CalibView(QWidget):
             txt = ''.join(['%.3e\n' % i for i in self.coeff])
             ax1.annotate(txt, (0.95, 0.93), xycoords='axes fraction', va='top', ha='right')
             ax1.plot(all_pix, fit, color='xkcd:lime')
-        except ValueError:
-            pass
+        except ValueError as e:
+            print(e)
+
         finally:
             self.fig.canvas.draw_idle()
 

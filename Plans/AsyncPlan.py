@@ -14,7 +14,7 @@ from qtpy.QtCore import QObject, Signal
 import pyqtgraph as pg
 from pyqtgraph.parametertree import Parameter, ParameterTree
 import numpy as np
-from .CalibView import CalibView
+from CalibView import CalibView
 
 @attr.s(auto_attribs=True, cmp=False)
 class CalibPlan(QObject):
@@ -57,7 +57,7 @@ class CalibPlan(QObject):
         #while self.sample_scanner.is_moving():
         #    await aio.sleep(0.01)
 
-        spectra, ch = await loop.run_in_executor(None, self.cam.get_spectra, 3)
+        spectra, ch = await loop.run_in_executor(None, self.cam.get_spectra,2)
         print(spectra['Probe2'].frame_data.shape)
         self.amps.append(spectra['Probe2'].frame_data[67, :])
 
@@ -67,13 +67,12 @@ class CalibPlan(QObject):
 class FocusScanView(QWidget):
     def __init__(self, focus_scan: CalibPlan, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self.info_label = QLabel('BLa')
         self.focus_scan = focus_scan
         self.focus_scan.sigStepDone.connect(self.update_view)
 
         self.setLayout(QHBoxLayout())
         self.start_button = QPushButton('start')
-        self.layout().addWidget(self.info_label)
+
         self.layout().addWidget(self.start_button)
 
 
@@ -130,18 +129,19 @@ class FocusScanView(QWidget):
         print(y.shape)
         self.plot.plotItem.plot(x, y[:, 1], pen='r')
         self.plot.plotItem.plot(x, y[:, 0], pen='g')
-        self.plot.plotItem.plot(x, y[:, 2], pen='y')
+        #self.plot.plotItem.plot(x, y[:, 2], pen='y')
 
     def analyse(self):
         plan = self.focus_scan
         x = np.array(plan.points)
         y0 = np.array(plan.amps)[:, 0]
         y1 = np.array(plan.amps)[:, 1]
-        y2 = np.array(plan.amps)[:, 2]
-        np.save('calib.npy', np.column_stack((x, y1, y2)))
-        self._view = CalibView(x=x, y1=y2, y0=y1, y2=y2)
+        #y2 = np.array(plan.amps)[:, 2]
+        np.save('calib.npy', np.column_stack((x, y0, y1)))
+        self._view = CalibView(x=x, y1=y0, y0=y1)
         self._view.show()
 
+if __name__ == '__main__':
     from Instruments.cam_phasetec import _ircam
 
     app = QApplication([])
