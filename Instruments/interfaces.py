@@ -4,7 +4,6 @@ from enum import auto
 import numpy as np
 from numpy.lib.mixins import NDArrayOperatorsMixin
 
-
 T = typing
 import asyncio, contextlib
 
@@ -13,6 +12,10 @@ from qtpy.QtCore import Signal, QObject
 
 from scipy.constants import c
 import json
+
+import math
+from skultrafast.unit_conversions import THz2cm
+
 
 @attr.s(auto_attribs=True)
 class IDevice(abc.ABC):
@@ -76,6 +79,10 @@ def stats(probe, probemax=None):
     return probe_mean, probe_std, probe_max
 
 
+import math
+LOG10 = math.log(10)
+
+
 @attr.s(auto_attribs=True)
 class Spectrum:
     data: np.ndarray
@@ -85,24 +92,32 @@ class Spectrum:
     name: T.Optional[str] = None
     frame_data: T.Optional[np.ndarray] = None
     frames: T.Optional[int] = None
+    signal: T.Optional[np.ndarray] = None
 
     @classmethod
     def create(cls, data, data_max=None, name=None, frames=None):
         mean, std, max = stats(data, data_max)
+        signal = None
         if frames is not None:
             frame_data = np.empty((mean.shape[0], frames))
 
             for i in range(frames):
                 frame_data[:, i] = np.nanmean(data[:, i::frames], 1)
+            if frames == 2:
+                signal = -1000 / LOG10 * np.log1p(
+                    (frame_data[:, 0] - frame_data[:, 1]) / frame_data[:, 1])
+
         else:
             frame_data = None
+
         return cls(data=data,
-            mean=mean,
-            std=std,
-            name=name,
-            max=max,
-            frames=frames,
-            frame_data=frame_data)
+                   mean=mean,
+                   std=std,
+                   name=name,
+                   max=max,
+                   signal=signal,
+                   frames=frames,
+                   frame_data=frame_data)
 
 
 @attr.s(auto_attribs=True, cmp=False)
@@ -115,9 +130,42 @@ class Reading:
 
 
 @attr.s(auto_attribs=True, cmp=False)
-class Reading2D(Reading):
+class Reading2D:
     "Has the shape (pixel, t2)"
-    signals_2D: object
+    inferogram: np.ndarray
+    t2_ps: np.ndarray
+    signal_2D: np.ndarray
+    freqs: np.ndarray
+    window : T.Optional[typing.Callable] = np.hanning
+    upsample : int = 2
+    rot_frame : float = 0
+
+    @classmethod
+    def from_spectrum(cls, s: Spectrum, t2_ps, rot_frame, **kwargs) -> 'Reading2D':
+        assert(s.frames and s.frames % 4 == 0 and (s.frame_data is not None))
+        f = s.frame_data
+        f.reshape(f.shape[0], 4, f.shape[1] //4)
+        s = 1000/LOG10*(f[:, 0, :] - f[:, 1, :] + f[:, 2, :] - f[:, 3, :])
+        assert(s.shape[1] == len(t2))
+        return cls(inferogram=s, t2_ps=t2_ps, rot_frame=rot_frame, **kwargs)
+
+    @signal_2D.default
+    def calc_2d(self):
+        a = self.inferogram.copy()
+        a[:, 0] *= 0.5
+        if self.window is not None:
+            win = self.window(a.shape[1]*2)
+            a = a*win[None, a.shape[1]:]
+        return np.fft.rfft(a, a.shape[1]*self.upsample, 1).real
+
+    @freqs.default
+    def calc_freqs(self):
+        freqs = np.fft.rfftfreq(len(self.t2)*self.upsample, self.t2_ps[1]-self.t2_ps[0])
+        return THz2cm(freqs) + self.rot_frame
+
+
+
+
 
 
 # Defining a minimal interface for each hardware
@@ -159,9 +207,8 @@ class ICam(IDevice):
     def get_spectra(self) -> T.Dict[str, Spectrum]:
         pass
 
-    def make_2D_reading(self) -> Reading2D:
+    def make_2D_reading(self, t2: np.ndarray) -> Reading2D:
         pass
-
 
     @abc.abstractmethod
     def set_shots(self, shots):
@@ -213,15 +260,13 @@ class ICam(IDevice):
 
 def mm_to_fs(pos_in_mm):
     "converts mm to femtoseconds"
-    speed_of_light = 299792458.
     pos_in_meters = pos_in_mm / 1000.
     pos_sec = pos_in_meters / c
     return pos_sec * 1e15
 
 
 def fs_to_mm(t_fs):
-    speed_of_light = 299792458.
-    pos_m = speed_of_light * t_fs * 1e-15
+    pos_m = c * t_fs * 1e-15
     return pos_m * 1000.
 
 
@@ -427,7 +472,7 @@ def double_pulse_mask(nu: np.ndarray, nu_rf: float, tau: float, phi1: float,
     phi2 : float
         Phase shift of the fixed pulse
     """
-    double = 0.5 * (np.exp(-1j * (nu-nu_rf) * 2*np.pi*tau) *
+    double = 0.5 * (np.exp(-1j * (nu - nu_rf) * 2 * np.pi * tau) *
                     np.exp(+1j * phi1) + np.exp(1j * phi2))
     return double
 
@@ -515,5 +560,4 @@ class IAOMPulseShaper(PulseShaper):
             m = m[0, 2]
         self.mask_wfn(m)
 
-    def set_grating_angle(self, ang1=None, ang2=None):
-        NotImplem
+    def set_grating_angle(self, ang1=None, a
