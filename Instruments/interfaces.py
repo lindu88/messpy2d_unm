@@ -50,23 +50,23 @@ class IDevice(abc.ABC):
     def extra_opts(self):
         pass
 
+    def get_state(self) -> dict:
+        return dict()
+
     def save_state(self):
-        pass
+        d = self.get_state()
+        if d:
+            with open(self.name + '.cfg', 'w') as f:
+                json.dump(d, f)
 
     def load_state(self):
-        pass
-
-    def save_dict(self, d):
-        with open(self.name + '.cfg', 'w') as f:
-            json.dump(d, f)
-
-    def open_dict(self) -> dict:
         try:
             with open(self.name + '.cfg', 'r') as f:
                 d = json.load(f)
-            return d
+            for key, val in d:
+                setattr(self, key, val)
         except FileNotFoundError:
-            return None
+            return
 
 
 def stats(probe, probemax=None):
@@ -146,7 +146,7 @@ class Reading2D:
         f = s.frame_data
         f.reshape(f.shape[0], 4, f.shape[1] //4)
         s = 1000/LOG10*(f[:, 0, :] - f[:, 1, :] + f[:, 2, :] - f[:, 3, :])
-        assert(s.shape[1] == len(t2))
+        assert(s.shape[1] == len(t2_ps))
         return cls(inferogram=s, t2_ps=t2_ps, rot_frame=rot_frame, **kwargs)
 
     @signal_2D.default
@@ -160,7 +160,7 @@ class Reading2D:
 
     @freqs.default
     def calc_freqs(self):
-        freqs = np.fft.rfftfreq(len(self.t2)*self.upsample, self.t2_ps[1]-self.t2_ps[0])
+        freqs = np.fft.rfftfreq(len(self.t2_ps)*self.upsample, self.t2_ps[1]-self.t2_ps[0])
         return THz2cm(freqs) + self.rot_frame
 
 
@@ -560,4 +560,8 @@ class IAOMPulseShaper(PulseShaper):
             m = m[0, 2]
         self.mask_wfn(m)
 
-    def set_grating_angle(self, ang1=None, a
+    def set_grating_angle(self, ang1=None, ang2=None):
+        if ang1:
+            self.grating_2.set_degrees(ang1)
+        if ang2:
+            self.grating_2.set_degrees(ang2)

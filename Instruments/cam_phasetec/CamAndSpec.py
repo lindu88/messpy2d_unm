@@ -25,8 +25,8 @@ TWO_PROBES = True
 @attr.s(auto_attribs=True)
 class PhaseTecCam(ICam):
     _spec: SP2500i = attr.ib()
-    probe_rows: Tuple[float, float] = attr.ib()
-    ref_rows: Tuple[float, float] = attr.ib()
+    probe_rows: Tuple[int, int] = attr.ib()
+    ref_rows: Tuple[int, int] = attr.ib()
     name: str = 'Phasetec Array'
     shots: int = config.shots
     if not TWO_PROBES:
@@ -35,7 +35,7 @@ class PhaseTecCam(ICam):
         std_names: List[str] = ['Probe', 'Ref', 'Probe/Ref']
         sig_names: List[str] = ['Sig', 'SigNoRef']
     else:
-        probe2_rows: Tuple[float, float] = attr.ib()
+        probe2_rows: Tuple[int, int] = attr.ib()
         line_names: List[str] = ['Probe', 'Probe2', 'Ref', 'max']
         std_names: List[str] = ['Probe', 'Probe2', 'Ref', 'Probe/Ref']
         sig_names: List[str] = ['Sig', 'SigNoRef', 'Sig2', 'Sig2NoRef']
@@ -45,7 +45,7 @@ class PhaseTecCam(ICam):
     ext_channels: int = 0
     changeable_wavelength: bool = True
     changeable_slit: bool = False
-    background: Optional[tuple] = attr.ib()
+    background: Optional[np.ndarray] = attr.ib()
     _cam: Cam = attr.ib(factory=Cam)
 
     @probe_rows.default
@@ -84,23 +84,18 @@ class PhaseTecCam(ICam):
     def __attr_post_init__(self):
         self.init()
 
-    def save_state(self):
+    def get_state(self):
         d = {
             'shots': self.shots,
-            'pr_rows': self.probe_rows,
+            'probe_rows': self.probe_rows,
             'ref_rows': self.ref_rows,
-            'pr2_rows': self.probe2_rows
+            'probe2_rows': self.probe2_rows
         }
-
-        super().save_state()
+        return d
 
     def load_state(self):
-        d = self.open_dict()
-        if d:
-            self.set_shots(d['shots'])
-            self.probe_rows = d['pr_rows']
-            self.probe2_rows = d['pr2_rows']
-            self.ref_rows = d['ref_rows']
+        super().load_state()
+        self.set_shots(self.shots)
 
     def set_shots(self, shots: int):
         self._cam.set_shots(shots)
@@ -166,17 +161,18 @@ class PhaseTecCam(ICam):
                               valid=True)
         # print(ref_mean.shape, probe_max.shape, ref_mean.shape, si)
         else:
-            probe2 = d['Probe2']
-            normed2 = probe2.data / ref.data
-            #norm_std2 = 100 * np.nanstd(normed2, 1) / np.nanmean(normed2, 1)
+            if self.beta1 is None:
+                probe2 = d['Probe2']
+                normed2 = probe2.data / ref.data
+                #norm_std2 = 100 * np.nanstd(normed2, 1) / np.nanmean(normed2, 1)
 
-            pu2 = trim_mean(normed2[:, ::2], 0.2, 1)
-            not_pu2 = trim_mean(normed2[:, 1::2], 0.2, 1)
-            sig_pr2 = f * np.log10(pu2 / not_pu2)
+                pu2 = trim_mean(normed2[:, ::2], 0.2, 1)
+                not_pu2 = trim_mean(normed2[:, 1::2], 0.2, 1)
+                sig_pr2 = f * np.log10(pu2 / not_pu2)
 
-            pu2 = trim_mean(probe2.data[:, ::2], 0.2, 1)
-            not_pu2 = trim_mean(probe2.data[:, 1::2], 0.2, 1)
-            sig_pr2_noref = f * np.log10(pu2 / not_pu2)
+                pu2 = trim_mean(probe2.data[:, ::2], 0.2, 1)
+                not_pu2 = trim_mean(probe2.data[:, 1::2], 0.2, 1)
+                sig_pr2_noref = f * np.log10(pu2 / not_pu2)
 
             if self.beta1 is not None:
                 dp = probe.data[:, ::2] - probe.data[:, 1::2]
