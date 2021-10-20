@@ -162,7 +162,7 @@ class AOM:
 
     def load_mask(self, mask):
         self.mask = mask
-        assert(mask.size % (PIXEL) == 0)
+        assert((mask.size % PIXEL) == 0)
         self.end_playback()
         mask1 = np.zeros_like(mask)
         mask1[:PIXEL] = MAX_16_Bit
@@ -181,17 +181,16 @@ class AOM:
 
     def make_calib_mask(self, width=150, seperation=350, n_single=12):
         full_mask = np.cos(np.arange(PIXEL)/16*2*np.pi)*MAX_16_Bit
-        pulse_train_mask = full_mask.copy()
+        pulse_train_mask = full_mask.copy()*0
         total = width + seperation
         for i in range(0, full_mask.size, total):
-            pulse_train_mask[i+width:i+seperation] = 0
+            pulse_train_mask[i:i+width] = full_mask[i:i+width]
         i = n_single*total
         single_mask = np.zeros_like(full_mask)
-        single_mask[i:i+150] = pulse_train_mask[i:i+150]
+        single_mask[i:i+width] = pulse_train_mask[i:i+width]
 
         # Three frames: train, single and full
-        mask = np.hstack((pulse_train_mask, single_mask))
-        #, full_mask))
+        mask = np.hstack((pulse_train_mask, single_mask, full_mask))
         mask = (self.amp_fac*mask).astype('int16')
         return self.amp_fac*mask
 
