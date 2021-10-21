@@ -134,8 +134,8 @@ class Reading2D:
     "Has the shape (pixel, t2)"
     inferogram: np.ndarray
     t2_ps: np.ndarray
-    signal_2D: np.ndarray
-    freqs: np.ndarray
+    signal_2D: np.ndarray = attr.ib()
+    freqs: np.ndarray = attr.ib()
     window : T.Optional[typing.Callable] = np.hanning
     upsample : int = 2
     rot_frame : float = 0
