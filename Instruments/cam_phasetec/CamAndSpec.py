@@ -161,18 +161,18 @@ class PhaseTecCam(ICam):
                               valid=True)
         # print(ref_mean.shape, probe_max.shape, ref_mean.shape, si)
         else:
-            if self.beta1 is None:
-                probe2 = d['Probe2']
-                normed2 = probe2.data / ref.data
-                #norm_std2 = 100 * np.nanstd(normed2, 1) / np.nanmean(normed2, 1)
 
-                pu2 = trim_mean(normed2[:, ::2], 0.2, 1)
-                not_pu2 = trim_mean(normed2[:, 1::2], 0.2, 1)
-                sig_pr2 = f * np.log10(pu2 / not_pu2)
+            probe2 = d['Probe2']
+            normed2 = probe2.data / ref.data
+            #norm_std2 = 100 * np.nanstd(normed2, 1) / np.nanmean(normed2, 1)
 
-                pu2 = trim_mean(probe2.data[:, ::2], 0.2, 1)
-                not_pu2 = trim_mean(probe2.data[:, 1::2], 0.2, 1)
-                sig_pr2_noref = f * np.log10(pu2 / not_pu2)
+            pu2 = trim_mean(normed2[:, ::2], 0.2, 1)
+            not_pu2 = trim_mean(normed2[:, 1::2], 0.2, 1)
+            sig_pr2 = f * np.log10(pu2 / not_pu2)
+
+            pu2 = trim_mean(probe2.data[:, ::2], 0.2, 1)
+            not_pu2 = trim_mean(probe2.data[:, 1::2], 0.2, 1)
+            sig_pr2_noref = f * np.log10(pu2 / not_pu2)
 
             if self.beta1 is not None:
                 dp = probe.data[:, ::2] - probe.data[:, 1::2]

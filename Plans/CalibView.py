@@ -1,3 +1,4 @@
+import matplotlib.pyplot as plt
 from qtpy.QtWidgets import QWidget, QApplication, QHBoxLayout, QVBoxLayout, QSpinBox, QLabel, QPushButton, QDialogButtonBox, QSizePolicy
 from qtpy.QtCore import Qt, Signal
 from matplotlib.figure import Figure
@@ -8,10 +9,10 @@ import attr
 import numpy as np
 from scipy.constants import c
 from scipy.signal import find_peaks
-from scipy.ndimage import uniform_filter1d
+from scipy.ndimage import uniform_filter1d, gaussian_filter1d
 from typing import Optional
 from qtawesome import icon
-
+from scipy.stats import gaussian_kde
 
 rcParams['font.family'] = 'Segoe UI'
 style.use('dark_background')
@@ -19,16 +20,17 @@ style.use('dark_background')
 @attr.s(auto_attribs=True)
 class CalibView(QWidget):
     x: np.ndarray
-    y0: np.ndarray
-    y1: np.ndarray
+    y_train: np.ndarray
+    y_single: np.ndarray
+    y_full: Optional[np.ndarray] = None
 
-    single: int = 6000
+    single: int = 15*500
     width: int = 150
     dist: int = 350
 
     prominence: float = 100
-    distance: int = 10
-    filter: float = 3
+    distance: int = 5
+    filter: float = 2
     coeff: Optional[np.ndarray] = None
 
     sigCalibrationAccepted = Signal(object)
@@ -94,26 +96,28 @@ class CalibView(QWidget):
         self.distance = self.sb_dist.value()
         self.filter = self.sb_filter.value()
         if self.filter > 0:
-            y0 = uniform_filter1d(self.y0, self.filter)
-            y1 = uniform_filter1d(self.y1, self.filter)
+
+            y_train = gaussian_filter1d(self.y_train, self.filter)
+            y_single = gaussian_filter1d(self.y_single, self.filter)
         else:
-            y0, y1 = self.y0, self.y1
-        p0, _ = find_peaks(y0, prominence=self.prominence, distance=self.distance)
-        p1, _ = find_peaks(y1, prominence=self.prominence, distance=self.distance)
+            y_train, y_single = self.y_train, self.y_single
+        p0, _ = find_peaks(y_train, prominence=self.prominence, distance=self.distance)
+        p1, _ = find_peaks(y_single, prominence=self.prominence, distance=self.distance)
 
         self.ax.cla()
         self.ax1.cla()
-        self.ax.plot(self.x, y0)
-        self.ax.plot(self.x, y1)
-
+        self.ax.plot(self.x, y_train)
+        self.ax.plot(self.x, y_single)
+        if self.y_full is not None:
+            self.ax.plot(self.x, y_single)
         ax1 = self.ax1
         x = self.x
-        self.ax.plot(self.x[p0], y0[p0], '|', ms=7, c='r')
-        self.ax.plot(self.x[p1], y1[p1], '^', ms=7, c='r')
-        try:
-            a = np.arange(0, 4096 * 3, 500)
+        self.ax.plot(self.x[p0], y_train[p0], '|', ms=7, c='r')
+        self.ax.plot(self.x[p1], y_single[p1], '^', ms=7, c='r')
+        if len(p0) > 1 and len(p1) > 0:
+            a = np.arange(0, 4096 * 3, self.width + self.dist)
             align = np.argmin(abs(x[p0] - x[p1]))
-            pix0 = 6000 + self.width / 2
+            pix0 = self.single + self.width / 2
             pixel = a[:len(p0)] - a[align] + pix0
 
             freqs = c / x[p0] / 1e3
@@ -131,18 +135,20 @@ class CalibView(QWidget):
             txt = ''.join(['%.3e\n' % i for i in self.coeff])
             ax1.annotate(txt, (0.95, 0.93), xycoords='axes fraction', va='top', ha='right')
             ax1.plot(all_pix, fit, color='xkcd:lime')
-        except ValueError as e:
-            print(e)
 
-        finally:
             self.fig.canvas.draw_idle()
 
 if __name__ == '__main__':
-
+    from Instruments.dac_px.pxdac import AOM
+    aom = AOM()
     app = QApplication([])
-    from qt_material import apply_stylesheet
-    apply_stylesheet(app, 'light_blue.xml')
-    x, y2, y1 = np.load('calib.npy').T
-    view = CalibView(x=x, y0=y1, y1=y2)
+    #from qt_material import apply_stylesheet
+    #apply_stylesheet(app, 'light_blue.xml')
+    x, y_train, y_single, y_full = np.load('calib.npy').T
+    view = CalibView(x=x, y_single=y_single, y_train=y_train)
     view.show()
+    view.sigCalibrationAccepted.connect(aom.set_calib)
+    view.sigCalibrationAccepted.connect(lambda x: aom.generate_waveform(np.ones_like(aom.nu), np.ones_like(aom.nu)))
+
+
     app.exec_()
