@@ -165,10 +165,6 @@ class Reading2D:
         return THz2cm(freqs) + self.rot_frame
 
 
-
-
-
-
 # Defining a minimal interface for each hardware
 @attr.s(auto_attribs=True, cmp=False)
 class ICam(IDevice):
@@ -205,10 +201,10 @@ class ICam(IDevice):
         pass
 
     @abc.abstractmethod
-    def get_spectra(self) -> T.Dict[str, Spectrum]:
+    def get_spectra(self, frames: int) -> T.Dict[str, Spectrum]:
         pass
 
-    def make_2D_reading(self, t2: np.ndarray) -> Reading2D:
+    def make_2D_reading(self, t2: np.ndarray, rot_frame: float) -> Reading2D:
         pass
 
     @abc.abstractmethod

@@ -1,3 +1,4 @@
+from typing import Optional
 from attr import attr
 from numpy.core.numeric import full
 from nicelib import load_lib, NiceLib, Sig, NiceObject, RetHandler, ret_ignore, ret_return
@@ -109,16 +110,23 @@ def wf(amps, phase,  P, omega0, pixel=np.arange(PIXEL), dac_mHZ=1.2e3, rf_mHZ=75
     plt.show()
     return amps*np.cos(phase_term)
 
+import attr
+
+@attr.s(auto_attribs=True)
 class AOM:
-    def __init__(self):
+    amp_fac : float = 0.4
+    calib : Optional[tuple] = None
+    nu : Optional[np.ndarray] = None
+    nu0_THz : float = 60
+    t : np.ndarray = np.arange(PIXEL)/1.2e9
+    do_disp_comp : bool = True
+    compensation_phase : Optional[np.ndarray] = None
+    phase : Optional[np.ndarray] = np.zeros_like(PIXEL)
+    amp : np.ndarray = np.ones_like(PIXEL)
+    total_phase : Optional[np.ndarray] = np.zeros_like(PIXEL)
+
+    def __attr_post_init__(self):
         self.setup_dac()
-        self.amp_fac = 0.4
-        self.calib = None
-        self.nu = None
-        self.nu0_THz = 60
-        self.t = np.arange(PIXEL)/1.2e9
-        self.phase_correct = None
-        self.do_disp_comp = True
 
     def setup_dac(self):
         dac = PXDAC.DAC(1)
@@ -134,16 +142,34 @@ class AOM:
         dac.SetActiveChannelMaskXD48(0x1 | 0x2)
         self.dac = dac
 
+    def set_dispersion_correct(self, GVD, TOD, FOD):
+        x = self.nu - self.nu0
+        x *= (2 * np.pi)
+        facs = np.array([GVD, TOD, FOD]) / np.array([2, 6, 24])
+        phase = x**2 * facs[0] + x**3 * facs[1] + x**3 * FOD * facs[2]
+        self.do_disp_comp = True
+        self.compensation_phase = phase
 
 
-    #@Slot(object)
     def set_calib(self, p):
         self.calib = p
         self.nu = np.polyval(p, np.arange(PIXEL))
 
-    def generate_waveform(self, amp, phase):
-        if self.phase_correct is not None and self.do_disp_comp:
-            phase = phase + self.phase_correct
+    def generate_waveform(self, amp=None, phase=None):
+        if amp is None:
+            amp = self.amp
+        else:
+            self.amp = amp
+
+        if phase is None:
+            phase = self.phase
+        else:
+            self.phase = phase
+
+        if self.compensation_phase is not None and self.do_disp_comp:
+            phase = phase + self.compensation_phase
+
+        self.total_phase = phase
         masks = MAX_16_Bit*self.amp_fac*wf(amp, phase, self.calib, self.nu0_THz)
         masks = np.concatenate((masks, masks*0))
         self.load_mask(masks.astype('int16'))
@@ -167,8 +193,6 @@ class AOM:
             f = V/0.4
             self.amp_fac = f
 
-
-
     def load_mask(self, mask):
         self.mask = mask
         assert((mask.size % PIXEL) == 0)
@@ -179,7 +203,6 @@ class AOM:
         full_mask[::2] = mask
         full_mask[1::2] = mask1
         self.dac.LoadRamBufXD48(0, full_mask.size * 2, full_mask.ctypes.data, 0)
-        n_masks = (mask.size / (3*4096)/2)
         self.dac.BeginRamPlaybackXD48(0, full_mask.size * 2,  PIXEL * 2 * 2)
 
     def start_playback(self):
@@ -197,8 +220,6 @@ class AOM:
             pulse_train_mask[i:i+width] = full_mask[i:i+width]
             if k == n_single:
                 single_mask[i:i + width] = pulse_train_mask[i:i + width]
-
-
 
         # Three frames: train, single and full
         mask = np.hstack((pulse_train_mask, single_mask, full_mask))
