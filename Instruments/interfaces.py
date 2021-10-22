@@ -15,7 +15,7 @@ import json
 
 import math
 from skultrafast.unit_conversions import THz2cm
-
+import atexit
 
 @attr.s(auto_attribs=True)
 class IDevice(abc.ABC):
@@ -23,6 +23,7 @@ class IDevice(abc.ABC):
 
     def init(self):
         self.load_state()
+        atexit.register(self.save_state)
 
     def shutdown(self):
         pass
@@ -134,8 +135,8 @@ class Reading2D:
     "Has the shape (pixel, t2)"
     inferogram: np.ndarray
     t2_ps: np.ndarray
-    signal_2D: np.ndarray
-    freqs: np.ndarray
+    signal_2D: np.ndarray = attr.ib()
+    freqs: np.ndarray = attr.ib()
     window : T.Optional[typing.Callable] = np.hanning
     upsample : int = 2
     rot_frame : float = 0
@@ -145,9 +146,9 @@ class Reading2D:
         assert(s.frames and s.frames % 4 == 0 and (s.frame_data is not None))
         f = s.frame_data
         f.reshape(f.shape[0], 4, f.shape[1] //4)
-        s = 1000/LOG10*(f[:, 0, :] - f[:, 1, :] + f[:, 2, :] - f[:, 3, :])
-        assert(s.shape[1] == len(t2_ps))
-        return cls(inferogram=s, t2_ps=t2_ps, rot_frame=rot_frame, **kwargs)
+        sig = 1000/LOG10*(f[:, 0, :] - f[:, 1, :] + f[:, 2, :] - f[:, 3, :])
+        assert(sig.shape[1] == len(t2_ps))
+        return cls(inferogram=sig, t2_ps=t2_ps, rot_frame=rot_frame, **kwargs)
 
     @signal_2D.default
     def calc_2d(self):
