@@ -12,16 +12,12 @@ Created on Tue Jun 03 15:41:22 2014
 @author: tillsten
 """
 
-try:
-    rs.s.close()
-except NameError:
-    pass
 
 import time
 import attr
 import serial
 from qtpy.QtCore import QObject, Signal, QTimer
-from Instruments.interfaces import IRotationStage
+from Instruments.interfaces import IDelayLine
 
 controller_states = {
     "0A": "NOT REFERENCED from reset",
@@ -48,20 +44,18 @@ controller_states = {
 }
 
 
-class RotSignals(QObject):
+class DSignals(QObject):
     sigDegreesChanged = Signal(float)
     sigMovementStarted = Signal()
     sigMovementFinished = Signal()
 
 
 @attr.s(auto_attribs=True)
-class RotationStage(IRotationStage):
+class NewportDelay(IDelayLine):
     name: str = 'Rotation Stage'
-    comport: str = 'COM11'
+    comport: str = 'COM7'
     rot: serial.Serial = attr.ib()
-    offset: float = 180
     last_pos: float = 0
-    signals: RotSignals = attr.Factory(RotSignals)
 
     @rot.default
     def _default_rs(self):
@@ -80,27 +74,20 @@ class RotationStage(IRotationStage):
                 time.sleep(0.3)
 
         if self.last_pos != 0:
-            self.set_degrees(self.last_pos)
+            self.set_pos_mm(self.last_pos)
 
     def w(self, x):
         writer_str = f'{x}\r\n'
         self.rot.write(writer_str.encode('utf-8'))
         self.rot.timeout = 1
 
-    def set_degrees(self, pos):
+    def move_mm(self, pos):
         """Set absolute position of the roatation stage"""
         if isinstance(pos, str):
             pos = float(pos)
-        setter_str = f'1PA{pos+self.offset}\r\n'
+        setter_str = f'1PA{pos}\r\n'
         self.rot.write(setter_str.encode('utf-8'))
         self.rot.timeout = 3
-        self.last_pos = pos
-        if self.signals.thread().eventDispatcher() != 0:
-            self.signals.sigMovementStarted.emit()
-            self._checker = QTimer()
-            self._checker.setSingleShot(True)
-            self._checker.timeout.connect(self.check_moving)
-            self._checker.start(200)
 
     def check_moving(self):
         if self.is_moving():
@@ -120,13 +107,13 @@ class RotationStage(IRotationStage):
         state = state.replace(' ', '0')
         return controller_states[state]
 
-    def get_degrees(self):
+    def get_pos_mm(self):
         """Returns the position"""
         self.w('1TP')
         self.rot.timeout = 0.5
         ans = self.rot.read_until(b'\r\n')
         ans = ans.decode()
-        return float(ans[ans.find("TP") + 2:-2])-self.offset
+        return float(ans[ans.find("TP") + 2:-2])
 
     def is_moving(self):
         return self.controller_state().startswith('MOVING')
@@ -134,15 +121,14 @@ class RotationStage(IRotationStage):
 
 if __name__ == '__main__':
     import time
-
+    rs = NewportDelay(comport='COM7')
     print('change first')
-    rs.set_degrees(0)
-    time.sleep(8)
-    deg = rs.get_degrees()
-    print(f'first pol:{deg}')
-    rs.set_degrees(80)
-    time.sleep(8)
-    deg = rs.get_degrees()
-    print(f'second pol:{deg}')
-
+    print(rs.get_pos_mm())
+    print(rs.controller_state())
+    rs.move_mm(25)
+    rs.w("1SR?")
+    print(rs.rot.readall())
+    rs.w("1SL?")
+    print(rs.rot.readall())
+    print(rs.controller_state())
 # rs.set_pos(1)

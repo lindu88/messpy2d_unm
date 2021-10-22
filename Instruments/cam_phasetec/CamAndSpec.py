@@ -119,14 +119,18 @@ class PhaseTecCam(ICam):
         ref_range = self.ref_rows
 
         probe = np.nanmean(arr[pr_range[0]:pr_range[1], :, :], 0)
-        probemax = np.nanmax(arr[pr_range[0]:pr_range[1], :, :], 0)
+        #probemax = np.nanmax(arr[pr_range[0]:pr_range[1], :, :], 0)
         ref = np.nanmean(arr[ref_range[0]:ref_range[1], :, :], 0)
+        #refmax =  np.nanmax(arr[ref_range[0]:ref_range[1], :, :], 0)
 
-        probe = Spectrum.create(probe, probemax, name='Probe1', frames=frames)
-        ref = Spectrum.create(ref, name='Ref', frames=frames)
+
         if TWO_PROBES:
             probe2 = np.nanmean(arr[pr2_range[0]:pr2_range[1], :, :], 0)
+            #probe2max = np.nanmax(arr[ref_range[0]:ref_range[1], :, :], 0)
             probe2 = Spectrum.create(probe2, name='Probe2', frames=frames)
+        probemax = np.nanmax(arr[:, :, :10], 0)
+        probe = Spectrum.create(probe, probemax, name='Probe1', frames=frames)
+        ref = Spectrum.create(ref, name='Ref', frames=frames)
         return {i.name: i for i in (probe, probe2, ref)}, ch
 
     def make_reading(self, frame_data=None):
@@ -239,13 +243,13 @@ class PhaseTecCam(ICam):
     def remove_background(self):
         self.background = None
 
-        def get_wavelength_array(self, center_wl):
-            center_wl = self.get_wavelength()
-            disp = 7.69
-            center_ch = 63
-            if center_wl < 1000:
-                return np.arange(-64, 64, 1)
-            else:
-                return (np.arange(128) - center_ch) * disp + center_wl
+    def get_wavelength_array(self, center_wl):
+        center_wl = self.get_wavelength()
+        disp = 7.69
+        center_ch = 63
+        if center_wl < 1000:
+            return np.arange(-64, 64, 1)
+        else:
+            return (np.arange(128) - center_ch) * disp + center_wl
 
 _ircam = PhaseTecCam()
