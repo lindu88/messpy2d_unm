@@ -1,6 +1,6 @@
 from functools import partial
 from Config import config
-from qtpy.QtCore import QTimer, Qt, QThread
+from qtpy.QtCore import QTimer, Qt, QThread, QSettings
 from qtpy.QtGui import QFont, QIntValidator
 from qtpy.QtWidgets import (QMainWindow, QApplication, QWidget, QDockWidget,
                             QPushButton, QLabel, QVBoxLayout, QSizePolicy, QFormLayout,
@@ -54,6 +54,25 @@ class MainWindow(QMainWindow):
             dw.setWidget(op)
             dock_wigdets.append(dw)
 
+            w = QWidget()
+            w.setSizePolicy(QSizePolicy.Minimum, QSizePolicy.Minimum)
+            form_layout = QFormLayout()
+            w.setLayout(form_layout)
+
+            for i, n in enumerate(c.cam.line_names):
+                line = op.lines[op.observed[i]]
+                col = line.opts['pen'].color()
+                print(col.name())
+                lb = QLabel('<font color="%s">%s</font>' % (col.name(), n))
+                cb = QCheckBox()
+                cb.setChecked(True)
+                form_layout.addRow(lb, cb)
+                cb.toggled.connect(line.setVisible)
+
+            dw = QDockWidget("Line Plot Controls")
+            dw.setWidget(w)
+            dock_wigdets.append(dw)
+
             obs = [lambda i=i, c=c: c.last_read.stds[i, :] for i in range(c.cam.std_lines)]
             op2 = ObserverPlot(obs,
                                lf, x=c.disp_axis)
@@ -61,6 +80,27 @@ class MainWindow(QMainWindow):
             dw = QDockWidget('Readings - stddev', parent=self)
             dw.setWidget(op2)
             dock_wigdets.append(dw)
+            w = QWidget()
+            w.setSizePolicy(QSizePolicy.Minimum, QSizePolicy.Minimum)
+            form_layout = QFormLayout()
+            w.setLayout(form_layout)
+
+
+            for i, n in enumerate(c.cam.std_names):
+                line = op2.lines[op2.observed[i]]
+                col = line.opts['pen'].color()
+                print(col.name())
+                lb = QLabel('<font color="%s">%s</font>' % (col.name(), n))
+                cb = QCheckBox()
+                cb.setChecked(True)
+                form_layout.addRow(lb, cb)
+                cb.toggled.connect(line.setVisible)
+
+            dw = QDockWidget("Std Plot Controls")
+            dw.setWidget(w)
+            dock_wigdets.append(dw)
+
+
 
             obs = [lambda i=i, c=c: c.last_read.signals[i, :] for i in range(c.cam.sig_lines)]
             op3 = ObserverPlot(obs, lf, x=c.disp_axis)
@@ -68,35 +108,37 @@ class MainWindow(QMainWindow):
             dw.setWidget(op3)
             dock_wigdets.append(dw)
 
-        if START_QT_CONSOLE:
-            kernel_manager = QtInProcessKernelManager()
-            kernel_manager.start_kernel(show_banner=False)
-            kernel = kernel_manager.kernel
+            w = QWidget()
+            w.setSizePolicy(QSizePolicy.Minimum, QSizePolicy.Minimum)
+            form_layout = QFormLayout()
+            w.setLayout(form_layout)
+            for i, n in enumerate(c.cam.sig_names):
+                line = op3.lines[op3.observed[i]]
+                col = line.opts['pen'].color()
+                print(col.name())
+                lb = QLabel('<font color="%s">%s</font>' % (col.name(), n))
+                cb = QCheckBox()
+                cb.setChecked(True)
 
-            kernel.gui = 'qt'
-            kernel_client = kernel_manager.client()
-            kernel_client.start_channels()
-            kernel_client.namespace = self
-            ipython_widget = RichJupyterWidget()
-            ipython_widget.kernel_manager = kernel_manager
-            ipython_widget.kernel_client = kernel_client
-            kernel.shell.push({'controller': controller})
+                form_layout.addRow(lb, cb)
+                cb.toggled.connect(line.setVisible)
+            dw = QDockWidget("Sig Plot Controls")
+            dw.setWidget(w)
+            dock_wigdets.append(dw)
 
-            dw4 = QDockWidget('Console', parent=self)
-            dw4.setWidget(ipython_widget)
-            self.addDockWidget(Qt.LeftDockWidgetArea, dw4)
-            dw4.close()
+
         for dw in dock_wigdets:
             self.addDockWidget(Qt.LeftDockWidgetArea, dw)
 
+        #self.splitDockWidget(dock_wigdets[2], dock_wigdets[3], Qt.Horizontal)
         if len(dock_wigdets) > 3:
-            self.splitDockWidget(dock_wigdets[0], dock_wigdets[3], Qt.Horizontal)
-            self.splitDockWidget(dock_wigdets[1], dock_wigdets[4], Qt.Horizontal)
-            self.splitDockWidget(dock_wigdets[2], dock_wigdets[5], Qt.Horizontal)
+            self.splitDockWidget(dock_wigdets[0], dock_wigdets[1], Qt.Horizontal)
+            self.splitDockWidget(dock_wigdets[2], dock_wigdets[3], Qt.Horizontal)
+            self.splitDockWidget(dock_wigdets[4], dock_wigdets[5], Qt.Horizontal)
         self.setCentralWidget(self.cm)
         #self.obs_plot = [i.getWidget() for i in dock_wigdets]
         self.controller.cam.sigRefCalibrationFinished.connect(self.plot_calib)
-
+        self.readSettings()
     def plot_calib(self, k1, k2):
         import pyqtgraph as pg
         win = pg.PlotWindow()
@@ -182,10 +224,23 @@ class MainWindow(QMainWindow):
         #dw = QDockWidget(self._ah)
         #self.addDockWidget(Qt.LeftDockWidgetArea, dw)
 
+
+    def closeEvent(self, event):
+        print('closing')
+
     def closeEvent(self, *args, **kwargs):
         config.save()
+        settings = QSettings()
+        settings.setValue('geometry', self.saveGeometry())
+        settings.setValue('windowState', self.saveState())
 
         super(MainWindow, self).closeEvent(*args, **kwargs)
+
+    def readSettings(self):
+        settings = QSettings()
+        if settings.contains("geometry"):
+            self.restoreGeometry(settings.value("geometry"))
+            self.restoreState(settings.value("windowState"))
 
 
 class CommandMenu(QWidget):
@@ -372,6 +427,8 @@ if __name__ == '__main__':
     import sys
     import qasync
     app = QApplication([])
+    app.setOrganizationName("USD");
+    app.setApplicationName("MessPy3");
     qasync.QEventLoop()
     sys._excepthook = sys.excepthook
     def exception_hook(exctype, value, traceback):

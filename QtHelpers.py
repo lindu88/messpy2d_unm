@@ -57,6 +57,24 @@ def make_palette():
     palette.setColor(QPalette.Disabled, QPalette.ButtonText, Qt.darkGray)
     return palette
 
+class LED(QWidget):
+    def __init__(self, text, parent=None):
+        super(LED, self).__init__(parent=parent)
+        self.led = QLabel('')
+        self.color = 'green'
+        self.set_color(self.color)
+
+        self.led.setFixedSize(20, 20)
+        self.text_label = QLabel(text)
+
+        self.setLayout(hlay((self.led, self.text_label)))
+        self.setText = self.text_label.setText
+
+    def set_color(self, color):
+        self.color = color
+        self.led.setStyleSheet(
+            f"background-color:  qradialgradient(cx: 0.5, cy: 0.5, radius: 2, fx: 0.5, fy: 0.5, stop: 0 {self.color}, stop: 1 white);")
+
 
 class ControlFactory(QWidget):
     """Simple widget build of Label, button and LineEdit
@@ -99,6 +117,8 @@ class ControlFactory(QWidget):
         self.setContentsMargins(0, 0, 0, 0)
         self.apply_button = QPushButton('Set')
         self.apply_fn = apply_fn
+
+
         self.cur_value_label = QLabel()
         self.format_str = format_str
         self.update_value(0)
@@ -115,6 +135,7 @@ class ControlFactory(QWidget):
         for w in [(QLabel('<b>%s</b>' % name), self.cur_value_label),
                   (self.apply_button, self.edit_box)]:
             self._layout.addRow(*w)
+
         l = []
         if preset_func is None:
             self.preset_func = self.apply_fn
