@@ -100,18 +100,22 @@ MAX_16_Bit = (1 << 15) - 1
 from qtpy.QtCore import Signal, Slot
 
 def wf(amps, phase,  P, omega0, pixel=np.arange(PIXEL), dac_mHZ=1.2e3, rf_mHZ=75):
-    F = P.integ()
+    F = np.poly1d(np.polyint(P))
+    #F = P.integ()
     phi0 = F(0)
     phase_term = phi0+2*np.pi*F(pixel)/omega0*rf_mHZ/dac_mHZ+phase
+    import matplotlib.pyplot as plt
+    plt.plot(F(pixel))
+    plt.show()
     return amps*np.cos(phase_term)
 
 class AOM:
     def __init__(self):
         self.setup_dac()
-        self.amp_fac = 1
+        self.amp_fac = 0.4
         self.calib = None
         self.nu = None
-        self.nu0_THz = 50
+        self.nu0_THz = 60
         self.t = np.arange(PIXEL)/1.2e9
         self.phase_correct = None
         self.do_disp_comp = True
@@ -130,27 +134,31 @@ class AOM:
         dac.SetActiveChannelMaskXD48(0x1 | 0x2)
         self.dac = dac
 
-    def voltage(self, i: int):
-        if (0<i<1023):
-            raise ValueError('i')
-        self.dac.set_output_voltage(ch1=i)
 
-    @Slot(object)
+
+    #@Slot(object)
     def set_calib(self, p):
-        self.calib(p)
-        self.nu = np.polyval(p, self.arange(PIXEL))
+        self.calib = p
+        self.nu = np.polyval(p, np.arange(PIXEL))
 
     def generate_waveform(self, amp, phase):
         if self.phase_correct is not None and self.do_disp_comp:
             phase = phase + self.phase_correct
-        self.load_mask(wf(amp, phase, self.calib, self.nu0))
+        masks = MAX_16_Bit*self.amp_fac*wf(amp, phase, self.calib, self.nu0_THz)
+        masks = np.concatenate((masks, masks*0))
+        self.load_mask(masks.astype('int16'))
 
+
+    def voltage(self, i: int):
+        if not (0<=i<1023):
+            raise ValueError(i)
+        self.dac.set_output_voltage(ch1=i)
 
     def set_wave_amp(self, amp):
-        if not (0 < amp < 1):
-            raise ValueError('Amptiltude has to be between 0 and 1')
+        if not (0 < amp <= 1):
+            raise ValueError('Amplitude has to be between 0 and 1')
         V = 1.4*amp
-        if V  > 0.4:
+        if V > 0.4:
             k = int((V - 0.4)*1023)
             self.voltage(k)
             self.amp_fac = 1
@@ -158,6 +166,7 @@ class AOM:
             self.voltage(0)
             f = V/0.4
             self.amp_fac = f
+
 
 
     def load_mask(self, mask):
@@ -179,15 +188,17 @@ class AOM:
     def end_playback(self):
         self.dac.EndRamPlaybackXD48()
 
-    def make_calib_mask(self, width=150, seperation=350, n_single=12):
+    def make_calib_mask(self, width=150, separation=350, n_single=15):
         full_mask = np.cos(np.arange(PIXEL)/16*2*np.pi)*MAX_16_Bit
-        pulse_train_mask = full_mask.copy()*0
-        total = width + seperation
-        for i in range(0, full_mask.size, total):
-            pulse_train_mask[i:i+width] = full_mask[i:i+width]
-        i = n_single*total
+        pulse_train_mask = np.zeros_like(full_mask)
         single_mask = np.zeros_like(full_mask)
-        single_mask[i:i+width] = pulse_train_mask[i:i+width]
+        total = width + separation
+        for k, i in enumerate(range(0, full_mask.size, total)):
+            pulse_train_mask[i:i+width] = full_mask[i:i+width]
+            if k == n_single:
+                single_mask[i:i + width] = pulse_train_mask[i:i + width]
+
+
 
         # Three frames: train, single and full
         mask = np.hstack((pulse_train_mask, single_mask, full_mask))

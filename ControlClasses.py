@@ -33,7 +33,7 @@ class Cam(QObject):
     sigReadCompleted: Signal = Signal()
     sigWavelengthChanged: Signal = Signal(float)
     sigSlitChanged: Signal = Signal(float)
-    sigRefCalibrationFinished = Signal()
+    sigRefCalibrationFinished = Signal(object, object)
     
     def __attrs_post_init__(self):
         QObject.__init__(self)

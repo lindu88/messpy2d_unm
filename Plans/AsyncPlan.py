@@ -15,13 +15,17 @@ import pyqtgraph as pg
 from pyqtgraph.parametertree import Parameter, ParameterTree
 import numpy as np
 from CalibView import CalibView
+from Instruments.dac_px.pxdac import AOM
 
 @attr.s(auto_attribs=True, cmp=False)
 class CalibPlan(QObject):
     cam: ICam
+
     move_func: Callable
     points: List[float]
+    dac: AOM = attr.Factory(AOM)
     amps: List[List[float]] = attr.Factory(list)
+    num_shots = 100
     start_pos: Tuple[float, float] = 0
     check_zero_order: bool = True
     channel: int = 67
@@ -32,10 +36,12 @@ class CalibPlan(QObject):
         super().__init__()
 
     async def step(self):
+        self.cam.set_shots(self.num_shots)
         loop = asyncio.get_running_loop()
         if self.check_zero_order:
             self.cam.set_wavelength(0, 10)  #
             reading = await loop.run_in_executor(None, self.cam.make_reading)
+            self.channel = np.argmax(reading.lines[: 1])
 
         await self.pre_scan()
         for p in self.points:
@@ -45,6 +51,7 @@ class CalibPlan(QObject):
         await self.post_scan()
 
     async def pre_scan(self):
+        self.dac.load_mask(self.dac.make_calib_mask())
         self.cam.set_wavelength(self.start_pos, 10)
 
     async def post_scan(self):
@@ -57,7 +64,7 @@ class CalibPlan(QObject):
         #while self.sample_scanner.is_moving():
         #    await aio.sleep(0.01)
 
-        spectra, ch = await loop.run_in_executor(None, self.cam.get_spectra,2)
+        spectra, ch = await loop.run_in_executor(None, self.cam.get_spectra, 3)
         print(spectra['Probe2'].frame_data.shape)
         self.amps.append(spectra['Probe2'].frame_data[67, :])
 
@@ -77,9 +84,10 @@ class FocusScanView(QWidget):
 
 
         self.children = [
-            dict(name='start_wl', type='int', value=5000, step=500),
-            dict(name='end_wl', type='int',  value=7000, step=500),
-            dict(name='step', type='float',  value=20, step=2),
+            dict(name='start_wl', type='int', value=5500, step=500),
+            dict(name='end_wl', type='int',  value=6500, step=500),
+            dict(name='step', type='float',  value=10, step=2),
+            dict(name='shots', type='int', value=90, step=10),
         ]
         param = Parameter.create(name='Calibration Scan',
                                 type='group',
@@ -110,6 +118,8 @@ class FocusScanView(QWidget):
         s = self.params.saveState()
         start, stop, step = self.params['start_wl'], self.params['end_wl'], self.params['step']
         self.focus_scan.points = np.arange(start, stop, step)
+        self.focus_scan.num_shots = self.params['shots']
+        self.focus_scan.amps = []
         self.params.setReadonly(True)
 
         self.start_button.setDisabled(True)
@@ -127,19 +137,21 @@ class FocusScanView(QWidget):
 
         y = np.array(plan.amps)
         print(y.shape)
-        self.plot.plotItem.plot(x, y[:, 1], pen='r')
-        self.plot.plotItem.plot(x, y[:, 0], pen='g')
-        #self.plot.plotItem.plot(x, y[:, 2], pen='y')
+        self.plot.plotItem.plot(x, y[:, 0], pen='r')
+        self.plot.plotItem.plot(x, y[:, 1], pen='g')
+        self.plot.plotItem.plot(x, y[:, 2], pen='y')
 
     def analyse(self):
         plan = self.focus_scan
         x = np.array(plan.points)
         y0 = np.array(plan.amps)[:, 0]
         y1 = np.array(plan.amps)[:, 1]
-        #y2 = np.array(plan.amps)[:, 2]
-        np.save('calib.npy', np.column_stack((x, y0, y1)))
-        self._view = CalibView(x=x, y1=y0, y0=y1)
+        y2 = np.array(plan.amps)[:, 2]
+        np.save('calib.npy', np.column_stack((x, y0, y1, y2)))
+        self._view = CalibView(x=x, y_train=y0, y_single=y1, y_full=y2)
         self._view.show()
+        self._view.sigCalibrationAccepted.connect(plan.dac.set_calib)
+        self._view.sigCalibrationAccepted.connect(lambda arg: plan.dac.generate_waveform(1, 0))
 
 if __name__ == '__main__':
     from Instruments.cam_phasetec import _ircam
