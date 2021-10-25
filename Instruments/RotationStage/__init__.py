@@ -50,7 +50,7 @@ controller_states = {
 
 class RotSignals(QObject):
     sigDegreesChanged = Signal(float)
-    sigMovementStarted = Signal()
+    sigMovementStarted = Signal(float, float)
     sigMovementFinished = Signal()
 
 
@@ -93,6 +93,7 @@ class RotationStage(IRotationStage):
 
     def set_degrees(self, pos):
         """Set absolute position of the roatation stage"""
+        cur_pos = self.get_degrees()
         if isinstance(pos, str):
             pos = float(pos)
         setter_str = f'1PA{pos+self.offset}\r\n'
@@ -100,7 +101,7 @@ class RotationStage(IRotationStage):
         self.rot.timeout = 3
         self.last_pos = pos
         if self.signals.thread().eventDispatcher() != 0:
-            self.signals.sigMovementStarted.emit()
+            self.signals.sigMovementStarted.emit(pos, cur_pos)
             self._checker = QTimer()
             self._checker.setSingleShot(True)
             self._checker.timeout.connect(self.check_moving)

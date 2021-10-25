@@ -144,7 +144,7 @@ class AOM:
         dac.SetDacSampleSizeXD48(1)
 
 
-    def set_dispersion_correct(self, GVD, TOD, FOD):
+    def set_dispersion_correct(self, GVD: float = 0, TOD: float = 0, FOD: float=0):
         x = self.nu - self.nu0_THz
         x *= (2 * np.pi)
         facs = np.array([GVD, TOD, FOD]) / np.array([2, 6, 24]) / 1000.
