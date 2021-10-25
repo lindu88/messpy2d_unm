@@ -68,4 +68,4 @@ elif pc_name == 'DESKTOP-BBLLUO7':
     #from Instruments.delay_line_apt import DelayLine
     #_dl = DelayLine(name="VisDelay")
     from Instruments.delay_line_newport import NewportDelay
-    _dl = NewportDelay(name='IR Delay')
+    _dl = NewportDelay(name='IR Delay', pos_sign=-1)

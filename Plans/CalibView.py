@@ -1,5 +1,5 @@
 import matplotlib.pyplot as plt
-from qtpy.QtWidgets import QWidget, QApplication, QHBoxLayout, QVBoxLayout, QSpinBox, QLabel, QPushButton, QDialogButtonBox, QSizePolicy
+from qtpy.QtWidgets import QWidget, QApplication, QHBoxLayout, QVBoxLayout, QSpinBox, QLabel, QPushButton, QDialogButtonBox, QSizePolicy, QSlider
 from qtpy.QtCore import Qt, Signal
 from matplotlib.figure import Figure
 from matplotlib import rcParams, style
@@ -12,7 +12,7 @@ from scipy.signal import find_peaks
 from scipy.ndimage import uniform_filter1d, gaussian_filter1d
 from typing import Optional
 from qtawesome import icon
-from scipy.stats import gaussian_kde
+
 
 rcParams['font.family'] = 'Segoe UI'
 style.use('dark_background')
@@ -28,9 +28,9 @@ class CalibView(QWidget):
     width: int = 150
     dist: int = 350
 
-    prominence: float = 100
-    distance: int = 5
-    filter: float = 2
+    prominence: float = 50
+    distance: int = 3
+    filter: float = 1
     coeff: Optional[np.ndarray] = None
 
     sigCalibrationAccepted = Signal(object)
@@ -62,6 +62,8 @@ class CalibView(QWidget):
         self.sb_dist = QSpinBox()
         self.sb_dist.setValue(self.distance)
         self.sb_dist.valueChanged.connect(self.analyze)
+        self.sb_dist.setMinimum(1)
+
         self.row.addWidget(QLabel('Peak distance'))
         self.row.addWidget(self.sb_dist)
 
@@ -86,6 +88,11 @@ class CalibView(QWidget):
         self.layout().addWidget(self.toolbar)
         self.layout().addWidget(self.canvas)
         self.layout().addLayout(self.row)
+
+        self.gvd_slider = QSlider()
+        self.gvd_slider.setMinimum(-300)
+        self.gvd_slider.setMaximum(300)
+        self.layout().addWidget(self.gvd_slider)
         self.layout().setSpacing(0)
         self.layout().setContentsMargins(0, 0, 0, 0)
         self.analyze()
@@ -96,7 +103,6 @@ class CalibView(QWidget):
         self.distance = self.sb_dist.value()
         self.filter = self.sb_filter.value()
         if self.filter > 0:
-
             y_train = gaussian_filter1d(self.y_train, self.filter)
             y_single = gaussian_filter1d(self.y_single, self.filter)
         else:
@@ -114,7 +120,7 @@ class CalibView(QWidget):
         x = self.x
         self.ax.plot(self.x[p0], y_train[p0], '|', ms=7, c='r')
         self.ax.plot(self.x[p1], y_single[p1], '^', ms=7, c='r')
-        if len(p0) > 1 and len(p1) > 0:
+        if len(p0) > 1 and len(p1) == 1:
             a = np.arange(0, 4096 * 3, self.width + self.dist)
             align = np.argmin(abs(x[p0] - x[p1]))
             pix0 = self.single + self.width / 2
@@ -149,6 +155,9 @@ if __name__ == '__main__':
     view.show()
     view.sigCalibrationAccepted.connect(aom.set_calib)
     view.sigCalibrationAccepted.connect(lambda x: aom.generate_waveform(np.ones_like(aom.nu), np.ones_like(aom.nu)))
-
+    def set_gvd(x):
+        print(x)
+        aom.set_dispersion_correct(x, 0, 0)
+    view.gvd_slider.valueChanged.connect(set_gvd)
 
     app.exec_()

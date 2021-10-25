@@ -1,9 +1,9 @@
-from typing import Optional
-from attr import attr
-from numpy.core.numeric import full
-from nicelib import load_lib, NiceLib, Sig, NiceObject, RetHandler, ret_ignore, ret_return
 import logging
+from typing import Optional
+
 import numpy as np
+from nicelib import load_lib, NiceLib, Sig, NiceObject, RetHandler, ret_ignore, ret_return
+
 
 @RetHandler(num_retvals=0)
 def ret_errcode(retval, funcargs, niceobj):
@@ -88,51 +88,52 @@ class PXDAC(NiceLib):
                 self.SetOutputVoltageCh4XD48(check(ch4))
 
 import sys
-logging.basicConfig(level=logging.INFO)
-log = logging.getLogger('pxdac')
+logging.basicConfig(level=logging.DEBUG)
+log = logging.getLogger('_')
 handler = logging.StreamHandler(sys.stdout)
 handler.filter('pxdac')
 log.addHandler(handler)
 
 PIXEL = 4096*3 # 12288
-MAX_16_Bit = (1 << 15) - 1
+MAX_16_Bit = (1 << 13) - 1
 
 
-from qtpy.QtCore import Signal, Slot
-
-def wf(amps, phase,  P, omega0, pixel=np.arange(PIXEL), dac_mHZ=1.2e3, rf_mHZ=75):
+def wf(amps, phase,  P, omega0, pixel=np.arange(PIXEL), dac_mHZ=1200, rf_mHZ=75):
     F = np.poly1d(np.polyint(P))
     #F = P.integ()
     phi0 = F(0)
     phase_term = phi0+2*np.pi*F(pixel)/omega0*rf_mHZ/dac_mHZ+phase
-    import matplotlib.pyplot as plt
-    plt.plot(F(pixel))
-    plt.show()
+
     return amps*np.cos(phase_term)
 
 import attr
 
 @attr.s(auto_attribs=True)
 class AOM:
-    amp_fac : float = 0.4
-    calib : Optional[tuple] = None
-    nu : Optional[np.ndarray] = None
-    nu0_THz : float = 60
-    t : np.ndarray = np.arange(PIXEL)/1.2e9
-    do_disp_comp : bool = True
-    compensation_phase : Optional[np.ndarray] = None
-    phase : Optional[np.ndarray] = np.zeros_like(PIXEL)
-    amp : np.ndarray = np.ones_like(PIXEL)
-    total_phase : Optional[np.ndarray] = np.zeros_like(PIXEL)
+    amp_fac: float = 1
+    calib: Optional[tuple] = None
+    nu: Optional[np.ndarray] = None
+    nu0_THz: float = 55
+    t: np.ndarray = np.arange(PIXEL) / 1.2e9
+    compensation_phase: Optional[np.ndarray] = None
+    phase: Optional[np.ndarray] = np.zeros_like(PIXEL)
+    amp: np.ndarray = np.ones_like(PIXEL)
+    total_phase: Optional[np.ndarray] = np.zeros_like(PIXEL)
+    chopped: bool = True
+    do_disp_comp: bool = True
+    phase_cycle: bool = True
+    mode: str = 'bragg'
+    dac: PXDAC.DAC = PXDAC.DAC(1)
 
     def __attr_post_init__(self):
         self.setup_dac()
 
     def setup_dac(self):
-        dac = PXDAC.DAC(1)
+        dac = self.dac
         dac.SetDacSampleSizeXD48(2)
         log.info("Size: %s ", dac.GetDacSampleSizeXD48(1))
         log.info("Format: %s", dac.GetDacSampleFormatXD48(1))
+
         log.info("Output Voltage %s", dac.get_output_voltage())
         dac.set_output_voltage(ch1=200, ch2=1000)
         log.info("Output Voltage %s", dac.get_output_voltage())
@@ -140,20 +141,24 @@ class AOM:
         log.info("ExtTigger %s", dac.GetExternalTriggerEnableXD48(1))
         dac.SetTriggerModeXD48(0)
         dac.SetActiveChannelMaskXD48(0x1 | 0x2)
-        self.dac = dac
+        dac.SetDacSampleSizeXD48(1)
+
 
     def set_dispersion_correct(self, GVD, TOD, FOD):
-        x = self.nu - self.nu0
+        x = self.nu - self.nu0_THz
         x *= (2 * np.pi)
-        facs = np.array([GVD, TOD, FOD]) / np.array([2, 6, 24])
+        facs = np.array([GVD, TOD, FOD]) / np.array([2, 6, 24]) / 1000.
         phase = x**2 * facs[0] + x**3 * facs[1] + x**3 * FOD * facs[2]
         self.do_disp_comp = True
         self.compensation_phase = phase
+        self.generate_waveform()
 
 
+    #@Slot(object)
     def set_calib(self, p):
         self.calib = p
         self.nu = np.polyval(p, np.arange(PIXEL))
+
 
     def generate_waveform(self, amp=None, phase=None):
         if amp is None:
@@ -170,8 +175,17 @@ class AOM:
             phase = phase + self.compensation_phase
 
         self.total_phase = phase
-        masks = MAX_16_Bit*self.amp_fac*wf(amp, phase, self.calib, self.nu0_THz)
-        masks = np.concatenate((masks, masks*0))
+
+        if self.mode == 'bragg' and self.calib is not None:
+            masks = MAX_16_Bit*self.amp_fac*wf(amp, phase, self.calib, self.nu0_THz)
+        else:
+            masks = MAX_16_Bit*self.amp_fac*amp*np.cos(np.arange(PIXEL)/16*2*np.pi+phase)
+
+        if self.chopped:
+            masks = np.concatenate((masks, masks*0))
+        if self.phase_cycle:
+            masks = np.concatenate((masks, -masks))
+
         self.load_mask(masks.astype('int16'))
 
 
@@ -224,7 +238,15 @@ class AOM:
         # Three frames: train, single and full
         mask = np.hstack((pulse_train_mask, single_mask, full_mask))
         mask = (self.amp_fac*mask).astype('int16')
-        return self.amp_fac*mask
+        return mask
+
+    def load_calib_mask(self):
+        mask = self.make_calib_mask()
+        self.load_mask(mask)
+
+    def load_full_mask(self):
+        full_mask = np.cos(np.arange(PIXEL) / 16 * 2 * np.pi) * MAX_16_Bit
+        self.load_mask(full_mask.astype('int16'))
 
 if __name__ == '__main__':
     A = AOM()

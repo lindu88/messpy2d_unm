@@ -8,6 +8,7 @@ from qtpy.QtWidgets import (QMainWindow, QApplication, QWidget, QDockWidget,
 import qtawesome as qta
 from Instruments.interfaces import IAOMPulseShaper
 from Plans import *
+from Plans.ShaperCalibPlan import CalibScanView, CalibPlan
 from QtHelpers import dark_palette, ControlFactory, make_groupbox, \
     ObserverPlot, ValueLabels
 from SampleMoveWidget import MoveWidget
@@ -190,10 +191,20 @@ class MainWindow(QMainWindow):
         pp.clicked.connect(plan_starter(FocusScanStarter))
         tb.addWidget(pp)
 
-        #asl_icon = qta.icon('mdi.chart-line', color='white')
-        #pp = QPushButton('Germanium', icon=asl_icon)
-        #pp.clicked.connect(plan_starter(GermaniumStarter))
-        #tb.addWidget(pp)
+        asl_icon = qta.icon('mdi.chart-line', color='white')
+        pp = QPushButton('Shaper Calibration', icon=asl_icon)
+
+        def start_calib():
+            c = self.controller
+            fs = CalibPlan(cam=c.cam.cam,
+                       move_func=c.cam.set_wavelength,
+                       points=range(5500, 6500, 5))
+            self.cal_viewer = CalibScanView(fs)
+            c.async_plan = True
+            fs.sigPlanDone.connect(lambda: setattr(c, 'async_plan', False))
+            self.cal_viewer.show()
+        pp.clicked.connect(start_calib)
+        tb.addWidget(pp)
 
         alg_icon = qta.icon('mdi.chart-line', color='white')
         pp = QPushButton('Show alignment helper')
@@ -426,10 +437,12 @@ class CommandMenu(QWidget):
 if __name__ == '__main__':
     import sys
     import qasync
+    import asyncio as aio
     app = QApplication([])
     app.setOrganizationName("USD");
     app.setApplicationName("MessPy3");
-    qasync.QEventLoop()
+    loop = qasync.QEventLoop()
+    aio.set_event_loop(loop)
     sys._excepthook = sys.excepthook
     def exception_hook(exctype, value, traceback):
         sys._excepthook(exctype, value, traceback)

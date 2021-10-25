@@ -34,7 +34,7 @@ class PumpProbePlan(QObject):
     rot_at_scan: List[float] = Factory(list)
     time_per_scan: float = 0
 
-    sigStepDone: Signal = Factory(Signal)
+    sigStepDone = Signal()
 
     @property
     def common_mulitple_cwls(self):
@@ -179,7 +179,7 @@ class PumpProbePlan(QObject):
 
 
 @attrs(auto_attribs=True, cmp=False)
-class PumpProbeData:
+class PumpProbeData(QObject):
     """Class holding the pump-probe data for a single cam"""
     cam: Cam
     plan: PumpProbePlan
@@ -197,10 +197,11 @@ class PumpProbeData:
     completed_scans: Optional[np.ndarray] = None
     wavelengths: np.ndarray = attrib(init=False)
 
-    sigWavelengthChanged: Signal = Factory(Signal)
-    sigStepDone: Signal = Factory(Signal)
+    sigWavelengthChanged = Signal()
+    sigStepDone = Signal()
 
     def __attrs_post_init__(self):
+        super(PumpProbeData, self).__init__()
         num_sig = self.cam.sig_lines
         num_wl = len(self.cwl)
         num_t = len(self.t_list)

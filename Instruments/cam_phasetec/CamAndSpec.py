@@ -29,8 +29,8 @@ class PhaseTecCam(ICam):
     ref_rows: Tuple[int, int] = attr.ib()
     name: str = 'Phasetec Array'
     shots: int = config.shots
-    if not TWO_PROBES:
 
+    if not TWO_PROBES:
         line_names: List[str] = ['Probe', 'Ref', 'max']
         std_names: List[str] = ['Probe', 'Ref', 'Probe/Ref']
         sig_names: List[str] = ['Sig', 'SigNoRef']
@@ -110,7 +110,6 @@ class PhaseTecCam(ICam):
             arr = arr - self.background[:, :, None]
         if frames is not None:
             i = np.argmax(np.array(ch[0]) > 1)
-            print(i, ch[0])
             arr = np.roll(arr, -i, axis=2)
 
 
@@ -134,7 +133,7 @@ class PhaseTecCam(ICam):
         return {i.name: i for i in (probe, probe2, ref)}, ch
 
     def make_reading(self, frame_data=None):
-        d, ch = self.get_spectra()
+        d, ch = self.get_spectra(frames=2)
         probe = d['Probe1']
         ref = d['Ref']
 
@@ -142,7 +141,7 @@ class PhaseTecCam(ICam):
             normed = probe.data / ref.data
             norm_std = 100 * np.nanstd(normed, 1) / np.nanmean(normed, 1)
 
-            if ch[0][0] > 1:
+            if ch[0][0] > 1 or True:
                 f = 1000
             else:
                 f = -1000

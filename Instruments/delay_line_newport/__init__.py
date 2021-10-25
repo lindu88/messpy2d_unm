@@ -56,6 +56,7 @@ class NewportDelay(IDelayLine):
     comport: str = 'COM7'
     rot: serial.Serial = attr.ib()
     last_pos: float = 0
+    pos_sign = -1.
 
     @rot.default
     def _default_rs(self):
@@ -89,14 +90,6 @@ class NewportDelay(IDelayLine):
         self.rot.write(setter_str.encode('utf-8'))
         self.rot.timeout = 3
 
-    def check_moving(self):
-        if self.is_moving():
-            self.signals.sigDegreesChanged.emit(self.get_degrees())
-            self._checker.start(200)
-        else:
-            self.signals.sigDegreesChanged.emit(self.get_degrees())
-            self.signals.sigMovementFinished.emit()
-
     def get_state(self) -> dict:
         return dict(last_pos=self.last_pos)
 
@@ -110,10 +103,14 @@ class NewportDelay(IDelayLine):
     def get_pos_mm(self):
         """Returns the position"""
         self.w('1TP')
-        self.rot.timeout = 0.5
-        ans = self.rot.read_until(b'\r\n')
-        ans = ans.decode()
-        return float(ans[ans.find("TP") + 2:-2])
+        self.rot.timeout = 1
+        try:
+            ans = self.rot.read_until(b'\r\n')
+            ans = ans.decode()
+            return float(ans[ans.find("TP") + 2:-2])
+        except ValueError:
+            print(ans)
+            return 0
 
     def is_moving(self):
         return self.controller_state().startswith('MOVING')
