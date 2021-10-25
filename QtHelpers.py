@@ -112,12 +112,12 @@ class ControlFactory(QWidget):
     """
 
     def __init__(self, name, apply_fn, update_signal=None, parent=None,
-                 format_str='%.1f', presets=None, preset_func=None, extra_buttons=None):
+                 format_str='%.1f', presets=None, preset_func=None, preset_rows=4, extra_buttons=None):
         super(ControlFactory, self).__init__(parent=parent)
         self.setContentsMargins(0, 0, 0, 0)
         self.apply_button = QPushButton('Set')
         self.apply_fn = apply_fn
-
+        self.presets_per_row = preset_rows
 
         self.cur_value_label = QLabel()
         self.format_str = format_str
@@ -164,15 +164,15 @@ class ControlFactory(QWidget):
         for p in presets:
             s = partial_formatter(p)
             but = QPushButton(s)
-            but.setStyleSheet('''
-            QPushButton { color: lightblue;}''')
+            #but.setStyleSheet('''
+            #QPushButton { color: lightblue;}''')
             but.setFlat(False)
             but.clicked.connect(lambda x, p=p: self.preset_func(p))
             but.setFixedWidth(200 / min(len(presets), 4))
             hlay.addWidget(but)
             hlay.setSpacing(10)
             len_row += 1
-            if len_row > 3:
+            if len_row >= self.presets_per_row:
                 self._layout.addRow(hlay)
                 hlay = QHBoxLayout()
                 len_row = 0

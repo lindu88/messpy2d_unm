@@ -140,7 +140,7 @@ class Delayline(QObject):
         self.pos = self._dl.get_pos_fs()
         self.sigPosChanged.emit(self.pos)
         if self._dl.is_moving():
-            QTimer.singleShot(50, self.wait_and_update)
+            QTimer.singleShot(100, self.wait_and_update)
         else:
             self.moving = False
 
@@ -205,10 +205,13 @@ class Controller(QObject):
             self.sample_holder = _sh
         else:
             self.sample_holder = None
+        self.async_plan = False
         self.plan = None
         self.pause_plan = False
         self.running_step = False
         self.thread = None
+
+
         # self.loop = lambda: next(self.loop_gen())
 
     def loop(self):
@@ -228,6 +231,7 @@ class Controller(QObject):
             t1.join()
             if self.cam2:
                 t2.join()
+
         else:
             try:
                 self.plan.make_step()

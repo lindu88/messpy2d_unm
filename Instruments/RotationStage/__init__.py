@@ -71,8 +71,11 @@ class RotationStage(IRotationStage):
 
     def __attrs_post_init__(self):
         state = self.controller_state()
+        print(state)
         if state.startswith('DISABLE'):
-            self.w('1MM')
+            self.w('1MM1')
+
+            print(self.controller_state())
         elif state.startswith("NOT REFERENCED"):
             self.w(b'1RS')
             self.rot.write(b'1OR\r\n')
@@ -81,6 +84,7 @@ class RotationStage(IRotationStage):
 
         if self.last_pos != 0:
             self.set_degrees(self.last_pos)
+
 
     def w(self, x):
         writer_str = f'{x}\r\n'
@@ -130,6 +134,10 @@ class RotationStage(IRotationStage):
 
     def is_moving(self):
         return self.controller_state().startswith('MOVING')
+
+    def move_relative(self, x):
+        self.set_degrees(x + self.get_degrees())
+
 
 
 if __name__ == '__main__':

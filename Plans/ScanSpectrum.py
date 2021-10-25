@@ -14,7 +14,7 @@ from qtpy.QtCore import QObject, Signal
 
 
 @attr.s(auto_attribs=True, cmp=False)
-class ScanSpectrum:
+class ScanSpectrum(QObject):
     name: str
     meta: dict
     cam: Cam
