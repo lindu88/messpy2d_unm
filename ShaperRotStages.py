@@ -26,6 +26,11 @@ class ShaperControl(QtWidgets.QWidget):
         c1.update_value(self.rs1.get_degrees())
         c2.update_value(self.rs2.get_degrees())
         slider_lbl = QtWidgets.QLabel("bla")
+        link = QtWidgets.QCheckBox("Link Gratings")
+        
+        self.rs1.signals.sigMovementStarted.connect()
+
+        link.toggled
 
         self.slider = QtWidgets.QSlider()
         self.slider.setOrientation(	0x1)
