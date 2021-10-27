@@ -9,7 +9,6 @@ import asyncio, contextlib
 
 from qtpy.QtWidgets import QWidget
 from qtpy.QtCore import Signal, QObject
-
 from scipy.constants import c
 import json
 
@@ -60,12 +59,13 @@ class IDevice(abc.ABC):
             with open(self.name + '.cfg', 'w') as f:
                 json.dump(d, f)
 
-    def load_state(self):
+    def load_state(self, exclude: T.Optional[T.List[str]]=None):
         try:
             with open(self.name + '.cfg', 'r') as f:
                 d = json.load(f)
             for key, val in d:
-                setattr(self, key, val)
+                if key not in exclude:
+                    setattr(self, key, val)
         except FileNotFoundError:
             return
 
@@ -382,6 +382,9 @@ class IRotationStage(IDevice):
     def is_moving(self):
         pass
 
+    def move_relative(self, x):
+        self.set_degrees(x + self.get_degrees())
+
     async def async_set_degrees(self, deg: float, do_wait=False):
         self.set_degrees(deg)
         while self.is_moving():
@@ -443,44 +446,6 @@ class PulseShaper(IDevice):
         self.freqs = np.polyval(p0, self.pixel)
 
 
-def THz2cm(nu):
-    return (nu * 1e10) / c
-
-
-def cm2THz(nu):
-    return c / (nu * 1e10)
-
-
-def double_pulse_mask(nu: np.ndarray, nu_rf: float, tau: float, phi1: float,
-                      phi2: float):
-    """
-    Return the mask to generate a double pulse
-
-    Parameters
-    ----------
-    nu : array
-        freqs of the shaper pixels in THz
-    nu_rf : float
-        rotating frame freq of the scanned pulse in THz
-    tau : float
-        Interpulse distance in ps
-    phi1 : float
-        Phase shift of the scanned pulse
-    phi2 : float
-        Phase shift of the fixed pulse
-    """
-    double = 0.5 * (np.exp(-1j * (nu - nu_rf) * 2 * np.pi * tau) *
-                    np.exp(+1j * phi1) + np.exp(1j * phi2))
-    return double
-
-
-def dispersion(nu, nu0, GVD, TOD, FOD):
-    x = nu - nu0
-    x *= (2 * np.pi)
-    facs = np.array([GVD, TOD, FOD]) / np.array([2, 6, 24])
-    return x**2 * facs[0] + x**3 * TOD * facs[1] + x**3 * FOD * facs[2]
-
-
 class DAC(abc.ABC):
     @abc.abstractmethod
     def set_power(self, power):
@@ -503,7 +468,7 @@ class DAC(abc.ABC):
 @attr.s
 class IAOMPulseShaper(PulseShaper):
     dac: DAC
-    disp: T.Optional[np.ndarray]
+    disp: T.Optional[np.ndarray] =
     use_brag: bool = False
     ac_freq: float = 75e6
     dac_freq: float = 1.2e9
@@ -531,17 +496,6 @@ class IAOMPulseShaper(PulseShaper):
     def set_disp_mask(self, mask):
         pass
 
-    def set_two_d_mask(self, tau_max, tau_step, rot_frame, phase_cycling=4):
-        taus = np.arange(0, tau_max + 1e-3, tau_step)
-        phase = np.array([(1, 0), (1, 1), (0, 1), (0, 0)]) * np.pi
-        if phase_cycling == 4:
-            phase = np.array([(1, 0), (1, 1), (0, 1), (0, 0)]) * np.pi
-            phase = np.repeat(phase, repeats=taus, axis=0)
-            phi1 = phase[:, 0]
-            phi2 = phase[:, 1]
-            taus = taus.repeat(4)
-        masks = double_pulse_mask(self.freqs[:, None], rot_frame,
-                                  taus[None, :], phi1[None, :], phi2[None, :])
 
     def set_mode(self, chopped=True, phase_cycling=False):
         mask1 = np.ones(self.pixel)
