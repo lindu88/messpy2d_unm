@@ -11,6 +11,7 @@ from qtpy.QtCore import QObject, Signal
 from Config import config
 from ControlClasses import Cam
 from Instruments.dac_px.pxdac import AOM
+import hdf
 
 
 @attr.s(auto_attribs=True, cmp=False)
@@ -20,7 +21,6 @@ class GVDScan(QObject):
     cam: Cam
     aom: AOM
     gvd_list: T.Sized[float]
-    n_lines: int = 128
     gvd_idx: int = 0
     timeout: float = 3
     scan_mode: T.Literal['GVD', 'FOD', 'TOD'] = 'GVD'
@@ -32,13 +32,14 @@ class GVDScan(QObject):
     def __attrs_post_init__(self):
         QObject.__init__(self)
         n_wl = len(self.gvd_list)
+        n_pix = self.cam.channels
         if self.aom.calib is None:
             raise ValueError("Shaper must have an calibration")
-        self.wls = np.zeros((n_wl, self.n_lines))
-        self.probe = np.zeros((n_wl, self.n_lines))
-        self.probe2 = np.zeros((n_wl, self.n_lines))
-        self.ref = np.zeros((n_wl, self.n_lines))
-        self.signal = np.zeros((n_wl, self.cam.sig_lines))
+        self.wls = np.zeros((n_wl, n_pix))
+        self.probe = np.zeros((n_wl, n_pix))
+        self.probe2 = np.zeros((n_wl, n_pix))
+        self.ref = np.zeros((n_wl, n_pix))
+        self.signal = np.zeros((n_wl,  n_pix, self.cam.sig_lines))
 
         gen = self.make_step_gen()
         self.make_step = lambda: next(gen)
@@ -65,7 +66,7 @@ class GVDScan(QObject):
             self.probe2[self.gvd_idx, :] = probe2
             self.ref[self.gvd_idx, :] = ref
             self.signal[self.gvd_idx, ...] = sig
-            self.shown_signal = sig[:, ]
+            self.shown_signal = sig[:, :, 1].sum(1)
             self.sigPointRead.emit()
             yield
 

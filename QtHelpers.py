@@ -231,7 +231,7 @@ class PlanStartDialog(QDialog):
     def setup_paras(self):
         raise NotImplemented
 
-    def create_plan(self, controller: Controller):
+    def create_plan(self, controller: 'Controller'):
         raise NotImplemented
 
     def load_defaults(self, fname=None):
