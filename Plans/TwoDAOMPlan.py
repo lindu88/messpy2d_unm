@@ -29,7 +29,7 @@ class PulseShaperTwoDPlan(Plan):
     sigStepDone: Signal = Factory(Signal)
 
     def setup_shaper(self):
-        pass
+        aom.double_pulse()
 
     def make_step_gen(self):
         c = self.controller
