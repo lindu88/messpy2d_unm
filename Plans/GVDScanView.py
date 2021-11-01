@@ -3,6 +3,7 @@ from qtpy.QtWidgets import QWidget
 import pyqtgraph.parametertree as pt
 from .GVDScan import GVDScan
 from .common_meta import samp
+from ControlClasses import Controller
 
 class GVDScanView(QWidget):
     def __init__(self, fsPlan: GVDScan, *args, **kwargs):
@@ -48,15 +49,12 @@ class GVDScanStarter(PlanStartDialog):
     def create_plan(self, controller: Controller):
         p = self.paras.child('Exp. Settings')
 
-
-
         self.save_defaults()
         fs = GVDScan(
             name=p['Filename'],
             meta=None,
             cam=controller.cam,
 
-
-
         )
         return fs
+
