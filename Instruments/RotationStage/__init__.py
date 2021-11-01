@@ -136,8 +136,7 @@ class RotationStage(IRotationStage):
     def is_moving(self):
         return self.controller_state().startswith('MOVING')
 
-    def move_relative(self, x):
-        self.set_degrees(x + self.get_degrees())
+
 
 
 

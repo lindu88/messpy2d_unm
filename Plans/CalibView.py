@@ -1,5 +1,5 @@
 import matplotlib.pyplot as plt
-from qtpy.QtWidgets import QWidget, QApplication, QHBoxLayout, QVBoxLayout, QSpinBox, QLabel, QPushButton, QDialogButtonBox, QSizePolicy, QSlider
+from qtpy.QtWidgets import QWidget, QApplication, QHBoxLayout, QVBoxLayout, QSpinBox, QLabel, QPushButton, QDialogButtonBox, QSizePolicy
 from qtpy.QtCore import Qt, Signal
 from matplotlib.figure import Figure
 from matplotlib import rcParams, style
@@ -74,6 +74,10 @@ class CalibView(QWidget):
         self.row.addWidget(QLabel('Peak prominance'))
         self.row.addWidget(self.sb_prom)
 
+        self.use_norm = QCheckBox("Normalize")
+        self.use_norm.toggled.connect(self.analyze)
+        self.row.addWidget(self.use_norm)
+
         bb = QDialogButtonBox(QDialogButtonBox.Ok | QDialogButtonBox.Cancel)
         self.row.addWidget(bb)
         #bb.setFixedWidth(400)
@@ -103,10 +107,15 @@ class CalibView(QWidget):
         self.distance = self.sb_dist.value()
         self.filter = self.sb_filter.value()
         if self.filter > 0:
+
             y_train = gaussian_filter1d(self.y_train, self.filter)
             y_single = gaussian_filter1d(self.y_single, self.filter)
         else:
             y_train, y_single = self.y_train, self.y_single
+        if self.use_norm.isChecked():
+            y_train = 500*(y_train/(y_full+50))
+            y_single = 500*(y_single/(y_full+50))
+
         p0, _ = find_peaks(y_train, prominence=self.prominence, distance=self.distance)
         p1, _ = find_peaks(y_single, prominence=self.prominence, distance=self.distance)
 
@@ -114,8 +123,8 @@ class CalibView(QWidget):
         self.ax1.cla()
         self.ax.plot(self.x, y_train)
         self.ax.plot(self.x, y_single)
-        if self.y_full is not None:
-            self.ax.plot(self.x, y_single)
+        if self.y_full is not None and not self.use_norm.isChecked():
+            self.ax.plot(self.x, y_full)
         ax1 = self.ax1
         x = self.x
         self.ax.plot(self.x[p0], y_train[p0], '|', ms=7, c='r')
@@ -150,8 +159,11 @@ if __name__ == '__main__':
     app = QApplication([])
     #from qt_material import apply_stylesheet
     #apply_stylesheet(app, 'light_blue.xml')
-    x, y_train, y_single, y_full = np.load('../calib.npy').T
-    view = CalibView(x=x, y_single=y_single, y_train=y_train)
+    x, y_train, y_single, y_full = np.load('calib.npy').T
+    y_single -= y_single.min()
+    y_train -= y_train.min()
+    y_full -= y_full.min()
+    view = CalibView(x=x, y_single=y_single, y_train=y_train, y_full=y_full)
     view.show()
     view.sigCalibrationAccepted.connect(aom.set_calib)
     view.sigCalibrationAccepted.connect(lambda x: aom.generate_waveform(np.ones_like(aom.nu), np.ones_like(aom.nu)))

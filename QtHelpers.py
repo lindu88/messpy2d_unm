@@ -16,6 +16,7 @@ import typing as T
 
 if T.TYPE_CHECKING:
     from Signal import Signal
+    from ControlClasses import Controller
 
 VEGA_COLORS = {
     'blue': '#1f77b4',
@@ -230,7 +231,7 @@ class PlanStartDialog(QDialog):
     def setup_paras(self):
         raise NotImplemented
 
-    def create_plan(self):
+    def create_plan(self, controller: 'Controller'):
         raise NotImplemented
 
     def load_defaults(self, fname=None):
