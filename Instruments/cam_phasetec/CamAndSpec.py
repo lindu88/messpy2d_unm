@@ -1,3 +1,4 @@
+from pathlib import Path
 import numpy as np
 import wrapt
 from Instruments.interfaces import ICam, Reading, Spectrum
@@ -76,7 +77,7 @@ class PhaseTecCam(ICam):
     @background.default
     def _back_default(self):
         try:
-            return np.load('back.npy')
+            return np.load(Path(__file__).parent / 'back')
         except IOError:
             pass
         return None
@@ -237,7 +238,9 @@ class PhaseTecCam(ICam):
         arr = self._cam.read_cam()[0]
         back_probe = np.nanmean(arr[:, :, :], 2)
         self.background = back_probe
-        np.save('back', back_probe)
+
+        fname = Path(__file__.parent / 'back')
+        np.save(fname, back_probe)
 
     def remove_background(self):
         self.background = None

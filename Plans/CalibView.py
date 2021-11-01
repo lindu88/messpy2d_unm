@@ -150,7 +150,7 @@ if __name__ == '__main__':
     app = QApplication([])
     #from qt_material import apply_stylesheet
     #apply_stylesheet(app, 'light_blue.xml')
-    x, y_train, y_single, y_full = np.load('calib.npy').T
+    x, y_train, y_single, y_full = np.load('../calib.npy').T
     view = CalibView(x=x, y_single=y_single, y_train=y_train)
     view.show()
     view.sigCalibrationAccepted.connect(aom.set_calib)
