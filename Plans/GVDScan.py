@@ -32,7 +32,7 @@ class GVDScan(QObject):
     def __attrs_post_init__(self):
         QObject.__init__(self)
         n_wl = len(self.gvd_list)
-        if self.aom.calib is None:
+        if self.aom.freq_calibration is None:
             raise ValueError("Shaper must have an calibration")
         self.wls = np.zeros((n_wl, self.n_lines))
         self.probe = np.zeros((n_wl, self.n_lines))

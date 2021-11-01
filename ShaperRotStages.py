@@ -26,11 +26,6 @@ class ShaperControl(QtWidgets.QWidget):
         c1.update_value(self.rs1.get_degrees())
         c2.update_value(self.rs2.get_degrees())
         slider_lbl = QtWidgets.QLabel("bla")
-        link = QtWidgets.QCheckBox("Link Gratings")
-        
-        self.rs1.signals.sigMovementStarted.connect()
-
-        link.toggled
 
         self.slider = QtWidgets.QSlider()
         self.slider.setOrientation(	0x1)
@@ -40,7 +35,6 @@ class ShaperControl(QtWidgets.QWidget):
         self.slider.valueChanged.connect(lambda x: slider_lbl.setText('%0.1f' % (x / 1000)))
         self.slider.setValue(int(self.aom.amp_fac * 1000))
         self.slider.valueChanged.connect(lambda x: aom.set_wave_amp(x/1000))
-
 
         self.chopped = QtWidgets.QCheckBox("Chopped")
         self.chopped.setChecked(self.aom.chopped)
@@ -60,6 +54,26 @@ class ShaperControl(QtWidgets.QWidget):
                              self.pc,
                              hlay((self.apply, self.cali)))))
 
+    def disp_controls(self):
+
+        d = {
+            'GVD': ( -300, 300, 1),
+            'TOD': ( -1000, 1000, 10),
+            'FOD': ( -1000, 1000, 10),
+        }
+
+        for i in ['GVD', 'TOD', 'FOD']:
+            slider = QtWidgets.QSlider()
+            slider_lbl = QtWidgets.QLabel()
+            slider.setOrientation(0x1)
+            slider.setMinimum(d[i][0])
+            slider.setMaximum(d[i][1])
+            slider.setSingleStep(d[i][2])
+            slider.valueChanged.connect(lambda x: slider_lbl.setText('%0.1f' % (x / 1000)))
+            #slider.setValue(int(self.aom.amp_fac * 1000))
+            def setter(val):
+                aom.set_dispersion_correct()
+            slider.valueChanged.connect(lambda x: aom.set_dispersion_correct())
 
 
 if __name__ == '__main__':
