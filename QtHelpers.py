@@ -305,7 +305,7 @@ class ObserverPlot(pg.PlotWidget):
 
         All other kwargs are passed to PlotWidget.
         """
-        super(ObserverPlot, self).__init__(parent=parent, useOpenGl=True, **kwargs)
+        super(ObserverPlot, self).__init__(parent=parent, **kwargs)
         signal.connect(self.request_update)
         self.signal = signal
         self.color_cycle = make_default_cycle()

@@ -14,12 +14,12 @@ class GVDScanView(QWidget):
         self.plan = gvd_plan
 
         self.gvd_amp = ObserverPlot(
-            obs=(gvd_plan, "probe[:, 2]"),
+            obs=[lambda: self.plan.lines[0], lambda: self.plan.lines[1], lambda: self.plan.lines[2]],
             signal=gvd_plan.sigStepDone,
             x=gvd_plan.gvd_list)
 
         self.gvd_sig = ObserverPlot(
-            obs=(gvd_plan, "signal[:, 2]"),
+            obs=[lambda: self.plan.signal[0], lambda: self.plan.signal[2]],
             signal=gvd_plan.sigStepDone,
             x=gvd_plan.gvd_list)
 
