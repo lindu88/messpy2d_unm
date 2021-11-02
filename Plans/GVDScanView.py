@@ -1,28 +1,38 @@
-from QtHelpers import ObserverPlot, PlanStartDialog, QPushButton, QVBoxLayout
-from qtpy.QtWidgets import QWidget
+import numpy as np
 import pyqtgraph.parametertree as pt
-from .GVDScan import GVDScan
-from .common_meta import samp
+from qtpy.QtWidgets import QWidget, QLabel, QVBoxLayout
+from qtawesome import icon
+
 from ControlClasses import Controller
+from QtHelpers import ObserverPlot, PlanStartDialog, vlay
+from .GVDScan import GVDScan
+
 
 class GVDScanView(QWidget):
-    def __init__(self, fsPlan: GVDScan, *args, **kwargs):
+    def __init__(self, gvd_plan: GVDScan, *args, **kwargs):
         super(GVDScanView, self).__init__(*args, **kwargs)
+        self.plan = gvd_plan
 
         self.gvd_amp = ObserverPlot(
-            obs=(fsPlan, "probe[:, 2]"),
-            signal=fsPlan.sigStepDone,
-            x=fsPlan.gvd_list)
+            obs=(gvd_plan, "probe[:, 2]"),
+            signal=gvd_plan.sigStepDone,
+            x=gvd_plan.gvd_list)
 
         self.gvd_sig = ObserverPlot(
-            obs=(fsPlan, "signal[:, 2]"),
-            signal=fsPlan.sigStepDone,
-            x=fsPlan.gvd_list)
+            obs=(gvd_plan, "signal[:, 2]"),
+            signal=gvd_plan.sigStepDone,
+            x=gvd_plan.gvd_list)
 
-        layout = QVBoxLayout(self)
-        layout.addLayout(self.gvd)
+        self.info_label = QLabel("Info")
+        self.setLayout(vlay(self.gvd_sig, self.gvd_amp, self.info_label))
+        self.plan.sigPointRead.connect(self.update_label)
+        self.setWindowTitle("GVD Scan")
+        self.setWindowIcon(icon=icon('fa5s.tired'))
 
-        self.setLayout(layout)
+    def update_label(self):
+        p = self.plan
+        s = f"Point {p.gvd_idx}/ {len(p.gvd_list)}"
+        self.info_label.setText(s)
 
 
 class GVDScanStarter(PlanStartDialog):
@@ -36,25 +46,27 @@ class GVDScanStarter(PlanStartDialog):
                {'name': 'Shots', 'type': 'int', 'max': 2000, 'value': 100},
                {'name': 'Start Val', 'type': 'float', 'value': -300_000, 'step': 1000},
                {'name': 'End Val', 'type': 'float', 'value': -100_000, 'step': 1000},
-               {'name': 'Scan Mode', 'type': 'list', 'values': ['GVD', 'TOD', 'FOD']}
-
+               {'name': 'Step', 'type': 'float', 'value': 1000, 'step': 1000},
+               {'name': 'Scan Mode', 'type': 'list', 'values': ['GVD', 'TOD', 'FOD']},
+               {'name': 'Waiting time (s)', 'type': 'float', 'value': 0.1, 'step': 0.05},
                ]
-
-
         self.p = pt.Parameter.create(name='Exp. Settings', type='group', children=tmp)
         params = [self.p]
         self.paras = pt.Parameter.create(name='Focus Scan', type='group', children=params)
-        #config.last_pump_probe = self.paras.saveState()
+        # config.last_pump_probe = self.paras.saveState()
 
     def create_plan(self, controller: Controller):
         p = self.paras.child('Exp. Settings')
 
         self.save_defaults()
+        start = min(p['Start Val'], p['End Val'])
+        end = max(p['Start Val'], p['End Val'])
+        gvd_list = np.arange(start, end, p['step'])
         fs = GVDScan(
             name=p['Filename'],
-            meta=None,
             cam=controller.cam,
-
+            gvd_list=gvd_list,
+            scan_mode=p['Scan Mode'],
+            waiting_time=p['Waiting time (s)']
         )
         return fs
-
