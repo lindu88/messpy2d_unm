@@ -1,5 +1,5 @@
 import os.path
-import threading
+import threading, time
 import typing as T
 from pathlib import Path
 
@@ -17,11 +17,11 @@ import hdf
 @attr.s(auto_attribs=True, cmp=False)
 class GVDScan(QObject):
     name: str
-    meta: dict
     cam: Cam
     aom: AOM
     gvd_list: T.Sized[float]
     gvd_idx: int = 0
+    waiting_time: float = 0.1
     timeout: float = 3
     scan_mode: T.Literal['GVD', 'FOD', 'TOD'] = 'GVD'
 
@@ -48,7 +48,8 @@ class GVDScan(QObject):
 
         for self.gvd_idx, value in enumerate(self.gvd_list):
             d = {self.scan_mode: value}
-            t = threading.Thread(target=self.aom.set_dispersion_correct, kwargs=d)
+            self.aom.set_dispersion_correct(**d)
+            t = threading.Thread(target=time.sleep, kwargs=self.waiting_time)
             t.start()
             while t.is_alive():
                 yield
@@ -66,7 +67,6 @@ class GVDScan(QObject):
             self.probe2[self.gvd_idx, :] = probe2
             self.ref[self.gvd_idx, :] = ref
             self.signal[self.gvd_idx, ...] = sig
-            self.shown_signal = sig[:, :, 1].sum(1)
             self.sigPointRead.emit()
             yield
 
