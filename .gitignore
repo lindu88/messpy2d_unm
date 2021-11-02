@@ -1,3 +1,4 @@
+yacctab.py
 *.pyc
 .idea/
 .spyproject/
@@ -7,6 +8,6 @@ results/*
 /messpy_config
 .mypy_cache/
 .vscode
-yacctab.py
 lextab.py
+home_pos
 _*lib.py
