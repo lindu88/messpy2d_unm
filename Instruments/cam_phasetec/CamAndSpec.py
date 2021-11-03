@@ -189,9 +189,6 @@ class PhaseTecCam(ICam):
                 sig_pr2 = f / LOG10 * np.log1p(dp2.mean(1) / probe2.mean(1))
 
             which = 1 if (ch[0][0] > 1) else 0
-
-
-
             reading = Reading(lines=np.stack(
                 (probe.mean, probe2.mean, ref.mean, probe.max)),
                               stds=np.stack(
