@@ -1,21 +1,19 @@
-import math, datetime
-from functools import partial
+import datetime
+import math
+import typing as T
 from itertools import cycle
 
 import pyqtgraph as pg
 import pyqtgraph.parametertree as pt
-
-from qtpy.QtCore import Qt, Signal, Slot, QTimer
-from qtpy.QtGui import QPalette, QColor, QDoubleValidator
+from qtpy.QtCore import Qt, Slot, QTimer
+from qtpy.QtGui import QPalette, QColor
 from qtpy.QtWidgets import (QWidget, QLineEdit, QLabel, QPushButton, QHBoxLayout,
                             QFormLayout, QGroupBox, QVBoxLayout, QDialog, QStyleFactory,
-                            QListWidget, QListWidgetItem, QErrorMessage)
+                            QListWidget, QErrorMessage)
 
 from Config import config
-import typing as T
 
 if T.TYPE_CHECKING:
-    from Signal import Signal
     from ControlClasses import Controller
 
 VEGA_COLORS = {
@@ -57,6 +55,10 @@ def make_palette():
     palette.setColor(QPalette.Disabled, QPalette.Text, Qt.darkGray)
     palette.setColor(QPalette.Disabled, QPalette.ButtonText, Qt.darkGray)
     return palette
+
+
+dark_palette = make_palette()
+
 
 class LED(QWidget):
     def __init__(self, text, parent=None):
@@ -165,8 +167,8 @@ class ControlFactory(QWidget):
         for p in presets:
             s = partial_formatter(p)
             but = QPushButton(s)
-            #but.setStyleSheet('''
-            #QPushButton { color: lightblue;}''')
+            # but.setStyleSheet('''
+            # QPushButton { color: lightblue;}''')
             but.setFlat(False)
             but.clicked.connect(lambda x, p=p: self.preset_func(p))
             but.setFixedWidth(200 / min(len(presets), 4))
@@ -263,7 +265,7 @@ class PlanStartDialog(QDialog):
             # tmp.restoreState(s)
             # name = tmp.child('Exp. Settings')['Filename']
             self.recent_settings_list.addItem(name)
-        #self.recent_settings_list.setCurrentIndex(name)
+        # self.recent_settings_list.setCurrentIndex(name)
 
     def load_recent(self, new):
         settings = self.recent_settings[new][1].copy()
@@ -293,13 +295,13 @@ class ObserverPlot(pg.PlotWidget):
 
         Parameters
         ----------
-        obs : tuple of (object, attribute name)
+        obs : tuple of (object, attribute name) or callable
             Every time the signal is fired, the attribute of the object will be plotted
             against x
         signal : Signal
             Which signal to connect to.
         x : data
-            The data the obversed data is plotted against.
+            The data the observed data is plotted against.
         parent : QWidget
             The QtParent
 
@@ -343,7 +345,7 @@ class ObserverPlot(pg.PlotWidget):
     def update_data(self):
         self.use_inverse = False
         if self.x is not None and self.use_inverse:
-            x = 1e7 / x
+            x = 1e7 / self.x
         else:
             x = self.x
 
@@ -368,7 +370,7 @@ class ObserverPlot(pg.PlotWidget):
             self.click_func(coords)
             ev.accept()
 
-    def set_x(self):
+    def set_x(self, x):
         self.x = x
 
     def closeEvent(self, event) -> None:
@@ -408,7 +410,7 @@ def make_groupbox(widgets, title=''):
     return gb
 
 
-dark_palette = make_palette()
+
 
 
 def hlay(widgets, add_stretch=False):
