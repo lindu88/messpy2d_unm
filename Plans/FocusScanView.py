@@ -10,11 +10,7 @@ from qtpy.QtGui import QPalette, QFont
 from qtpy.QtCore import Qt, QTimer, QObject, Signal
 from ControlClasses import Controller, Cam
 from QtHelpers import vlay, hlay, PlanStartDialog, ObserverPlot
-from .common_meta import samp
-from collections import namedtuple
-
-
-
+from .common_meta import sample_parameters
 
 class FocusScanView(QWidget):
     def __init__(self, fsPlan: FocusScan, *args, **kwargs):
@@ -110,7 +106,7 @@ class FocusScanStarter(PlanStartDialog):
         self.candidate_cams = {c.cam.name: c for c in self.controller.cam_list}
         tmp.append(dict(name='Cam', type='list', values=self.candidate_cams.keys()))
         self.p = pt.Parameter.create(name='Exp. Settings', type='group', children=tmp)
-        params = [samp, self.p]
+        params = [sample_parameters, self.p]
         self.paras = pt.Parameter.create(name='Focus Scan', type='group', children=params)
         #config.last_pump_probe = self.paras.saveState()
 

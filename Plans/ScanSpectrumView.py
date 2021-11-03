@@ -3,7 +3,7 @@ import pyqtgraph.parametertree as pt
 import typing as T
 
 from .ScanSpectrum import ScanSpectrum
-from .common_meta import samp
+from .common_meta import sample_parameters
 from Config import config
 from qtpy.QtWidgets import QWidget, QSizePolicy, QLabel, QVBoxLayout, QHBoxLayout, QCheckBox, QApplication, QTabWidget
 from qtpy.QtGui import QPalette, QFont
@@ -84,7 +84,7 @@ class ScanSpectrumStarter(PlanStartDialog):
         tmp.append(dict(name='Cam', type='list', values=self.candidate_cams.keys()))
         p = pt.Parameter(name='Exp. Settings', type='group',
                          children=tmp)
-        params = [samp, p]
+        params = [sample_parameters, p]
         self.paras = pt.Parameter.create(name='Scan Spectrum', type='group', children=params)
         self.save_defaults()
 

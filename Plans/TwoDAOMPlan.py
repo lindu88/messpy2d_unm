@@ -29,16 +29,17 @@ class PulseShaperTwoDPlan(Plan):
     sigStepDone: Signal = Factory(Signal)
 
     def setup_shaper(self):
-        pass
+        self.shaper.double_pulse(self.max_t2, self.step_t2, self.rot_frame_freq)
 
     def make_step_gen(self):
         c = self.controller
         self.setup_shaper()
         for t3 in self.t3_list:
-            c.delay_line.set_pos(t3)
-            while c.delay_line._dl.is_moving():
+            c.delay_line.set_pos(t3, do_wait=False)
+            while c.delay_line.moving:
                 yield
             c.cam.read_cam()
-            c.cam.cam.make_2D_reading()
+            c.cam.make_2D_reading()
+
     def measure_point(self):
         pass

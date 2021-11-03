@@ -14,13 +14,12 @@ from qtpy.QtCore import QObject, Signal
 import pyqtgraph as pg
 from pyqtgraph.parametertree import Parameter, ParameterTree
 import numpy as np
-from Instruments.dac_px.pxdac import AOM
+from Instruments.dac_px import AOM
 from .CalibView import CalibView
 
 @attr.s(auto_attribs=True, cmp=False)
 class CalibPlan(QObject):
     cam: ICam
-
     move_func: Callable
     points: List[float]
     dac: AOM = attr.Factory(AOM)
@@ -61,15 +60,8 @@ class CalibPlan(QObject):
     async def read_point(self, p):
         loop = asyncio.get_running_loop()
         await loop.run_in_executor(None, self.cam.set_wavelength, p, 10)
-
-        #while self.sample_scanner.is_moving():
-        #    await aio.sleep(0.01)
-
         spectra, ch = await loop.run_in_executor(None, self.cam.get_spectra, 3)
-        print(spectra['Probe2'].frame_data.shape)
         self.amps.append(spectra['Probe2'].frame_data[67, :])
-
-
 
 
 class CalibScanView(QWidget):
@@ -79,16 +71,13 @@ class CalibScanView(QWidget):
         self.focus_scan.sigStepDone.connect(self.update_view)
 
         self.setLayout(QHBoxLayout())
-        self.start_button = QPushButton('start')
-
-        self.layout().addWidget(self.start_button)
-
 
         self.children = [
             dict(name='start_wl', type='int', value=5500, step=500),
             dict(name='end_wl', type='int',  value=6500, step=500),
             dict(name='step', type='float',  value=10, step=2),
             dict(name='shots', type='int', value=90, step=10),
+            dict(name='start', type='action')
         ]
         param = Parameter.create(name='Calibration Scan',
                                 type='group',
@@ -154,6 +143,8 @@ class CalibScanView(QWidget):
         self._view.sigCalibrationAccepted.connect(plan.dac.set_calib)
         self._view.sigCalibrationAccepted.connect(lambda arg: plan.dac.generate_waveform(1, 0))
 
+
+
 if __name__ == '__main__':
     from Instruments.cam_phasetec import _ircam
 
@@ -165,6 +156,6 @@ if __name__ == '__main__':
     fs = CalibPlan(cam=cam,
                    move_func=cam.set_wavelength,
                    points=np.arange(5500, 6500, 5))
-    fv = FocusScanView(fs)
+    fv = CalibScanView(fs)
     fv.show()
     app.exec()

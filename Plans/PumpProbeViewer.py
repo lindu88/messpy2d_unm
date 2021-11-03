@@ -21,7 +21,7 @@ from typing import List, TYPE_CHECKING
 #if TYPE_CHECKING:
 from Plans.PumpProbe import PumpProbeData, PumpProbePlan
 
-from .common_meta import samp
+from .common_meta import sample_parameters
 
 
 @attr.s
@@ -283,7 +283,7 @@ class PumpProbeStarter(PlanStartDialog):
 
         two_d = {'name': 'Exp. Settings', 'type': 'group', 'children': tmp}
 
-        params = [samp, two_d]
+        params = [sample_parameters, two_d]
         self.paras = Parameter.create(name='Pump Probe', type='group', children=params)
         config.last_pump_probe = self.paras.saveState()
 
