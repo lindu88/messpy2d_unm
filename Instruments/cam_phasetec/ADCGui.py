@@ -1,25 +1,19 @@
-import sys
+from typing import Dict
 
 import numpy as np
 import pyqtgraph.parametertree as pt
+from matplotlib import cm
 from pyqtgraph import PlotWidget, ImageItem, PlotCurveItem, LinearRegionItem, mkBrush
 from qtpy.QtCore import QTimer
 from qtpy.QtWidgets import (QApplication, QWidget)
-from matplotlib import cm
-import typing as T
-
-from imaq_nicelib import Cam
 
 from QtHelpers import hlay, vlay
-
-
+from imaq_nicelib import Cam
 
 row_paras = {'type': 'int', 'step': 1, 'min': 0, 'max': 128,
              'readonly': True}
 params = [
-    #{'name': 'Gain', 'type': 'int', 'value': 8, 'min': 1, 'max': 8},
-    #{'name': 'Offset', 'type': 'int', 'value': 128, 'step': 1, 'min': 0, 'max': 255},
-    {'name': 'Shots', 'type': 'int', 'value': 30, 'min': 10, 'max': 5000 },
+    {'name': 'Shots', 'type': 'int', 'value': 30, 'min': 10, 'max': 5000},
     {'name': 'Top Probe', 'value': 35, **row_paras},
     {'name': 'Bot. Probe', 'value': 30, **row_paras},
     {'name': 'Top Ref', 'value': 103, **row_paras},
@@ -28,7 +22,6 @@ params = [
     {'name': 'Bot. Probe2', 'value': 50, **row_paras},
     {'name': 'Record BG', 'type': 'action'},
     {'name': 'Delete BG', 'type': 'action'},
-    {'name': 'Temp', 'type': 'float', 'readonly': True},
     {'name': "Mode", "type": 'list', 'limits': ('norm', 'relstd', 'absstd')}
 ]
 
@@ -53,34 +46,34 @@ class CamOptions(QWidget):
         self.image = ImageItem()
         self.image.setLookupTable(lut)
 
-        self.pr_reg = LinearRegionItem(orientation=LinearRegionItem.Horizontal,
-                                       values=(p['Bot. Probe'], p['Top Probe']))
-        self.pr2_reg = LinearRegionItem(orientation=LinearRegionItem.Horizontal,
-                                       values=(p['Bot. Probe2'], p['Top Probe2']))
+        self.regions : Dict[str, LinearRegionItem] = {}
+        self.mean_lines: Dict[str, PlotCurveItem] = {}
+        self.std_lines: Dict[str, PlotCurveItem] = {}
 
-        self.ref_reg = LinearRegionItem(orientation=LinearRegionItem.Horizontal, values=(p['Bot. Ref'], p['Top Ref']))
-        self.pr_reg.setBrush(mkBrush([0, 0, 0, 0]))
-        self.ref_reg.setBrush(mkBrush([0, 0, 0, 0]))
-        self.pr2_reg.setBrush(mkBrush([0, 0, 0, 0]))
-        self.pr_mean = PlotCurveItem(pen="r")
-        self.pr2_mean = PlotCurveItem(pen="y")
-        self.ref_mean = PlotCurveItem(pen="g")
+        for i, line in enumerate(['Probe', 'Probe2', 'Ref']):
+            region = LinearRegionItem(orientation=LinearRegionItem.Horizontal,
+                                      values=(p[f'Bot. {line}'], p[f'Top {line}']))
+            region.setZValue(10)
+            region.setBrush(mkBrush([0, 0, 0, 0]))
+            self.regions[line] = region
+            self.plotWidget.addItem(region)
 
-        self.pr_reg.setZValue(10)
+            mean_line = PlotCurveItem(pen="rby"[i])
+            self.mean_lines[line] = mean_line
+            self.plotWidget.addItem(mean_line)
+            std_line = PlotCurveItem(pen="rby"[i])
+            self.std_lines[line] = std_line
+            self.stdPlotWidget.plotItem.addItem(std_line)
+
 
         self.left_line = PlotCurveItem(pen='r')
         self.right_line = PlotCurveItem(pen='b')
 
-        for item in self.left_line, self.right_line, self.image, self.pr_reg, \
-                    self.ref_reg, self.pr_mean, self.ref_mean, self.pr2_mean, self.pr2_reg:
-            self.plotWidget.plotItem.addItem(item)
+        self.plotWidget.plotItem.addItem(self.left_line)
+        self.plotWidget.plotItem.addItem(self.right_line)
 
-        self.pr_std = PlotCurveItem(pen='r')
-        self.pr2_std = PlotCurveItem(pen='y')
-        self.ref_std = PlotCurveItem(pen='b')
-        self.norm_std = PlotCurveItem(pen='g')
-        for i in self.pr_std, self.ref_std, self.norm_std, self.pr2_std:
-            self.stdPlotWidget.plotItem.addItem(i)
+        self.std_lines['Norm'] = PlotCurveItem(pen='w')
+        self.stdPlotWidget.plotItem.addItem(self.std_lines['Norm'])
 
         self.setLayout(hlay([self.paratree, vlay([self.plotWidget, self.stdPlotWidget])]))
         self.timer = QTimer()
@@ -93,10 +86,7 @@ class CamOptions(QWidget):
     def setup_connections(self):
         p = self.params
         pm = self.cam
-        #f = lambda val: pm._cam.set_gain(val.value())
-        #p.child('Gain').sigValueChanged.connect(f)
-        #f = lambda val: pm._cam.set_offset(val.value())
-        #p.child('Offset').sigValueChanged.connect(f)
+
         p.child('Shots').sigValueChanged.connect(lambda val: pm.set_shots(val.value()))
 
         def update_pr_regions(reg: LinearRegionItem):
@@ -122,23 +112,18 @@ class CamOptions(QWidget):
 
         self.ref_reg.sigRegionChangeFinished.connect(update_ref_regions)
 
-        # p.child('Temp').setValue(self.cam._cam.get_tempK())
-
-        # def update_temp():
-        #    p.child('Temp').setValue(self.cam._cam.get_tempK())
-        # self.temp_timer = QTimer()
-        # self.temp_timer.timeout.connect(update_temp)
-        # self.temp_timer.start(10000)
         p.child('Record BG').sigActivated.connect(lambda: self.cam.set_background())
         p.child('Delete BG').sigActivated.connect(self.cam.remove_background)
 
     def update(self):
         pm = self.cam
-        import threading
-        t = threading.Thread(target=pm.read_cam)
-        t.start()
-        while t.is_alive():
-            QApplication.processEvents()
+        if self.standalone:
+            import threading
+            t = threading.Thread(target=pm.read_cam)
+            t.start()
+            while t.is_alive():
+                QApplication.processEvents()
+
         data = pm.data.copy()
         if pm.background is not None:
             img = pm.data.mean(2) - pm.background
@@ -156,32 +141,20 @@ class CamOptions(QWidget):
             img = pm.data.mean(2)
             levels = [0, MAX_VAL]
 
-        # print(img.shape)
+
         self.image.setImage(img.T, levels=levels)
-        # print(np.median(img))
-        # self.pr_reg.setRegion((0, 10))
         self.left_line.setData(x=-(img[:, 0] / MAX_VAL * 100), y=y)
         self.right_line.setData(x=-(img[:, -1] / MAX_VAL * 100), y=y)
+        data = {}
+        for i, line in enumerate(['Probe', 'Probe2', 'Ref']):
+            a, b = int(self.params[f'Top {line}']), int(self.params[f'Bot. {line}'])
+            probe = data[b:a, :, :].sum(0)
+            self.mean_lines[line].setData(x=x, y=img[b:a, :].mean(0) / MAX_VAL * 100 + 128)
+            self.std_lines.setData(x=x, y=100 * probe.std(1) / probe.mean(1))
+            data = {line: probe}
 
-        a, b = int(self.params['Top Probe']), int(self.params['Bot. Probe'])
-        probe = data[b:a, :, :].sum(0)
-        self.pr_mean.setData(x=x, y=img[b:a, :].mean(0) / MAX_VAL * 100 + 128)
-        self.pr_std.setData(x=x, y=100 * probe.std(1) / probe.mean(1))
-
-        a, b = int(self.params['Top Probe2']), int(self.params['Bot. Probe2'])
-        probe = data[b:a, :, :].sum(0)
-        self.pr2_mean.setData(x=x, y=img[b:a, :].mean(0) / MAX_VAL * 100 + 128)
-        self.pr2_std.setData(x=x, y=100 * probe.std(1) / probe.mean(1))
-
-        a, b = self.params['Top Ref'], self.params['Bot. Ref']
-        a, b = int(a), int(b)
-        ref = data[b:a, :, :].sum(0)
-        self.ref_mean.setData(x=x, y=img[b:a, :].mean(0) / MAX_VAL * 100 + 128)
-        self.ref_std.setData(x=x, y=100 * ref.std(1) / ref.mean(1))
-        norm = probe / ref
+        norm = data['probe'] / data['ref']
         self.norm_std.setData(x=x, y=100 * norm.std(1) / norm.mean(1))
-        # np.save('ref', ref)
-        # np.save('probe', probe)
 
     def get_best_pixel(self):
         pass
