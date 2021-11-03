@@ -24,35 +24,6 @@ from Plans.PumpProbe import PumpProbeData, PumpProbePlan
 from .common_meta import sample_parameters
 
 
-@attr.s
-class IndicatorLine:
-    wl_idx = attr.ib()  # type: int
-    wl = attr.ib()
-    pos = attr.ib()
-    line = attr.ib()
-    entry_label = attr.ib()
-    trans_line = attr.ib()  # type: pg.PlotCurveItem
-    hist_trans_line = attr.ib()  # type: pg.PlotCurveItem
-    channel = attr.ib(0)  # type: int
-
-    def __attrs_post_init__(self):
-        print('init')
-        self.line.sigPositionChanged.connect(self.update_pos)
-        self.update_pos()
-
-    def update_pos(self):
-        self.pos = self.line.pos().x()
-        self.channel = np.argmin(abs(self.pos - self.wl[self.wl_idx, :]))
-
-    def hide_hist(self):
-        self.hist_trans_line.parentItem().removeItem(self.hist_trans_line)
-
-    def hide_trans(self):
-        self.hist_trans_line.parentItem().removeItem(self.trans_line)
-
-    def update_trans(self):
-        pass
-
 
 class LineLabel(QLabel):
     def __init__(self, line, parent=None):
@@ -77,6 +48,35 @@ class LineLabel(QLabel):
         self.setText('%.1f' % x)
 
 
+@attr.s
+class IndicatorLine:
+    pos: float = attr.ib()
+    line: pg.InfiniteLine = attr.ib()
+    entry_label: LineLabel = attr.ib()
+    wl: np.ndarray = attr.ib()
+    wl_idx: int = attr.ib()
+    trans_line: pg.PlotCurveItem = attr.ib()
+    hist_trans_line: pg.PlotCurveItem = attr.ib()
+    channel: int = attr.ib(0)
+
+    def __attrs_post_init__(self):
+        self.line.sigPositionChanged.connect(self.update_pos)
+        self.update_pos()
+
+    def update_pos(self):
+        self.pos = self.line.pos().x()
+        self.channel = np.argmin(abs(self.pos - self.wl[self.wl_idx, :]))
+
+    def hide_hist(self):
+        self.hist_trans_line.parentItem().removeItem(self.hist_trans_line)
+
+    def hide_trans(self):
+        self.hist_trans_line.parentItem().removeItem(self.trans_line)
+
+    def update_trans(self):
+        pass
+
+
 class PumpProbeViewer(QTabWidget):
     def __init__(self, pp_plan: PumpProbePlan, parent=None):
         super(PumpProbeViewer, self).__init__(parent=parent)
@@ -88,15 +88,15 @@ class PumpProbeDataViewer(QWidget):
     def __init__(self, pp_plan: PumpProbeData, pp: PumpProbePlan,
                  parent=None):
         super(PumpProbeDataViewer, self).__init__(parent=parent)
-        self.pp = pp #type: PumpProbePlan
-        self.pp_plan = pp_plan  # type: PumpProbeData
+        self.pp = pp
+        self.pp_plan = pp_plan
         self._layout = QHBoxLayout(self)
 
         self.info_label = QLabel(self)
         self.info_label.setSizePolicy(QSizePolicy.Minimum, QSizePolicy.Minimum)
         self.update_info()
-        lw = QVBoxLayout()
 
+        lw = QVBoxLayout()
         vlay = QVBoxLayout()
 
         self.do_show_cur = QCheckBox('Current Scan', self)

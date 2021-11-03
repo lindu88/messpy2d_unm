@@ -4,6 +4,8 @@ import typing as T
 import attr
 import numpy as np
 from scipy.constants import c
+from numba import jit
+
 LOG10 = math.log(10)
 
 def THz2cm(THz):
@@ -18,6 +20,12 @@ def cm2THz(cm):
     cm-1 to THz
     """
     return cm*1e7/c
+
+@jit
+def first(arr, val: float) -> int:
+    for i, x in enumerate(arr):
+        if x > val:
+            return i
 
 
 def stats(probe, probe_max=None):
