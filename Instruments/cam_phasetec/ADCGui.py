@@ -2,8 +2,8 @@ from typing import Dict
 
 import numpy as np
 import pyqtgraph.parametertree as pt
-from matplotlib import cm
-from pyqtgraph import PlotWidget, ImageItem, PlotCurveItem, LinearRegionItem, mkBrush
+
+from pyqtgraph import PlotWidget, ImageItem, PlotCurveItem, LinearRegionItem, mkBrush, colormap
 from qtpy.QtCore import QTimer
 from qtpy.QtWidgets import (QApplication, QWidget)
 
@@ -22,24 +22,24 @@ params = [
     {'name': 'Bot. Probe2', 'value': 50, **row_paras},
     {'name': 'Record BG', 'type': 'action'},
     {'name': 'Delete BG', 'type': 'action'},
-    {'name': "Mode", "type": 'list', 'limits': ('norm', 'relstd', 'absstd')}
+    {'name': "Mode", "type": 'list', 'limits': ('norm', 'rel_std', 'abs_std')}
 ]
 
 x = np.arange(128)
 y = np.arange(128)
-colormap = cm.get_cmap('viridis')
-colormap._init()
-lut = (colormap._lut * 255).view(np.ndarray)  # Convert matplotlib colormap from 0-1 to 0 -255 for Qt
+lut = colormap.get('CET-L9')
+
 MAX_VAL = 1 << 14
 
 
 class CamOptions(QWidget):
-    def __init__(self, cam: Cam, parent=None):
+    def __init__(self, cam: Cam,  standalone=False, parent=None):
         super(CamOptions, self).__init__(parent=parent)
+        self.standalone = standalone
         self.cam = cam
         p = pt.Parameter.create(name='ADC Settings', type='group', children=params)
-        self.paratree = pt.ParameterTree(self)
-        self.paratree.setParameters(p)
+        self.param_tree = pt.ParameterTree(self)
+        self.param_tree.setParameters(p)
 
         self.plotWidget = PlotWidget()
         self.stdPlotWidget = PlotWidget()
@@ -65,7 +65,6 @@ class CamOptions(QWidget):
             self.std_lines[line] = std_line
             self.stdPlotWidget.plotItem.addItem(std_line)
 
-
         self.left_line = PlotCurveItem(pen='r')
         self.right_line = PlotCurveItem(pen='b')
 
@@ -75,11 +74,7 @@ class CamOptions(QWidget):
         self.std_lines['Norm'] = PlotCurveItem(pen='w')
         self.stdPlotWidget.plotItem.addItem(self.std_lines['Norm'])
 
-        self.setLayout(hlay([self.paratree, vlay([self.plotWidget, self.stdPlotWidget])]))
-        self.timer = QTimer()
-        self.timer.timeout.connect(self.update)
-        self.timer.start(50)
-
+        self.setLayout(hlay([self.param_tree, vlay([self.plotWidget, self.stdPlotWidget])]))
         self.params = p
         self.setup_connections()
 
@@ -89,28 +84,12 @@ class CamOptions(QWidget):
 
         p.child('Shots').sigValueChanged.connect(lambda val: pm.set_shots(val.value()))
 
-        def update_pr_regions(reg: LinearRegionItem):
-            mi, ma = sorted(reg.getRegion())
-            p.child('Top Probe').setValue(ma)
-            p.child('Bot. Probe').setValue(mi)
-
-        self.pr_reg.sigRegionChangeFinished.connect(update_pr_regions)
-
-        def update_pr2_regions(reg: LinearRegionItem):
-            mi, ma = sorted(reg.getRegion())
-            p.child('Top Probe2').setValue(ma)
-            p.child('Bot. Probe2').setValue(mi)
-
-        self.pr2_reg.sigRegionChangeFinished.connect(update_pr2_regions)
-
-        def update_ref_regions(reg: LinearRegionItem):
-            mi, ma = sorted(reg.getRegion())
-            p.child('Top Ref').setValue(ma)
-            p.child('Bot. Ref').setValue(mi)
-            pm.ref_rows = p['Bot. Ref'], p['Top Ref']
-            # config.ref_rows = pm.ref_rows
-
-        self.ref_reg.sigRegionChangeFinished.connect(update_ref_regions)
+        for i, line in enumerate(['Probe', 'Probe2', 'Ref']):
+            def update_pr_regions(reg: LinearRegionItem):
+                mi, ma = sorted(reg.getRegion())
+                p.child(f'Top {line}').setValue(ma)
+                p.child(f'Bot. {line}').setValue(mi)
+            self.region[line].sigRegionChangeFinished.connect(update_pr_regions)
 
         p.child('Record BG').sigActivated.connect(lambda: self.cam.set_background())
         p.child('Delete BG').sigActivated.connect(self.cam.remove_background)
@@ -128,13 +107,13 @@ class CamOptions(QWidget):
         if pm.background is not None:
             img = pm.data.mean(2) - pm.background
             data = data - pm.background[:, :, None]
-            if self.params['Mode'] == 'relstd':
+            if self.params['Mode'] == 'rel_std':
                 img = 100 * data.std(2) / data.mean(2)
                 levels = [0, 3]
             elif self.params['Mode'] == 'norm':
                 img = pm.data.mean(2) - pm.background
                 levels = [0, MAX_VAL]
-            elif self.params["Mode"] == 'absstd':
+            elif self.params["Mode"] == 'abs_std':
                 img = pm.data.std(2)
                 levels = [0, 100]
         else:
@@ -162,18 +141,14 @@ class CamOptions(QWidget):
 
 if __name__ == '__main__':
     import sys
-
     sys._excepthook = sys.excepthook
-
 
     def exception_hook(exctype, value, traceback):
         sys._excepthook(exctype, value, traceback)
         sys.exit(1)
 
-
     sys.excepthook = exception_hook
     app = QApplication([])
     go = CamOptions(cam=Cam())
-
     go.show()
     app.exec_()

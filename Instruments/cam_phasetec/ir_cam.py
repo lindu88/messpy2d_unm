@@ -71,7 +71,6 @@ class PT_MCT:
 
     def set_offset(self, offset):
         with self.reader.read_lock:
-
             ec = self._errchk
             self.offset = offset
             ec(self._dll.PT_2DMCT_SetGainOffset(self.gain, self.offset))
