@@ -145,7 +145,7 @@ class Reading2D:
     def from_spectrum(cls, s: Spectrum, t2_ps, rot_frame, **kwargs) -> 'Reading2D':
         assert(s.frames and s.frames % 4 == 0 and (s.frame_data is not None))
         f = s.frame_data
-        f.reshape(f.shape[0], 4, f.shape[1] //4)
+        f.reshape((f.shape[0], 4, f.shape[1] //4))
         sig = 1000/LOG10*(f[:, 0, :] - f[:, 1, :] + f[:, 2, :] - f[:, 3, :])
         assert(sig.shape[1] == len(t2_ps))
         return cls(inferogram=sig, t2_ps=t2_ps, rot_frame=rot_frame, **kwargs)
