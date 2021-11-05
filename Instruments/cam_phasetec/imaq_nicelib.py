@@ -75,7 +75,6 @@ class Cam:
     def set_shots(self, shots):
         self.reading_lock.acquire()
         N = shots
-        print(N)
         self.task.timing.cfg_samp_clk_timing(1000, 'PFI0', c.Edge.RISING, sample_mode=c.AcquisitionType.FINITE,
                                              samps_per_chan=N)
         self.data = np.empty((128, 128, N), dtype='uint16')
