@@ -4,7 +4,7 @@ import typing as T
 import attr
 import numpy as np
 from scipy.constants import c
-from numba import jit
+from numba import jit, prange
 
 LOG10 = math.log(10)
 
@@ -29,13 +29,75 @@ def first(arr, val: float) -> int:
 
 
 def stats(probe, probe_max=None):
-    probe_mean = np.nanmean(probe, 1)
-    probe_std = 100 * np.std(probe, 1) / probe_mean
+    mean, std, mi, ma = fast_stats2d(probe)
+    probe_mean = mean
+    probe_std = 100 * std / probe_mean
     if probe_max is not None:
         probe_max = np.nanmean(probe_max, 1)
     else:
-        probe_max = None
+        probe_max = ma
     return probe_mean, probe_std, probe_max
+
+
+@jit(parallel=True)
+def fast_stats2d(arr):
+    """
+    For a given 2-dimensional array calculate mean, std, min_val and max_val along the second dimension
+    in a single pass.
+    """
+    n = arr.shape[0]
+    res = np.zeros((n, 4))
+    for i in prange(n):
+        res[i, :] = fast_stats(arr[i, :])
+    return res
+
+@jit
+def fast_stats(arr):
+    """
+    For a given 1-dimensional array calculate mean, std, min_val and max_val in a single pass.
+    """
+    s = 0
+    sq_sum = 0
+    n = 0
+    min_val = max_val = arr[0]
+    for x in arr:
+        if not math.isnan(x):
+            n += 1
+        else:
+            continue
+        s += x
+        sq_sum += x*x
+        if x > max_val:
+            max_val = x
+        elif x < min_val:
+            min_val = x
+    mean = s/n
+    var = (sq_sum - s*s/n) / n
+    std = math.sqrt(var)
+    return mean, std, min_val, max_val
+
+@jit
+def fast_signal(arr):
+    sig = 0
+    mean = 0
+    n = arr.shape[0]
+    for i in range(0, n, 2):
+        sig += 1000/LOG10*(arr[i] - arr[i+1])/n/2
+        mean += arr[i]/n/2
+    return sig/mean
+
+
+@jit(parallel=True)
+def fast_signal2d(arr):
+    """
+    For a given 2-dimensional array calculate mean, std, min_val and max_val along the second dimension
+    in a single pass.
+    """
+    n = arr.shape[0]
+    res = np.zeros(n)
+    for i in prange(n):
+        res[i] = fast_signal(arr[i, :])
+    return res
 
 
 @attr.s(auto_attribs=True)
