@@ -51,7 +51,7 @@ def fast_stats2d(arr):
         res[i, :] = fast_stats(arr[i, :])
     return res
 
-@jit
+@jit(fastmath=True)
 def fast_stats(arr):
     """
     For a given 1-dimensional array calculate mean, std, min_val and max_val in a single pass.
@@ -76,15 +76,17 @@ def fast_stats(arr):
     std = math.sqrt(var)
     return mean, std, min_val, max_val
 
-@jit
+@jit(fastmath=True)
 def fast_signal(arr):
     sig = 0
     mean = 0
     n = arr.shape[0]
+
     for i in range(0, n, 2):
-        sig += 1000/LOG10*(arr[i] - arr[i+1])/n/2
-        mean += arr[i]/n/2
-    return sig/mean
+        sig += (arr[i] - arr[i+1])
+        mean += arr[i]
+
+    return 1000/LOG10*sig/mean
 
 
 @jit(parallel=True)
