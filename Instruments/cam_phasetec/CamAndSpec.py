@@ -111,24 +111,23 @@ class PhaseTecCam(ICam):
         if self.background is not None:
             arr = arr - self.background[:, :, None]
         if frames is not None:
-            i = first(np.array(ch[0]), 1)
-            arr = np.roll(arr, -i, axis=2)
+            first_frame = first(np.array(ch[0]), 1)
+        else:
+            first_frame = None
 
         pr_range = self.probe_rows
         pr2_range = self.probe2_rows
         ref_range = self.ref_rows
 
         probe = np.nanmean(arr[pr_range[0]:pr_range[1], :, :], 0)
-
         ref = np.nanmean(arr[ref_range[0]:ref_range[1], :, :], 0)
 
 
         if TWO_PROBES:
             probe2 = np.nanmean(arr[pr2_range[0]:pr2_range[1], :, :], 0)
-
             probe2 = Spectrum.create(probe2, name='Probe2', frames=frames)
         probemax = np.nanmax(arr[:, :, :10], 0)
-        probe = Spectrum.create(probe, probemax, name='Probe1', frames=frames)
+        probe = Spectrum.create(probe, probemax, name='Probe1', frames=frames, first_frame=first_frame)
         ref = Spectrum.create(ref, name='Ref', frames=frames)
         return {i.name: i for i in (probe, probe2, ref)}, ch
 
