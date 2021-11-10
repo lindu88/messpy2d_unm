@@ -35,10 +35,11 @@ class PulseShaperTwoDPlan(Plan):
         c = self.controller
         self.setup_shaper()
         for t3 in self.t3_list:
-            c.delay_line.set_pos(t3)
-            while c.delay_line._dl.is_moving():
+            c.delay_line.set_pos(t3, do_wait=False)
+            while c.delay_line.moving:
                 yield
             c.cam.read_cam()
-            c.cam.cam.make_2D_reading()
+            c.cam.make_2D_reading()
+
     def measure_point(self):
         pass

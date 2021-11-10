@@ -2,15 +2,11 @@ import numpy as np
 import pyqtgraph.parametertree as pt
 import pyqtgraph as pg
 import typing as T
-from Signal import Signal
 from .GermaniumPlan import GermaniumPlan
-from .common_meta import samp
-from Config import config
-from qtpy.QtWidgets import QWidget, QPushButton, QLayout, QSizePolicy, QLabel, QVBoxLayout, QHBoxLayout, QCheckBox, \
-    QApplication, QTabWidget
-from qtpy.QtGui import QPalette, QFont
-from qtpy.QtCore import Qt, QTimer
-from ControlClasses import Controller, Cam
+
+from qtpy.QtWidgets import (QWidget, QPushButton, QVBoxLayout)
+
+from ControlClasses import Controller
 from QtHelpers import vlay, hlay, PlanStartDialog, ObserverPlot
 
 
@@ -29,8 +25,8 @@ class GermaniumView(QWidget):
 
         pen = pg.mkPen(color='#e377c2', width=2)
         self.button = QPushButton('Set time zero', self)
+
         def plotGer():
-            print('bla')
             if germanium_plan.fit.success > 0:
                 self.plot.plotItem.plot(germanium_plan.t, germanium_plan.fit.model, pen=pen)
                 text = pg.TextItem(f'Zero_pos:{int(germanium_plan.fit.params[0])}', anchor=(0, 1.0))
@@ -44,9 +40,6 @@ class GermaniumView(QWidget):
         layout.addWidget(self.plot)
         layout.addWidget(self.button)
         self.setLayout(layout)
-
-
-import pyqtgraph.parametertree.parameterTypes as pTypes
 
 
 class GermaniumStarter(PlanStartDialog):

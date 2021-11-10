@@ -1,5 +1,6 @@
 from Config import config
 config.testing = True
+config.data_directory
 from ControlClasses import Controller
 from Plans import PumpProbePlan
 import pathlib, os, pytest
@@ -19,6 +20,7 @@ def test_functions():
         c.shutter.close()
         assert(not c.shutter.is_open())
 
+
 def test_pump_probe():
     c = Controller()
     t_list = range(0, 10)
@@ -29,6 +31,7 @@ def test_pump_probe():
         c.loop()                     
     print(pp.cam_data[0].completed_scans.shape)
     assert(pp.cam_data[0].completed_scans.shape[0] == pp.cam_data[0].scan)
+
 
 def test_overwrite_protection_pump_probe():
     c = Controller()
