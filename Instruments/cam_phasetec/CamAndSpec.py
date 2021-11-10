@@ -1,7 +1,8 @@
 from pathlib import Path
 import numpy as np
 import wrapt
-from Instruments.interfaces import ICam, Reading, Spectrum
+from Instruments.interfaces import ICam
+from Instruments.signal_processing import Reading, Spectrum, first
 from Config import config
 import attr
 
@@ -110,23 +111,21 @@ class PhaseTecCam(ICam):
         if self.background is not None:
             arr = arr - self.background[:, :, None]
         if frames is not None:
-            i = np.argmax(np.array(ch[0]) > 1)
+            i = first(np.array(ch[0]), 1)
             arr = np.roll(arr, -i, axis=2)
-
 
         pr_range = self.probe_rows
         pr2_range = self.probe2_rows
         ref_range = self.ref_rows
 
         probe = np.nanmean(arr[pr_range[0]:pr_range[1], :, :], 0)
-        #probemax = np.nanmax(arr[pr_range[0]:pr_range[1], :, :], 0)
+
         ref = np.nanmean(arr[ref_range[0]:ref_range[1], :, :], 0)
-        #refmax =  np.nanmax(arr[ref_range[0]:ref_range[1], :, :], 0)
 
 
         if TWO_PROBES:
             probe2 = np.nanmean(arr[pr2_range[0]:pr2_range[1], :, :], 0)
-            #probe2max = np.nanmax(arr[ref_range[0]:ref_range[1], :, :], 0)
+
             probe2 = Spectrum.create(probe2, name='Probe2', frames=frames)
         probemax = np.nanmax(arr[:, :, :10], 0)
         probe = Spectrum.create(probe, probemax, name='Probe1', frames=frames)
@@ -163,12 +162,12 @@ class PhaseTecCam(ICam):
                               stds=np.stack((probe.std, ref.std, norm_std)),
                               signals=np.stack((sig, sig2)),
                               valid=True)
-        # print(ref_mean.shape, probe_max.shape, ref_mean.shape, si)
+
         else:
 
             probe2 = d['Probe2']
             normed2 = probe2.data / ref.data
-            #norm_std2 = 100 * np.nanstd(normed2, 1) / np.nanmean(normed2, 1)
+
 
             pu2 = trim_mean(normed2[:, ::2], 0.2, 1)
             not_pu2 = trim_mean(normed2[:, 1::2], 0.2, 1)
@@ -189,9 +188,6 @@ class PhaseTecCam(ICam):
                 sig_pr2 = f / LOG10 * np.log1p(dp2.mean(1) / probe2.mean(1))
 
             which = 1 if (ch[0][0] > 1) else 0
-
-
-
             reading = Reading(lines=np.stack(
                 (probe.mean, probe2.mean, ref.mean, probe.max)),
                               stds=np.stack(
