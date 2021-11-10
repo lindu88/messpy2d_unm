@@ -3,20 +3,26 @@ from logging import getLogger
 
 import attr
 import numpy as np
-import pandas
 
-from shaper_calculations import double_pulse_mask
 
-from .pxdac import PXDAC
+from .shaper_calculations import double_pulse_mask
+import typing
+if typing.TYPE_CHECKING:
+    from .pxdac import PXDAC
+
 
 PIXEL = 4096 * 3  # 12288
 MAX_16_Bit = (1 << 13) - 1
 
 log = getLogger(__file__)
 
+def default_dac():
+    from .pxdac import PXDAC
+    return PXDAC.DAC(1)
+
 @attr.s(auto_attribs=True)
 class AOM:
-    dac: PXDAC.DAC = PXDAC.DAC(1)
+    dac: 'PXDAC.DAC' = attr.Factory(default_dac)
 
     amp_fac: float = 1
     calib: Optional[tuple] = None
@@ -73,41 +79,63 @@ class AOM:
         self.generate_waveform()
 
     def set_calib(self, p):
+        """
+        Sets a new calibration polynomial p.
+        """
         self.calib = p
         self.nu = np.polyval(p, self.pixel)
 
     def bragg_wf(self, amp, phase):
+        """Calculates a Bragg-correct AOM waveform for given phase and shape"""
         F = np.poly1d(np.polyint(self.calib))
         phase_term = 2 * np.pi * F(self.pixel) / self.nu0_THz * self.rf_freq_MHz / self.dac_freq_MHz
-        phase_term += phase
+        phase_term = phase + phase_term[:, None]
         return amp * np.cos(phase_term)
 
     def classic_wf(self, amp, phase):
+        """Calculates a uncorrected AOM waveform for given amplitude and shape"""
         f = self.dac_freq_MHz/self.rf_freq_MHz
-        return amp * np.cos(self.pixel / f * 2 * np.pi + phase)
+        return amp * np.cos(self.pixel[:, None]/ f * 2 * np.pi + phase)
 
     def double_pulse(self, tau_max: float, tau_step: float, rot_frame: float):
+        """
+        Calculates the masks for creating a series a double pulses with phase cycling.
+        """
+        if self.nu is None:
+            raise ValueError("Spectral calibration is required to calculate the masks.")
         taus = np.arange(0, tau_max + 1e-3, tau_step)
         # Four step phase cycling only
         phase = np.array([(1, 0), (1, 1), (0, 1), (0, 0)]) * np.pi
-        phase = np.repeat(phase, repeats=taus, axis=0)
+        phase = np.repeat(phase, repeats=taus.shape[0], axis=0)
         phi1 = phase[:, 0]
         phi2 = phase[:, 1]
         taus = taus.repeat(4)
-        masks = double_pulse_mask(self.freqs[:, None], rot_frame,
+        masks = double_pulse_mask(self.nu[:, None], rot_frame,
                                   taus[None, :], phi1[None, :], phi2[None, :])
         return np.abs(masks), np.angle(masks)
 
-    def generate_waveform(self, amp=None, phase=None):
+    def set_amp_and_phase(self, phase=None, amp=None):
+        """
+        Sets the amplitude and/or the phase of the spectral map.
+        Notice that the compensation dispersion phase will be added separatly.
+        """
+        if phase is not None:
+            self.phase = phase
+        if amp is not None:
+            self.amp = amp
+
+    def generate_waveform(self):
         if self.compensation_phase is not None and self.do_dispersion_compensation:
-            phase = phase + self.compensation_phase
+            phase = self.phase + self.compensation_phase
+        else:
+            phase = self.phase
 
         self.total_phase = phase
 
         if self.mode == 'bragg' and self.calib is not None:
-            masks = self.bragg_wf(amp, phase)
+            masks = self.bragg_wf(self.amp, self.total_phase)
         else:
-            masks = self.classic_wf(amp, phase)
+            masks = self.classic_wf(self.amp, self.total_phase)
 
         if self.chopped:
             masks = np.concatenate((masks, masks * 0))
@@ -136,8 +164,10 @@ class AOM:
 
     def load_mask(self, mask=None):
         if mask is not None:
-            self.mask = mask.astype('int16')
-        mask = self.amp_fac * self.mask
+            self.mask = mask
+        if mask.shape[-1]
+        mask = (self.amp_fac * self.mask).astype('int16')
+        
         assert (mask.dtype == np.int16)
         assert ((mask.size % PIXEL) == 0)
         self.end_playback()
