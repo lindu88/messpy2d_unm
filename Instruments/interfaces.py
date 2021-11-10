@@ -468,7 +468,7 @@ class DAC(abc.ABC):
 @attr.s
 class IAOMPulseShaper(PulseShaper):
     dac: DAC
-    disp: T.Optional[np.ndarray] =
+    disp: T.Optional[np.ndarray] = None
     use_brag: bool = False
     ac_freq: float = 75e6
     dac_freq: float = 1.2e9
