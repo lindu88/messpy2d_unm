@@ -1,5 +1,5 @@
 import math
-import typing as T
+from typing import Optional, Callable
 
 import attr
 import numpy as np
@@ -7,6 +7,7 @@ from scipy.constants import c
 from numba import jit, prange
 
 LOG10 = math.log(10)
+
 
 def THz2cm(THz):
     """
@@ -107,14 +108,14 @@ class Spectrum:
     data: np.ndarray
     mean: np.ndarray
     std: np.ndarray
-    max: T.Optional[np.ndarray]
-    name: T.Optional[str] = None
-    frame_data: T.Optional[np.ndarray] = None
-    frames: T.Optional[int] = None
-    signal: T.Optional[np.ndarray] = None
+    max: Optional[np.ndarray]
+    name: Optional[str] = None
+    frame_data: Optional[np.ndarray] = None
+    frames: Optional[int] = None
+    signal: Optional[np.ndarray] = None
 
     @classmethod
-    def create(cls, data, data_max=None, name=None, frames=None):
+    def create(cls, data, data_max=None, name=None, frames=None, first_frame=None):
         mean, std, max = stats(data, data_max)
         signal = None
         if frames is not None:
@@ -122,10 +123,10 @@ class Spectrum:
 
             for i in range(frames):
                 frame_data[:, i] = np.nanmean(data[:, i::frames], 1)
+            frame_data = np.roll(frame_data, -first_frame, 1)
             if frames == 2:
                 signal = -1000 / LOG10 * np.log1p(
                     (frame_data[:, 0] - frame_data[:, 1]) / frame_data[:, 1])
-
         else:
             frame_data = None
 
@@ -155,7 +156,7 @@ class Reading2D:
     t2_ps: np.ndarray
     signal_2D: np.ndarray = attr.ib()
     freqs: np.ndarray = attr.ib()
-    window: T.Optional[T.Callable] = np.hanning
+    window: Optional[Callable] = np.hanning
     upsample: int = 2
     rot_frame: float = 0
 
