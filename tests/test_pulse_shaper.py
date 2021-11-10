@@ -17,7 +17,12 @@ def test_aom():
     assert(masks[0].shape[1] == 11*4)
     aom.bragg_wf(masks[0], masks[1])
     aom.classic_wf(masks[0], masks[1])
-    aom.
+
+    aom.generate_waveform()
+    aom.bragg_wf(1, 1)
+    aom.classic_wf(1, 1)
+
+
 
 
     

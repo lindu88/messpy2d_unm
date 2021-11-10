@@ -6,9 +6,10 @@ import numpy as np
 
 
 from .shaper_calculations import double_pulse_mask
-import typing
-if typing.TYPE_CHECKING:
+from typing import TYPE_CHECKING, Tuple
+if TYPE_CHECKING:
     from .pxdac import PXDAC
+
 
 
 PIXEL = 4096 * 3  # 12288
@@ -97,7 +98,7 @@ class AOM:
         f = self.dac_freq_MHz/self.rf_freq_MHz
         return amp * np.cos(self.pixel[:, None]/ f * 2 * np.pi + phase)
 
-    def double_pulse(self, tau_max: float, tau_step: float, rot_frame: float):
+    def double_pulse(self, tau_max: float, tau_step: float, rot_frame: float) -> Tuple[np.ndarray, np.ndarray]:
         """
         Calculates the masks for creating a series a double pulses with phase cycling.
         """
@@ -117,7 +118,7 @@ class AOM:
     def set_amp_and_phase(self, phase=None, amp=None):
         """
         Sets the amplitude and/or the phase of the spectral map.
-        Notice that the compensation dispersion phase will be added separatly.
+        Notice that the compensation dispersion phase will be added separately.
         """
         if phase is not None:
             self.phase = phase
@@ -165,7 +166,9 @@ class AOM:
     def load_mask(self, mask=None):
         if mask is not None:
             self.mask = mask
-        if mask.shape[-1]
+
+        if len(self.mask.shape) > 1:
+            self.mask = self.mask.ravel()
         mask = (self.amp_fac * self.mask).astype('int16')
         
         assert (mask.dtype == np.int16)
