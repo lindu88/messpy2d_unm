@@ -2,7 +2,7 @@ from functools import partial
 from Config import config
 from qtpy.QtCore import QTimer, Qt, QThread, QSettings
 from qtpy.QtGui import QFont, QIntValidator
-from qtpy.QtWidgets import (QMainWindow, QApplication, QWidget, QDockWidget,
+from qtpy.QtWidgets import (QMainWindow, QApplication, QWidget, QDockWidget, QErrorMessage,
                             QPushButton, QLabel, QVBoxLayout, QSizePolicy, QFormLayout,
                             QToolBar, QCheckBox)
 import qtawesome as qta
@@ -10,7 +10,7 @@ from Instruments.interfaces import IAOMPulseShaper
 from Plans import *
 from Plans.ShaperCalibPlan import CalibScanView, CalibPlan
 from QtHelpers import dark_palette, ControlFactory, make_groupbox, \
-    ObserverPlot, ValueLabels
+    ObserverPlot, ValueLabels, ObserverPlotWithControls
 from SampleMoveWidget import MoveWidget
 from ControlClasses import Controller
 
@@ -49,100 +49,41 @@ class MainWindow(QMainWindow):
             self.xaxis[c] = c.wavelengths.copy()
 
             obs = [lambda i=i, c=c: c.last_read.lines[i, :] for i in range(c.cam.lines)]
-            op = ObserverPlot(obs,
-                              lf, x=c.disp_axis)
+            op = ObserverPlotWithControls(c.cam.line_names, obs, lf, x=c.disp_axis)
             dw = QDockWidget('Readings', parent=self)
             dw.setWidget(op)
             dock_wigdets.append(dw)
 
-            w = QWidget()
-            w.setSizePolicy(QSizePolicy.Minimum, QSizePolicy.Minimum)
-            form_layout = QFormLayout()
-            w.setLayout(form_layout)
-
-            for i, n in enumerate(c.cam.line_names):
-                line = op.lines[op.observed[i]]
-                col = line.opts['pen'].color()
-                print(col.name())
-                lb = QLabel('<font color="%s">%s</font>' % (col.name(), n))
-                cb = QCheckBox()
-                cb.setChecked(True)
-                form_layout.addRow(lb, cb)
-                cb.toggled.connect(line.setVisible)
-
-            dw = QDockWidget("Line Plot Controls")
-            dw.setWidget(w)
-            dock_wigdets.append(dw)
-
             obs = [lambda i=i, c=c: c.last_read.stds[i, :] for i in range(c.cam.std_lines)]
-            op2 = ObserverPlot(obs,
-                               lf, x=c.disp_axis)
-            op2.setYRange(0, 8)
+            op2 = ObserverPlotWithControls(c.cam.std_names, obs, lf, x=c.disp_axis)
+            op2.obs_plot.setYRange(0, 8)
             dw = QDockWidget('Readings - stddev', parent=self)
             dw.setWidget(op2)
             dock_wigdets.append(dw)
-            w = QWidget()
-            w.setSizePolicy(QSizePolicy.Minimum, QSizePolicy.Minimum)
-            form_layout = QFormLayout()
-            w.setLayout(form_layout)
-
-
-            for i, n in enumerate(c.cam.std_names):
-                line = op2.lines[op2.observed[i]]
-                col = line.opts['pen'].color()
-                print(col.name())
-                lb = QLabel('<font color="%s">%s</font>' % (col.name(), n))
-                cb = QCheckBox()
-                cb.setChecked(True)
-                form_layout.addRow(lb, cb)
-                cb.toggled.connect(line.setVisible)
-
-            dw = QDockWidget("Std Plot Controls")
-            dw.setWidget(w)
-            dock_wigdets.append(dw)
-
-
 
             obs = [lambda i=i, c=c: c.last_read.signals[i, :] for i in range(c.cam.sig_lines)]
-            op3 = ObserverPlot(obs, lf, x=c.disp_axis)
+            op3 = ObserverPlotWithControls(c.cam.sig_names, obs, lf, x=c.disp_axis)
             dw = QDockWidget('Pump-probe signal', parent=self)
             dw.setWidget(op3)
-            dock_wigdets.append(dw)
-
-            w = QWidget()
-            w.setSizePolicy(QSizePolicy.Minimum, QSizePolicy.Minimum)
-            form_layout = QFormLayout()
-            w.setLayout(form_layout)
-            for i, n in enumerate(c.cam.sig_names):
-                line = op3.lines[op3.observed[i]]
-                col = line.opts['pen'].color()
-                print(col.name())
-                lb = QLabel('<font color="%s">%s</font>' % (col.name(), n))
-                cb = QCheckBox()
-                cb.setChecked(True)
-
-                form_layout.addRow(lb, cb)
-                cb.toggled.connect(line.setVisible)
-            dw = QDockWidget("Sig Plot Controls")
-            dw.setWidget(w)
             dock_wigdets.append(dw)
 
 
         for dw in dock_wigdets:
             self.addDockWidget(Qt.LeftDockWidgetArea, dw)
 
-        #self.splitDockWidget(dock_wigdets[2], dock_wigdets[3], Qt.Horizontal)
+
         if len(dock_wigdets) > 3:
-            self.splitDockWidget(dock_wigdets[0], dock_wigdets[1], Qt.Horizontal)
-            self.splitDockWidget(dock_wigdets[2], dock_wigdets[3], Qt.Horizontal)
-            self.splitDockWidget(dock_wigdets[4], dock_wigdets[5], Qt.Horizontal)
+            self.splitDockWidget(dock_wigdets[0], dock_wigdets[3], Qt.Horizontal)
+            self.splitDockWidget(dock_wigdets[1], dock_wigdets[4], Qt.Horizontal)
+            self.splitDockWidget(dock_wigdets[2], dock_wigdets[5], Qt.Horizontal)
         self.setCentralWidget(self.cm)
-        #self.obs_plot = [i.getWidget() for i in dock_wigdets]
+
         self.controller.cam.sigRefCalibrationFinished.connect(self.plot_calib)
         self.readSettings()
+
     def plot_calib(self, k1, k2):
         import pyqtgraph as pg
-        win = pg.PlotWindow()
+        win = pg.PlotWidget()
         win.plotItem.plot(k1)
         win.plotItem.plot(k2)
         win.show()
@@ -404,7 +345,7 @@ class CommandMenu(QWidget):
             slit_control = ControlFactory('Slit (μm)', cam.set_slit, presets=[-10, 10], preset_func=pre_fcn)
             slit_control.update_value(spec.get_slit())
             spec.sigSlitChanged.connect(slit_control.update_value)
-            l.append((slit_control))
+            l.append(slit_control)
         cb = QCheckBox('Use Wavenumbers')
         l[-1].layout().addRow( cb)
         gb = make_groupbox(l, f"Spec: {cam.cam.name}")
@@ -412,11 +353,11 @@ class CommandMenu(QWidget):
         return gb
 
     def add_shaper(self, sh : IAOMPulseShaper):
-        l = []
+        widgets = []
         if sh.grating_1 is not None:
             cf1 = ControlFactory('Grating 1', sh.grating_1.set_degrees, sh.grating_2.sigDegreesChanged)
             cf2 = ControlFactory('Grating 2', sh.grating_2.set_degrees, sh.grating_2.sigDegreesChanged)
-            l += [cf1, cf2]
+            widgets += [cf1, cf2]
 
         cb_chopped = QCheckBox('Chopped')
         cb_phase_cycled = QCheckBox('Phase Cycling')
@@ -429,8 +370,8 @@ class CommandMenu(QWidget):
         cb_chopped.stateChanged.connect(set_mode)
         cb_phase_cycled.stateChanged.connect(set_mode)
         cb_running.stateChanged.connect(set_mode)
-        l += [cb_chopped, cb_phase_cycled, cb_running]
-        gb = make_groupbox(l, 'Shaper')
+        widgets += [cb_chopped, cb_phase_cycled, cb_running]
+        gb = make_groupbox(widgets, 'Shaper')
         return gb
 
 
@@ -439,14 +380,18 @@ if __name__ == '__main__':
     import qasync
     import asyncio as aio
     app = QApplication([])
-    app.setOrganizationName("USD");
-    app.setApplicationName("MessPy3");
+    app.setOrganizationName("USD")
+    app.setApplicationName("MessPy3")
     loop = qasync.QEventLoop()
     aio.set_event_loop(loop)
     sys._excepthook = sys.excepthook
+
     def exception_hook(exctype, value, traceback):
+        err = QErrorMessage()
+        err.showMessage(traceback)
         sys._excepthook(exctype, value, traceback)
         sys.exit(1)
+
     sys.excepthook = exception_hook
 
 

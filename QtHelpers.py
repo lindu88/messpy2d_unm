@@ -9,7 +9,7 @@ from qtpy.QtCore import Qt, Slot, QTimer
 from qtpy.QtGui import QPalette, QColor
 from qtpy.QtWidgets import (QWidget, QLineEdit, QLabel, QPushButton, QHBoxLayout,
                             QFormLayout, QGroupBox, QVBoxLayout, QDialog, QStyleFactory,
-                            QListWidget, QErrorMessage)
+                            QListWidget, QErrorMessage, QSizePolicy, QCheckBox)
 
 from Config import config
 
@@ -375,6 +375,29 @@ class ObserverPlot(pg.PlotWidget):
 
     def closeEvent(self, event) -> None:
         self.signal.disconnect(self.update_data)
+
+
+
+class ObserverPlotWithControls(QWidget):
+    def __init__(self,  names, obs, signal, x=None, parent=None, **kwargs):
+        super(ObserverPlotWithControls, self).__init__()
+        self.obs_plot = ObserverPlot(obs, signal, x, parent)
+        line_controls = QWidget()
+        line_controls.setSizePolicy(QSizePolicy.Minimum, QSizePolicy.Minimum)
+        form_layout = QFormLayout()
+        line_controls.setLayout(form_layout)
+        for i, n in enumerate(names):
+            line = self.obs_plot.lines[self.obs_plot.observed[i]]
+            col = line.opts['pen'].color()
+            lb = QLabel('<font color="%s">%s</font>' % (col.name(), n))
+            cb = QCheckBox()
+            cb.setChecked(True)
+            form_layout.addRow(lb, cb)
+            cb.toggled.connect(line.setVisible)
+        self.line_controls = line_controls
+        self.setLayout(QHBoxLayout())
+        self.layout().addWidget(self.obs_plot)
+        self.layout().addWidget(self.line_controls)
 
 
 class ValueLabels(QWidget):
