@@ -3,7 +3,7 @@ from attr import attrs, attrib, Factory
 from Config import config
 import threading, time
 import typing as T
-from HwRegistry import _cam, _cam2, _dl, _dl2, _rot_stage, _shutter, _sh
+from HwRegistry import _cam, _cam2, _dl, _dl2, _rot_stage, _shutter, _sh, _shaper
 import Instruments.interfaces as I
 #from Signal import Signal
 
@@ -174,7 +174,8 @@ class Controller(QObject):
     shutter: T.Optional[I.IShutter]
     delay_line: Delayline
     rot_stage: T.Optional[I.IRotationStage]
-    sample_holder : T.Optional[I.ILissajousScanner]
+    sample_holder: T.Optional[I.ILissajousScanner]
+    shaper: T.Optional[object] = None
     loop_finnished = Signal()
 
     def __init__(self):
@@ -183,6 +184,7 @@ class Controller(QObject):
         self.cam.read_cam()
         self.shutter = _shutter
         self.cam_list = [self.cam]
+
 
 
         if _cam2 is not None:
@@ -205,6 +207,8 @@ class Controller(QObject):
             self.sample_holder = _sh
         else:
             self.sample_holder = None
+
+        self.shaper = _shaper
         self.async_plan = False
         self.plan = None
         self.pause_plan = False

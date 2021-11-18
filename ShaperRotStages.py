@@ -8,9 +8,10 @@ from QtHelpers import ControlFactory, vlay, hlay
 from pyqtgraph.parametertree import Parameter, ParameterTree
 
 dispersion_params = [
-    dict(name='GVD', type='float', value=0),
-    dict(name='TOD', type='float', value=0),
-    dict(name='FOD', type='float', value=0)
+    dict(name='gvd', type='float', value=0),
+    dict(name='tod', type='float', value=0),
+    dict(name='fod', type='float', value=0),
+    dict(name='center', type='float', value=2000)
 ]
 
 
@@ -43,7 +44,7 @@ class ShaperControl(QtWidgets.QWidget):
         self.slider.setSingleStep(1)
         self.slider.valueChanged.connect(lambda x: slider_lbl.setText('%0.1f' % (x / 1000)))
         self.slider.setValue(int(self.aom.amp_fac * 1000))
-        self.slider.valueChanged.connect(lambda x: aom.set_wave_amp(x / 1000))
+        self.slider.valueChanged.connect(lambda x: self.aom.set_wave_amp(x / 1000))
 
         self.chopped = QtWidgets.QCheckBox("Chopped")
         self.chopped.setChecked(self.aom.chopped)
@@ -59,8 +60,12 @@ class ShaperControl(QtWidgets.QWidget):
         self.cali.clicked.connect(self.aom.load_full_mask)
 
         self.pt = ParameterTree()
-        self.disp_param = Parameter(dispersion_params)
-        self.disp_param.sigValueChanged.connect(self.update_disp)
+        self.disp_param = Parameter.create(name='Dispersion',
+                                type='group',
+                                children=dispersion_params)
+
+        for c in self.disp_param.children():
+            c.sigValueChanged.connect(self.update_disp)
         self.pt.setParameters(self.disp_param)
         self.setLayout(vlay((hlay((slider_lbl, self.slider)),
                              vlay([c1, c2]),
@@ -69,10 +74,12 @@ class ShaperControl(QtWidgets.QWidget):
                              self.pt,
                              hlay((self.apply, self.cali)))))
 
-        def update_disp(self):
-            for i in ['gvd', 'tod', 'fod']:
-                setattr(self.aom, i, self.disp_param[i])
-            self.aom.update_dispersion_compensation()
+    def update_disp(self):
+        from Instruments.signal_processing import cm2THz
+        for i in ['gvd', 'tod', 'fod']:
+            setattr(self.aom, i, self.disp_param[i])
+        self.aom.nu0_THz = cm2THz(self.disp_param['center'])
+        self.aom.update_dispersion_compensation()
 
 
 if __name__ == '__main__':

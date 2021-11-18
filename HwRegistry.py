@@ -1,4 +1,6 @@
 import platform
+
+import Instruments.dac_px
 from Config import config
 from Instruments.mocks import CamMock, DelayLineMock
 import logging
@@ -11,6 +13,7 @@ _dl2 = None
 _rot_stage = None
 _shutter = None
 _sh = None
+_shaper = None
 
 pc_name = platform.node()
 
@@ -65,7 +68,17 @@ elif pc_name == 'helmholm' and not TESTING:
 elif pc_name == 'DESKTOP-BBLLUO7':
     from Instruments.cam_phasetec import _ircam as _cam
     _cam2 = None
-    from Instruments.delay_line_apt import DelayLine
-    _dl = DelayLine(name="VisDelay")
-    #from Instruments.delay_line_newport import NewportDelay
-    #_dl = NewportDelay(name='IR Delay', pos_sign=-1)
+    #from Instruments.delay_line_apt import DelayLine
+    #_dl = DelayLine(name="VisDelay")
+    from Instruments.delay_line_newport import NewportDelay
+    _dl = NewportDelay(name='IR Delay', pos_sign=-1)
+    from Instruments.dac_px import AOM
+    _shaper = AOM()
+    from Instruments.RotationStage import RotationStage
+    r1 = RotationStage(name="Grating1", comport="COM5")
+    r2 = RotationStage(name="Grating2", comport="COM6")
+
+    _shaper.rot1 = r1
+    _shaper.rot2 = r2
+
+

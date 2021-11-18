@@ -221,7 +221,8 @@ class CommandMenu(QWidget):
             self.add_rot_stage(c.rot_stage)
         if c.sample_holder:
             self.add_sample_holder(c.sample_holder)
-        #self.add_ext_view()
+        if c.shaper is not None:
+            self.add_shaper(c.shaper)
 
     def add_plan_controls(self):
         self.start_but = QPushButton('Start Plan')
@@ -353,32 +354,19 @@ class CommandMenu(QWidget):
         return gb
 
     def add_shaper(self, sh : IAOMPulseShaper):
-        widgets = []
-        if sh.grating_1 is not None:
-            cf1 = ControlFactory('Grating 1', sh.grating_1.set_degrees, sh.grating_2.sigDegreesChanged)
-            cf2 = ControlFactory('Grating 2', sh.grating_2.set_degrees, sh.grating_2.sigDegreesChanged)
-            widgets += [cf1, cf2]
+        from ShaperRotStages import ShaperControl
 
-        cb_chopped = QCheckBox('Chopped')
-        cb_phase_cycled = QCheckBox('Phase Cycling')
-        cb_running = QCheckBox('Active')
-
-        def set_mode():
-            sh.set_mode(cb_chopped.isChecked(), cb_phase_cycled.isChecked())
-            sh.set_running(cb_running.isChecked())
-
-        cb_chopped.stateChanged.connect(set_mode)
-        cb_phase_cycled.stateChanged.connect(set_mode)
-        cb_running.stateChanged.connect(set_mode)
-        widgets += [cb_chopped, cb_phase_cycled, cb_running]
-        gb = make_groupbox(widgets, 'Shaper')
-        return gb
-
+        self.shaper_controls = ShaperControl(sh.rot1, sh.rot2, sh)
+        but = QPushButton("Shaper Contorls")
+        but.clicked.connect(self.shaper_controls.show)
+        self._layout.addWidget(but)
+        return
 
 if __name__ == '__main__':
     import sys
     import qasync
     import asyncio as aio
+    import traceback
     app = QApplication([])
     app.setOrganizationName("USD")
     app.setApplicationName("MessPy3")
@@ -386,10 +374,11 @@ if __name__ == '__main__':
     aio.set_event_loop(loop)
     sys._excepthook = sys.excepthook
 
-    def exception_hook(exctype, value, traceback):
-        err = QErrorMessage()
-        err.showMessage(traceback)
-        sys._excepthook(exctype, value, traceback)
+    def exception_hook(exctype, value, tb):
+        #err = QErrorMessage()
+        #err.showMessage(''.join(traceback.format_tb(tb)))
+        #err.exec_()
+        sys._excepthook(exctype, value, tb)
         sys.exit(1)
 
     sys.excepthook = exception_hook

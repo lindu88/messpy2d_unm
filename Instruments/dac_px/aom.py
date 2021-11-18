@@ -1,5 +1,6 @@
 from typing import Optional, Literal
 from logging import getLogger
+from pathlib import Path
 
 import attr
 import numpy as np
@@ -9,8 +10,6 @@ from .shaper_calculations import double_pulse_mask
 from typing import TYPE_CHECKING, Tuple
 if TYPE_CHECKING:
     from .pxdac import PXDAC
-
-
 
 PIXEL = 4096 * 3  # 12288
 MAX_16_Bit = (1 << 13) - 1
@@ -48,8 +47,12 @@ class AOM:
     tod: float = 0
     fod: float = 0
 
-    def __attr_post_init__(self):
+    def __attrs_post_init__(self):
         self.setup_dac()
+        print("jo")
+
+        p = np.load(Path(__file__).parent / 'calib_coef.npy')
+        self.set_calib(p)
 
     def setup_dac(self):
         dac = self.dac
@@ -83,7 +86,8 @@ class AOM:
         """
         Sets a new calibration polynomial p.
         """
-        self.calib = p
+        self.calib = np.array(p)
+        np.save(Path(__file__).parent/'calib_coef.npy', self.calib)
         self.nu = np.polyval(p, self.pixel)
 
     def bragg_wf(self, amp, phase):
@@ -139,7 +143,7 @@ class AOM:
             masks = self.classic_wf(self.amp, self.total_phase)
 
         if self.chopped:
-            masks = np.concatenate((masks, masks * 0))
+            masks = np.concatenate((0*masks, masks))
         if self.phase_cycle:
             masks = np.concatenate((masks, -masks))
         self.load_mask(masks)
@@ -150,7 +154,7 @@ class AOM:
         self.dac.set_output_voltage(ch1=i)
 
     def set_wave_amp(self, amp):
-        if not (0 < amp <= 1):
+        if not (0 <= amp <= 1):
             raise ValueError('Amplitude has to be between 0 and 1')
         V = 1.4 * amp
         if V > 0.4:
@@ -164,13 +168,14 @@ class AOM:
             self.generate_waveform()
 
     def load_mask(self, mask=None):
+        return
         if mask is not None:
             self.mask = mask
 
         if len(self.mask.shape) > 1:
             self.mask = self.mask.ravel()
-        mask = (self.amp_fac * self.mask).astype('int16')
-        
+        mask = (self.amp_fac * MAX_16_Bit * self.mask).astype('int16')
+
         assert (mask.dtype == np.int16)
         assert ((mask.size % PIXEL) == 0)
         self.end_playback()

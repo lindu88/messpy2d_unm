@@ -97,12 +97,12 @@ class CalibScanView(QWidget):
         self.pt = ParameterTree()
         self.pt.setParameters(self.params)
         self.layout().addWidget(self.pt)
-        self.start_button.clicked.connect(self.start)
+        self.params.child('start').sigActivated.connect(self.start)
         self.plot = pg.PlotWidget(self)
         self.layout().addWidget(self.plot)
         self.focus_scan.sigPlanDone.connect(self.analyse)
-        self.focus_scan.sigPlanDone.connect(
-            lambda: self.start_button.setEnabled(True))
+        #self.focus_scan.sigPlanDone.connect(
+        #    lambda: self.start_button.setEnabled(True))
 
     def start(self):
         s = self.params.saveState()
@@ -112,7 +112,7 @@ class CalibScanView(QWidget):
         self.focus_scan.amps = []
         self.params.setReadonly(True)
 
-        self.start_button.setDisabled(True)
+        #self.params.child('start').setOpts(enabled=False)
         loop = aio.get_event_loop()
         loop.create_task(self.focus_scan.step())
 
@@ -138,10 +138,10 @@ class CalibScanView(QWidget):
         y1 = np.array(plan.amps)[:, 1]
         y2 = np.array(plan.amps)[:, 2]
         np.save('calib.npy', np.column_stack((x, y0, y1, y2)))
-        self._view = CalibView(x=x, y_train=y0, y_single=y1, y_full=y2)
+        self._view = CalibView(x=x, y_train=y0-y0.min(), y_single=y1-y1.min(), y_full=y2-y2.min())
         self._view.show()
         self._view.sigCalibrationAccepted.connect(plan.dac.set_calib)
-        self._view.sigCalibrationAccepted.connect(lambda arg: plan.dac.generate_waveform(1, 0))
+        self._view.sigCalibrationAccepted.connect(lambda arg: plan.dac.generate_waveform())
 
 
 
