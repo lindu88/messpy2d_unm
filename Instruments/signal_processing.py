@@ -27,10 +27,11 @@ def first(arr, val: float) -> int:
     for i, x in enumerate(arr):
         if x > val:
             return i
+    return 0
 
 
 def stats(probe, probe_max=None):
-    mean, std, mi, ma = fast_stats2d(probe)
+    mean, std, mi, ma = fast_stats2d(probe).T
     probe_mean = mean
     probe_std = 100 * std / probe_mean
     if probe_max is not None:
@@ -125,7 +126,7 @@ class Spectrum:
                 frame_data[:, i] = np.nanmean(data[:, i::frames], 1)
             frame_data = np.roll(frame_data, -first_frame, 1)
             if frames == 2:
-                signal = -1000 / LOG10 * np.log1p(
+                signal = 1000 / LOG10 * np.log1p(
                     (frame_data[:, 0] - frame_data[:, 1]) / frame_data[:, 1])
         else:
             frame_data = None

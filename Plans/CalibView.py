@@ -1,5 +1,6 @@
 import matplotlib.pyplot as plt
-from qtpy.QtWidgets import QWidget, QApplication, QHBoxLayout, QVBoxLayout, QSpinBox, QLabel, QPushButton, QDialogButtonBox, QSizePolicy
+from qtpy.QtWidgets import QWidget, QApplication, QHBoxLayout, QVBoxLayout, QSpinBox, QLabel, QCheckBox,\
+    QDialogButtonBox, QSizePolicy, QSlider
 from qtpy.QtCore import Qt, Signal
 from matplotlib.figure import Figure
 from matplotlib import rcParams, style
@@ -110,8 +111,9 @@ class CalibView(QWidget):
 
             y_train = gaussian_filter1d(self.y_train, self.filter)
             y_single = gaussian_filter1d(self.y_single, self.filter)
+            y_full = gaussian_filter1d(self.y_full, self.filter)
         else:
-            y_train, y_single = self.y_train, self.y_single
+            y_train, y_single, y_full = self.y_train, self.y_single, self.y_full
         if self.use_norm.isChecked():
             y_train = 500*(y_train/(y_full+50))
             y_single = 500*(y_single/(y_full+50))
@@ -154,7 +156,7 @@ class CalibView(QWidget):
             self.fig.canvas.draw_idle()
 
 if __name__ == '__main__':
-    from Instruments.dac_px.pxdac import AOM
+    from Instruments.dac_px import AOM
     aom = AOM()
     app = QApplication([])
     #from qt_material import apply_stylesheet
@@ -168,8 +170,9 @@ if __name__ == '__main__':
     view.sigCalibrationAccepted.connect(aom.set_calib)
     view.sigCalibrationAccepted.connect(lambda x: aom.generate_waveform(np.ones_like(aom.nu), np.ones_like(aom.nu)))
     def set_gvd(x):
-        print(x)
-        aom.set_dispersion_correct(x, 0, 0)
+
+        aom.gvd = x
+        aom.update_dispersion_compensation()
     view.gvd_slider.valueChanged.connect(set_gvd)
 
     app.exec_()

@@ -78,7 +78,7 @@ class PhaseTecCam(ICam):
     @background.default
     def _back_default(self):
         try:
-            return np.load(Path(__file__).parent / 'back')
+            return np.load(Path(__file__).parent / 'back.npy')
         except IOError:
             pass
         return None
@@ -122,13 +122,12 @@ class PhaseTecCam(ICam):
         probe = np.nanmean(arr[pr_range[0]:pr_range[1], :, :], 0)
         ref = np.nanmean(arr[ref_range[0]:ref_range[1], :, :], 0)
 
-
         if TWO_PROBES:
             probe2 = np.nanmean(arr[pr2_range[0]:pr2_range[1], :, :], 0)
-            probe2 = Spectrum.create(probe2, name='Probe2', frames=frames)
+            probe2 = Spectrum.create(probe2, name='Probe2', frames=frames, first_frame=first_frame)
         probemax = np.nanmax(arr[:, :, :10], 0)
         probe = Spectrum.create(probe, probemax, name='Probe1', frames=frames, first_frame=first_frame)
-        ref = Spectrum.create(ref, name='Ref', frames=frames)
+        ref = Spectrum.create(ref, name='Ref', frames=frames, first_frame=first_frame)
         return {i.name: i for i in (probe, probe2, ref)}, ch
 
     def make_reading(self, frame_data=None):
@@ -140,19 +139,17 @@ class PhaseTecCam(ICam):
             normed = probe.data / ref.data
             norm_std = 100 * np.nanstd(normed, 1) / np.nanmean(normed, 1)
 
-            if ch[0][0] > 1 or True:
+            if ch[0][0] > 0.5:
                 f = 1000
             else:
                 f = -1000
+
 
             pu = trim_mean(normed[:, ::2], 0.2, 1)
             not_pu = trim_mean(normed[:, 1::2], 0.2, 1)
 
             sig = f * np.log10(pu / not_pu)
-
-            pu2 = trim_mean(probe.data[:, ::2], 0.2, 1)
-            not_pu2 = trim_mean(probe.data[:, 1::2], 0.2, 1)
-            sig2 = f * np.log10(pu2 / not_pu2)
+            sig2 = d['Probe1'].signal
 
         # print(sig.shape, ref_mean.shape, norm_std.shape, probe_mean.shape)
         if not TWO_PROBES:
@@ -234,7 +231,7 @@ class PhaseTecCam(ICam):
         back_probe = np.nanmean(arr[:, :, :], 2)
         self.background = back_probe
 
-        fname = Path(__file__.parent / 'back')
+        fname = Path(__file__).parent / 'back'
         np.save(fname, back_probe)
 
     def remove_background(self):
