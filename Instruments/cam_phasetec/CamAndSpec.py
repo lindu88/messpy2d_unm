@@ -40,7 +40,7 @@ class PhaseTecCam(ICam):
         probe2_rows: Tuple[int, int] = attr.ib()
         line_names: List[str] = ['Probe', 'Probe2', 'Ref', 'max']
         std_names: List[str] = ['Probe', 'Probe2', 'Ref', 'Probe/Ref']
-        sig_names: List[str] = ['Sig', 'SigNoRef', 'Sig2', 'Sig2NoRef']
+        sig_names: List[str] = ['SigNoRef', 'Sig',  'Sig2NoRef', 'Sig2']
     beta1: Optional[object] = None
     beta2: Optional[object] = None
     channels: int = 128
@@ -139,7 +139,8 @@ class PhaseTecCam(ICam):
             normed = probe.data / ref.data
             norm_std = 100 * np.nanstd(normed, 1) / np.nanmean(normed, 1)
 
-            if ch[0][0] > 0.5:
+            n = first(ch[0], 1)
+            if (n % 2) == 0:
                 f = 1000
             else:
                 f = -1000
@@ -189,7 +190,7 @@ class PhaseTecCam(ICam):
                               stds=np.stack(
                                   (probe.std, probe2.std, ref.std, norm_std)),
                               signals=np.stack(
-                                  (sig, sig2, sig_pr2, sig_pr2_noref)),
+                                  (sig2, sig, sig_pr2_noref, sig_pr2)),
                               valid=True)
             #
         return reading

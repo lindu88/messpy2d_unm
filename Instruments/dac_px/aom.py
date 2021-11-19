@@ -24,18 +24,18 @@ def default_dac():
 class AOM:
     dac: 'PXDAC.DAC' = attr.Factory(default_dac)
 
-    amp_fac: float = 1
+    amp_fac: float = 1.0
     calib: Optional[tuple] = None
     nu: Optional[np.ndarray] = None
     nu0_THz: float = 55
     dac_freq_MHz: float = 1200
     rf_freq_MHz: float = 75
-    pixel : np.ndarray = np.arange(PIXEL)
+    pixel: np.ndarray = np.arange(PIXEL)
 
     compensation_phase: Optional[np.ndarray] = None
-    phase: Optional[np.ndarray] = np.zeros_like(PIXEL)
-    amp: np.ndarray = np.ones_like(PIXEL)
-    total_phase: Optional[np.ndarray] = np.zeros_like(PIXEL)
+    phase: Optional[np.ndarray] = np.zeros((PIXEL, 1))
+    amp: np.ndarray = np.ones((PIXEL, 1))
+    total_phase: Optional[np.ndarray] = np.zeros(PIXEL)
     mask: np.ndarray = np.zeros_like(PIXEL)
     
     chopped: bool = True
@@ -49,8 +49,6 @@ class AOM:
 
     def __attrs_post_init__(self):
         self.setup_dac()
-        print("jo")
-
         p = np.load(Path(__file__).parent / 'calib_coef.npy')
         self.set_calib(p)
 
@@ -78,7 +76,7 @@ class AOM:
         coef = np.array([self.gvd, self.tod, self.fod]) / np.array([2, 6, 24]) / 1000.
         phase = x ** 2 * coef[0] + x ** 3 * coef[1] + x ** 3 * coef[2]
         self.do_dispersion_compensation = True
-        self.compensation_phase = phase
+        self.compensation_phase = phase[:, None]
         log.info('Updating dispersion compensation %1.f %.2f %.2e %.2e', self.nu0_THz, self.gvd, self.tod, self.fod)
         self.generate_waveform()
 
@@ -131,7 +129,7 @@ class AOM:
 
     def generate_waveform(self):
         if self.compensation_phase is not None and self.do_dispersion_compensation:
-            phase = self.phase + self.compensation_phase
+            phase = self.phase - self.compensation_phase
         else:
             phase = self.phase
 
@@ -143,9 +141,9 @@ class AOM:
             masks = self.classic_wf(self.amp, self.total_phase)
 
         if self.chopped:
-            masks = np.concatenate((0*masks, masks))
+            masks = np.concatenate((0*masks, masks), axis=1)
         if self.phase_cycle:
-            masks = np.concatenate((masks, -masks))
+            masks = np.concatenate((masks, -masks), axis=1)
         self.load_mask(masks)
 
     def voltage(self, i: int):
@@ -168,12 +166,13 @@ class AOM:
             self.generate_waveform()
 
     def load_mask(self, mask=None):
-        return
         if mask is not None:
             self.mask = mask
 
-        if len(self.mask.shape) > 1:
-            self.mask = self.mask.ravel()
+        if len(self.mask.shape) == 2:
+            assert(self.mask.shape[0] == PIXEL)
+            self.mask = self.mask.ravel(order='f')
+
         mask = (self.amp_fac * MAX_16_Bit * self.mask).astype('int16')
 
         assert (mask.dtype == np.int16)
@@ -204,7 +203,8 @@ class AOM:
                 single_mask[i:i + width] = pulse_train_mask[i:i + width]
 
         # Three frames: train, single and full
-        mask = np.hstack((pulse_train_mask, single_mask, full_mask))
+        mask = np.stack((pulse_train_mask, single_mask, full_mask), axis=1)
+        print("mb", mask.shape)
         return mask
 
     def load_calib_mask(self):

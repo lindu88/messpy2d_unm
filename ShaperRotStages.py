@@ -87,12 +87,17 @@ if __name__ == '__main__':
     # from qt_material import apply_stylesheet
     # apply_stylesheet(app, 'light_blue.xml')
     aom = AOM()
-    from Instruments.RotationStage import RotationStage
+    #from Instruments.RotationStage import RotationStage
+    from Instruments.signal_processing import cm2THz
+    aom.set_wave_amp(0.4)
+    aom.gvd = -50
+    aom.nu0_THz = cm2THz(2100)
+    aom.update_dispersion_compensation()
 
-    r1 = RotationStage(name="Grating1", comport="COM5")
-    r2 = RotationStage(name="Grating2", comport="COM6")
+    #r1 = RotationStage(name="Grating1", comport="COM5")
+    #r2 = RotationStage(name="Grating2", comport="COM6")
 
-    sc = ShaperControl(rs1=r1, rs2=r2, aom=aom)
-    sc.show()
+    #sc = ShaperControl(rs1=r1, rs2=r2, aom=aom)
+    #sc.show()
 
-    app.exec_()
+    #app.exec_()
