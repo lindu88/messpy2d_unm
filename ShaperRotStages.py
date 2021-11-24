@@ -47,9 +47,9 @@ class ShaperControl(QtWidgets.QWidget):
         self.slider.valueChanged.connect(lambda x: self.aom.set_wave_amp(x / 1000))
 
         calib_label = QtWidgets.QLabel()
-        f = lambda x: calib_label.setText("%e %e %e %e" % x)
-        aom.sigCalibChanged.connect(f)
-        aom.sigCalibChanged.emit(aom.calib)
+        f = lambda x: calib_label.setText("%.2e %.2e %.2e" % tuple(x))
+        self.aom.sigCalibChanged.connect(f)
+        self.aom.sigCalibChanged.emit(self.aom.calib)
 
         self.chopped = QtWidgets.QCheckBox("Chopped")
         self.chopped.setChecked(self.aom.chopped)
@@ -72,9 +72,10 @@ class ShaperControl(QtWidgets.QWidget):
         for c in self.disp_param.children():
             c.sigValueChanged.connect(self.update_disp)
         self.pt.setParameters(self.disp_param)
-        self.setLayout(vlay(self.c1,
-                            self.c2,
+        self.setLayout(vlay(c1,
+                            c2,
                             hlay(slider_lbl, self.slider),
+                            calib_label,
                             self.chopped,
                             self.pc,
                             self.pt,
@@ -83,7 +84,7 @@ class ShaperControl(QtWidgets.QWidget):
     def update_disp(self):
         from Instruments.signal_processing import cm2THz
         for i in ['gvd', 'tod', 'fod']:
-            setattr(self.aom, i, self.disp_param[i])
+            setattr(self.aom, i, self.disp_param[i]*1000)
         self.aom.nu0_THz = cm2THz(self.disp_param['center'])
         self.aom.update_dispersion_compensation()
 

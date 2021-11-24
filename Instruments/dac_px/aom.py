@@ -10,6 +10,7 @@ from .shaper_calculations import double_pulse_mask
 from typing import TYPE_CHECKING, Tuple
 if TYPE_CHECKING:
     from .pxdac import PXDAC
+import matplotlib.pyplot as plt
 
 PIXEL = 4096 * 3  # 12288
 MAX_16_Bit = (1 << 13) - 1
@@ -82,13 +83,14 @@ class AOM(QObject):
         Updates the dispersion correction phase from the class attributes.
         """
         x = self.nu - self.nu0_THz
-        x *= (2 * np.pi) * 1000 # PHz -> disp params in fs^-n (n=2,3,4)
+        x *= (2 * np.pi) / 1000 # PHz -> disp params in fs^-n (n=2,3,4)
         coef = np.array([self.gvd, self.tod, self.fod]) / np.array([2, 6, 24])
-        phase = x ** 2 * coef[0] + x ** 3 * coef[1] + x ** 3 * coef[2]
+        print(self.gvd, self.tod, self.fod, self.nu0_THz)
+        phase = x ** 2 * coef[0] + x ** 3 * coef[1] + x ** 4 * coef[2]
         self.do_dispersion_compensation = True
-        self.compensation_phase = phase[:, None]
+        self.compensation_phase = -phase[:, None]
         log.info('Updating dispersion compensation %1.f %.2f %.2e %.2e', self.nu0_THz, self.gvd, self.tod, self.fod)
-        self.sigDispersionChanged.emit(self.nu0_THz, self.gvd, self.tod, self.fod)
+        self.sigDispersionChanged.emit((self.gvd, self.tod, self.fod))
         self.generate_waveform()
 
     def set_calib(self, p):
