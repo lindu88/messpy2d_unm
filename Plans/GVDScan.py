@@ -10,8 +10,8 @@ from qtpy.QtCore import QObject, Signal
 
 from Config import config
 from ControlClasses import Cam
-from Instruments.dac_px.pxdac import AOM
-import hdf
+from Instruments.dac_px import AOM
+
 
 
 @attr.s(auto_attribs=True, cmp=False)
@@ -19,16 +19,17 @@ class GVDScan(QObject):
     name: str
     cam: Cam
     aom: AOM
-    gvd_list: T.Sized[float]
+    gvd_list: T.List[float]
     gvd_idx: int = 0
     waiting_time: float = 0.1
     timeout: float = 3
-    scan_mode: T.Literal['GVD', 'FOD', 'TOD'] = 'GVD'
+    scan_mode: T.Literal['GVD', 'TOD', 'FOD'] = 'GVD'
     gvd: float = 0
     tod: float = 0
     fod: float = 0
-
+    shots: int = 50
     observed_channel: T.Optional[int] = None
+
 
     sigPointRead = Signal()
 
@@ -36,7 +37,7 @@ class GVDScan(QObject):
         QObject.__init__(self)
         n_disp = len(self.gvd_list)
         n_pix = self.cam.channels
-        if self.aom.freq_calibration is None:
+        if self.aom.calib is None:
             raise ValueError("Shaper must have an calibration")
         self.wls = np.zeros((n_disp, n_pix))
         self.probe = np.zeros((n_disp, n_pix))
@@ -48,14 +49,16 @@ class GVDScan(QObject):
         self.make_step = lambda: next(gen)
 
     def make_step_gen(self):
-        self.aom.gvd = self.gvd
-        self.aom.tod = self.tod
-        self.aom.fod = self.fod
+        self.aom.gvd = self.gvd * 1000
+        self.aom.tod = self.tod * 1000
+        self.aom.fod = self.fod * 1000
+        self.cam.set_shots(self.shots)
 
         for self.gvd_idx, value in enumerate(self.gvd_list):
-            d = {self.scan_mode: value}
-            self.aom.set_dispersion_correct(**d)
-            t = threading.Thread(target=time.sleep, kwargs=self.waiting_time)
+            #d = {self.scan_mode: value}
+            setattr(self.aom, self.scan_mode.lower(), value*1000)
+            self.aom.update_dispersion_compensation()
+            t = threading.Thread(target=time.sleep, args=(self.waiting_time,))
             t.start()
             while t.is_alive():
                 yield
@@ -67,7 +70,7 @@ class GVDScan(QObject):
             probe = self.cam.last_read.lines[0, :]
             probe2 = self.cam.last_read.lines[1, :]
             ref = self.cam.last_read.lines[2, :]
-            sig = self.cam.last_read.signals
+            sig = self.cam.last_read.signals.T
 
             self.probe[self.gvd_idx, :] = probe
             self.probe2[self.gvd_idx, :] = probe2

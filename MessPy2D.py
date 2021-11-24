@@ -123,6 +123,13 @@ class MainWindow(QMainWindow):
         pp.clicked.connect(plan_starter(ScanSpectrumStarter))
         tb.addWidget(pp)
 
+        if controller.shaper is not None:
+            asl_icon = qta.icon('ei.barcode', color='white')
+            pp = QPushButton('GVD Scan', icon=asl_icon)
+            pp.clicked.connect(plan_starter(GVDScanStarter))
+            tb.addWidget(pp)
+
+
         asl_icon = qta.icon('ei.download', color='white')
         pp = QPushButton('Save current Spec', icon=asl_icon)
         tb.addWidget(pp)
