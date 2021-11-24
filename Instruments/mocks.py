@@ -95,7 +95,6 @@ class DelayLineMock(IDelayLine):
             time_passed = self.current_move[0] - time.time()
         return self.pos_mm
 
-
     def is_moving(self):
         return False
 
@@ -131,4 +130,8 @@ class ShutterMock(IShutter):
         self.is_open = not self.is_open
         state.shutter = self.is_open
 
+
+@attr.s(auto_attribs=True)
+class AOMMock:
+    pass
 

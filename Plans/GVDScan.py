@@ -24,6 +24,9 @@ class GVDScan(QObject):
     waiting_time: float = 0.1
     timeout: float = 3
     scan_mode: T.Literal['GVD', 'FOD', 'TOD'] = 'GVD'
+    gvd: float = 0
+    tod: float = 0
+    fod: float = 0
 
     observed_channel: T.Optional[int] = None
 
@@ -31,20 +34,23 @@ class GVDScan(QObject):
 
     def __attrs_post_init__(self):
         QObject.__init__(self)
-        n_wl = len(self.gvd_list)
+        n_disp = len(self.gvd_list)
         n_pix = self.cam.channels
         if self.aom.freq_calibration is None:
             raise ValueError("Shaper must have an calibration")
-        self.wls = np.zeros((n_wl, n_pix))
-        self.probe = np.zeros((n_wl, n_pix))
-        self.probe2 = np.zeros((n_wl, n_pix))
-        self.ref = np.zeros((n_wl, n_pix))
-        self.signal = np.zeros((n_wl,  n_pix, self.cam.sig_lines))
+        self.wls = np.zeros((n_disp, n_pix))
+        self.probe = np.zeros((n_disp, n_pix))
+        self.probe2 = np.zeros((n_disp, n_pix))
+        self.ref = np.zeros((n_disp, n_pix))
+        self.signal = np.zeros((n_disp,  n_pix, self.cam.sig_lines))
 
         gen = self.make_step_gen()
         self.make_step = lambda: next(gen)
 
     def make_step_gen(self):
+        self.aom.gvd = self.gvd
+        self.aom.tod = self.tod
+        self.aom.fod = self.fod
 
         for self.gvd_idx, value in enumerate(self.gvd_list):
             d = {self.scan_mode: value}
