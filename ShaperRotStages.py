@@ -46,6 +46,11 @@ class ShaperControl(QtWidgets.QWidget):
         self.slider.setValue(int(self.aom.amp_fac * 1000))
         self.slider.valueChanged.connect(lambda x: self.aom.set_wave_amp(x / 1000))
 
+        calib_label = QtWidgets.QLabel()
+        f = lambda x: calib_label.setText("%e %e %e %e" % x)
+        aom.sigCalibChanged.connect(f)
+        aom.sigCalibChanged.emit(aom.calib)
+
         self.chopped = QtWidgets.QCheckBox("Chopped")
         self.chopped.setChecked(self.aom.chopped)
         self.chopped.toggled.connect(lambda x: setattr(self.aom, 'chopped', x))
@@ -61,18 +66,19 @@ class ShaperControl(QtWidgets.QWidget):
 
         self.pt = ParameterTree()
         self.disp_param = Parameter.create(name='Dispersion',
-                                type='group',
-                                children=dispersion_params)
+                                           type='group',
+                                           children=dispersion_params)
 
         for c in self.disp_param.children():
             c.sigValueChanged.connect(self.update_disp)
         self.pt.setParameters(self.disp_param)
-        self.setLayout(vlay((hlay((slider_lbl, self.slider)),
-                             vlay([c1, c2]),
-                             self.chopped,
-                             self.pc,
-                             self.pt,
-                             hlay((self.apply, self.cali)))))
+        self.setLayout(vlay(self.c1,
+                            self.c2,
+                            hlay(slider_lbl, self.slider),
+                            self.chopped,
+                            self.pc,
+                            self.pt,
+                            hlay((self.apply, self.cali))))
 
     def update_disp(self):
         from Instruments.signal_processing import cm2THz
@@ -87,17 +93,18 @@ if __name__ == '__main__':
     # from qt_material import apply_stylesheet
     # apply_stylesheet(app, 'light_blue.xml')
     aom = AOM()
-    #from Instruments.RotationStage import RotationStage
+    # from Instruments.RotationStage import RotationStage
     from Instruments.signal_processing import cm2THz
+
     aom.set_wave_amp(0.4)
     aom.gvd = -50
     aom.nu0_THz = cm2THz(2100)
     aom.update_dispersion_compensation()
 
-    #r1 = RotationStage(name="Grating1", comport="COM5")
-    #r2 = RotationStage(name="Grating2", comport="COM6")
+    # r1 = RotationStage(name="Grating1", comport="COM5")
+    # r2 = RotationStage(name="Grating2", comport="COM6")
 
-    #sc = ShaperControl(rs1=r1, rs2=r2, aom=aom)
-    #sc.show()
+    # sc = ShaperControl(rs1=r1, rs2=r2, aom=aom)
+    # sc.show()
 
-    #app.exec_()
+    # app.exec_()

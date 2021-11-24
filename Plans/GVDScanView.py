@@ -14,7 +14,7 @@ class GVDScanView(QWidget):
         self.plan = gvd_plan
 
         self.gvd_amp = ObserverPlot(
-            obs=[lambda: self.plan.lines[0], lambda: self.plan.lines[1], lambda: self.plan.lines[2]],
+            obs=[lambda: self.plan.lines[:, :, 1].sum(1)],
             signal=gvd_plan.sigStepDone,
             x=gvd_plan.gvd_list)
 
@@ -49,6 +49,10 @@ class GVDScanStarter(PlanStartDialog):
                {'name': 'Step', 'type': 'float', 'value': 1000, 'step': 1000},
                {'name': 'Scan Mode', 'type': 'list', 'values': ['GVD', 'TOD', 'FOD']},
                {'name': 'Waiting time (s)', 'type': 'float', 'value': 0.1, 'step': 0.05},
+               {'name': 'GVD', 'type':'float', 'value': 0, 'step': 1},
+               {'name': 'TOD', 'type': 'float', 'value': 0, 'step': 1},
+               {'name': 'FOD', 'type': 'float', 'value': 0, 'step': 1},
+
                ]
         self.p = pt.Parameter.create(name='Exp. Settings', type='group', children=tmp)
         params = [self.p]
@@ -63,6 +67,9 @@ class GVDScanStarter(PlanStartDialog):
         end = max(p['Start Val'], p['End Val'])
         gvd_list = np.arange(start, end, p['step'])
         fs = GVDScan(
+            gvd=p['GVD'],
+            tod=p['TOD'],
+            fod=p['FOD'],
             name=p['Filename'],
             cam=controller.cam,
             gvd_list=gvd_list,

@@ -57,6 +57,11 @@ class NewportDelay(IDelayLine):
     rot: serial.Serial = attr.ib()
     last_pos: float = 0
     pos_sign = -1.
+    _busy_cnt = 0
+    """
+    At least answer n-times with true for is_moving after calling move. Workaround since
+    the controller sometimes answers wrongly after calling a move.
+    """
 
     @rot.default
     def _default_rs(self):
@@ -89,6 +94,7 @@ class NewportDelay(IDelayLine):
         setter_str = f'1PA{pos}\r\n'
         self.rot.write(setter_str.encode('utf-8'))
         self.rot.timeout = 3
+        self._busy_cnt = 3
 
     def get_state(self) -> dict:
         return dict(last_pos=self.last_pos)
@@ -113,6 +119,9 @@ class NewportDelay(IDelayLine):
             return 0
 
     def is_moving(self):
+        if self._busy_cnt > 0:
+            self._busy_cnt -= 1
+            return True
         return self.controller_state().startswith('MOVING')
 
 

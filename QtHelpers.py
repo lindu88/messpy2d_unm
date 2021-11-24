@@ -429,15 +429,14 @@ def make_groupbox(widgets, title=''):
         vl.addWidget(i)
     if title:
         gb.setTitle(title)
-
     return gb
 
 
-
-
-
-def hlay(widgets, add_stretch=False):
+def hlay(*widgets, add_stretch=False):
     lay = QHBoxLayout()
+    if len(widgets) == 1:
+        widgets = widgets[0]
+
     for w in widgets:
         try:
             lay.addWidget(w)
@@ -449,14 +448,15 @@ def hlay(widgets, add_stretch=False):
     return lay
 
 
-def vlay(widgets, add_stretch=False):
+def vlay(*widgets, add_stretch=False):
     lay = QVBoxLayout()
+    if len(widgets) == 1:
+        widgets = widgets[0]
     for w in widgets:
         try:
             lay.addWidget(w)
         except TypeError:
             lay.addLayout(w)
-
     if add_stretch:
         lay.addStretch(1)
     return lay

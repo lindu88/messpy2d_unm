@@ -20,11 +20,14 @@ def default_dac():
     from .pxdac import PXDAC
     return PXDAC.DAC(1)
 
+from qtpy.QtCore import QObject, Signal
+
 @attr.s(auto_attribs=True)
-class AOM:
+class AOM(QObject):
     dac: 'PXDAC.DAC' = attr.Factory(default_dac)
 
     amp_fac: float = 1.0
+    wave_amp: float = 0.4
     calib: Optional[tuple] = None
     nu: Optional[np.ndarray] = None
     nu0_THz: float = 55
@@ -47,10 +50,17 @@ class AOM:
     tod: float = 0
     fod: float = 0
 
+    sigCalibChanged = Signal(object)
+    sigDispersionChanged = Signal(tuple)
+    sigModeChanged = Signal()
+
     def __attrs_post_init__(self):
+        super(AOM, self).__init__()
         self.setup_dac()
-        p = np.load(Path(__file__).parent / 'calib_coef.npy')
-        self.set_calib(p)
+        p = Path(__file__).parent / 'calib_coef.npy'
+        if p.exists():
+            vals = np.load(p)
+            self.set_calib(vals)
 
     def setup_dac(self):
         dac = self.dac
@@ -69,15 +79,16 @@ class AOM:
 
     def update_dispersion_compensation(self):
         """
-        Updates the dispersion correction phase from
+        Updates the dispersion correction phase from the class attributes.
         """
         x = self.nu - self.nu0_THz
-        x *= (2 * np.pi)
-        coef = np.array([self.gvd, self.tod, self.fod]) / np.array([2, 6, 24]) / 1000.
+        x *= (2 * np.pi) * 1000 # PHz -> disp params in fs^-n (n=2,3,4)
+        coef = np.array([self.gvd, self.tod, self.fod]) / np.array([2, 6, 24])
         phase = x ** 2 * coef[0] + x ** 3 * coef[1] + x ** 3 * coef[2]
         self.do_dispersion_compensation = True
         self.compensation_phase = phase[:, None]
         log.info('Updating dispersion compensation %1.f %.2f %.2e %.2e', self.nu0_THz, self.gvd, self.tod, self.fod)
+        self.sigDispersionChanged.emit(self.nu0_THz, self.gvd, self.tod, self.fod)
         self.generate_waveform()
 
     def set_calib(self, p):
@@ -87,6 +98,7 @@ class AOM:
         self.calib = np.array(p)
         np.save(Path(__file__).parent/'calib_coef.npy', self.calib)
         self.nu = np.polyval(p, self.pixel)
+        self.sigCalibChanged.emit(self.calib)
 
     def bragg_wf(self, amp, phase):
         """Calculates a Bragg-correct AOM waveform for given phase and shape"""
@@ -128,6 +140,12 @@ class AOM:
             self.amp = amp
 
     def generate_waveform(self):
+        """"
+        Actually generates the waveform from set phase and amp. If turned on,
+        it will also add the dispersion compensation phase in addition.
+        Depending on the `mode` attribute, it will either use a bragg corrected
+        waveform or the classic wavevorm.
+        """
         if self.compensation_phase is not None and self.do_dispersion_compensation:
             phase = self.phase - self.compensation_phase
         else:
@@ -152,8 +170,14 @@ class AOM:
         self.dac.set_output_voltage(ch1=i)
 
     def set_wave_amp(self, amp):
+        """
+        Sets the amplitude of RF-wave. This is archived in two ways. If possible, just the output voltage of the DAC
+        is varied. Since this has a lower limit, a set-point below 0.56 is achieved by scaling the array containing
+        the waveform, hence it requires a recalculation of the waveform which normally uses the full scale of the DAC.
+        """
         if not (0 <= amp <= 1):
             raise ValueError('Amplitude has to be between 0 and 1')
+        self.wave_amp = amp
         V = 1.4 * amp
         if V > 0.4:
             k = int((V - 0.4) * 1023)
@@ -163,7 +187,7 @@ class AOM:
             self.voltage(0)
             f = V / 0.4
             self.amp_fac = f
-            self.generate_waveform()
+            self.load_mask()
 
     def load_mask(self, mask=None):
         if mask is not None:
@@ -204,7 +228,6 @@ class AOM:
 
         # Three frames: train, single and full
         mask = np.stack((pulse_train_mask, single_mask, full_mask), axis=1)
-        print("mb", mask.shape)
         return mask
 
     def load_calib_mask(self):
