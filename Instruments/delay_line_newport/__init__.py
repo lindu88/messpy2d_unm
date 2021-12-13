@@ -70,6 +70,7 @@ class NewportDelay(IDelayLine):
         return rot
 
     def __attrs_post_init__(self):
+        super(NewportDelay, self).__attrs_post_init__()
         state = self.controller_state()
         if state.startswith('DISABLE'):
             self.w('1MM')

@@ -429,7 +429,10 @@ def make_groupbox(widgets, title=''):
     vl = QVBoxLayout(gb)
     vl.setContentsMargins(0, 0, 0, 0)
     for i in widgets:
-        vl.addWidget(i)
+        if isinstance(i, QWidget):
+            vl.addWidget(i)
+        else:
+            vl.addLayout(i)
     if title:
         gb.setTitle(title)
     return gb

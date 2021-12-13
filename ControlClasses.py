@@ -75,6 +75,9 @@ class Cam(QObject):
         # self.sigReadCompleted.emit()
         return rd
 
+    def start_two_reading(self):
+        pass
+
     def set_wavelength(self, wl, timeout=5):
         self.cam.set_wavelength(wl, timeout=timeout)
         self.sigWavelengthChanged.emit(wl)

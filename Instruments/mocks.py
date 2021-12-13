@@ -1,3 +1,5 @@
+from typing import Dict
+
 import numpy as np
 import attr
 from Instruments.interfaces import ICam, IDelayLine, IRotationStage, IShutter, Reading, Spectrum
@@ -26,6 +28,7 @@ class CamMock(ICam):
     background: object = None
     changeable_wavelength: True = True
     center_wl: float = 300
+    _cur_grating: int = 0
 
     def set_shots(self, shots):
         self.shots = shots
@@ -74,6 +77,16 @@ class CamMock(ICam):
 
     def get_spectra(self):
         pass
+
+    @property
+    def gratings(self) -> Dict[int, str]:
+        return {0: "0", 1: "1"}
+
+    def set_grating(self, idx: int):
+        self._cur_grating = idx
+
+    def get_grating(self) -> int:
+        return self._cur_grating
 
 @attr.s(auto_attribs=True)
 class DelayLineMock(IDelayLine):
