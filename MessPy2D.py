@@ -10,7 +10,7 @@ from Instruments.interfaces import IAOMPulseShaper
 from Plans import *
 from Plans.ShaperCalibPlan import CalibScanView, CalibPlan
 from QtHelpers import dark_palette, ControlFactory, make_groupbox, \
-    ObserverPlot, ValueLabels, ObserverPlotWithControls
+    ObserverPlot, ValueLabels, ObserverPlotWithControls, hlay
 from SampleMoveWidget import MoveWidget
 from ControlClasses import Controller
 
@@ -348,14 +348,30 @@ class CommandMenu(QWidget):
         spec.sigWavelengthChanged.emit(spec.get_wavelength())
 
         l = [spec_control]
+
         if spec.cam.changeable_slit:
             pre_fcn = lambda x: spec.set_slit(spec.get_slit() + x)
             slit_control = ControlFactory('Slit (μm)', cam.set_slit, presets=[-10, 10], preset_func=pre_fcn)
             slit_control.update_value(spec.get_slit())
             spec.sigSlitChanged.connect(slit_control.update_value)
             l.append(slit_control)
+
+
         cb = QCheckBox('Use Wavenumbers')
-        l[-1].layout().addRow( cb)
+        l[-1].layout().addRow(cb)
+        if len(spec.cam.gratings) > 1:
+            gratings = spec.cam.gratings
+            cur_grating = spec.cam.get_grating()
+            lbl = QLabel('G: %s' % gratings[cur_grating])
+            btns = [lbl]
+            for idx, name in gratings.items():
+                btn = QPushButton(name)
+                btn.clicked.connect(lambda idx=idx: spec.cam.set_grating(idx))
+                btn.clicked.connect(lambda idx=idx, name=name: lbl.setText('G: %s' % name))
+                btn.setFixedSize(80, 40)
+                btns.append(btn)
+
+            l.append(hlay(btns, add_stretch=1))
         gb = make_groupbox(l, f"Spec: {cam.cam.name}")
         cb.clicked.connect(cam.set_disp_wavelengths)
         return gb

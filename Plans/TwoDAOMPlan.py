@@ -14,6 +14,7 @@ if TYPE_CHECKING:
 from Instruments.dac_px import AOM
 
 from qtpy.QtWidgets import QApplication
+import h5py
 
 @attrs(auto_attribs=True)
 class PulseShaperTwoDPlan(Plan):
@@ -38,8 +39,9 @@ class PulseShaperTwoDPlan(Plan):
             c.delay_line.set_pos(t3, do_wait=False)
             while c.delay_line.moving:
                 yield
-            c.cam.read_cam()
-            c.cam.make_2D_reading()
+            yield from self.measure_point()
 
     def measure_point(self):
-        pass
+        c.cam.read_cam()
+
+    def save_data(self):

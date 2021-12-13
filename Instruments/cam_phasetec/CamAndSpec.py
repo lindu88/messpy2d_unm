@@ -84,7 +84,7 @@ class PhaseTecCam(ICam):
         return None
 
     def __attr_post_init__(self):
-        self.init()
+        super(PhaseTecCam, self).__attr_post_init__()
 
     def get_state(self):
         d = {
@@ -246,5 +246,15 @@ class PhaseTecCam(ICam):
             return np.arange(-64, 64, 1)
         else:
             return (np.arange(128) - center_ch) * disp + center_wl
+
+    @property
+    def gratings(self) -> Dict[int, str]:
+        return {0: '75', 1: '30'}
+
+    def set_grating(self, idx: int):
+        self._spec.set_grating(idx)
+
+    def get_grating(self) -> int:
+        return self._spec.get_grating()
 
 _ircam = PhaseTecCam()

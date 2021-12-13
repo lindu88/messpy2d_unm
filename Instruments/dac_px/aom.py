@@ -21,10 +21,11 @@ def default_dac():
     from .pxdac import PXDAC
     return PXDAC.DAC(1)
 
-from qtpy.QtCore import QObject, Signal
+from Instruments.interfaces import IDevice
+from qtpy.QtCore import Signal
 
 @attr.s(auto_attribs=True)
-class AOM(QObject):
+class AOM(IDevice):
     dac: 'PXDAC.DAC' = attr.Factory(default_dac)
 
     amp_fac: float = 1.0
@@ -53,15 +54,30 @@ class AOM(QObject):
 
     sigCalibChanged = Signal(object)
     sigDispersionChanged = Signal(tuple)
-    sigModeChanged = Signal()
+    sigModeChanged = Signal(str)
 
     def __attrs_post_init__(self):
         super(AOM, self).__init__()
         self.setup_dac()
-        p = Path(__file__).parent / 'calib_coef.npy'
-        if p.exists():
-            vals = np.load(p)
-            self.set_calib(vals)
+
+    def get_state(self) -> dict:
+        d = {
+            'calib': self.calib,
+            'gvd': self.gvd,
+            'fod': self.fod,
+            'tod': self.tod,
+            'wave_amp': self.wave_amp,
+            'chopped': self.chopped,
+            'do_dispersion_compensation': self.do_dispersion_compensation,
+            'phase_cycle': self.phase_cycle,
+            'mode': self.mode,
+            'nu0_THz': self.nu0_THz,
+        }
+
+    def load_state(self):
+        super(AOM, self).load_state()
+        self.set_wave_amp(self.wave_amp)
+        self.update_dispersion_compensation()
 
     def setup_dac(self):
         dac = self.dac

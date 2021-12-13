@@ -1,4 +1,5 @@
 import typing, abc, time, attr, threading, multiprocessing
+import warnings
 import xmlrpc.server as rpc
 
 import numpy as np
@@ -14,11 +15,19 @@ import atexit
 
 from .signal_processing import Reading, Reading2D, Spectrum
 
+QObjectType = type(QObject)
+
+class QABCMeta(QObjectType, abc.ABCMeta):
+    pass
+
 @attr.s(auto_attribs=True)
-class IDevice(abc.ABC):
+class IDevice(QObject, metaclass=QABCMeta):
     name: str
 
-    def init(self):
+    registered_devices: T.ClassVar[list['IDevice']] = []
+
+    def __attrs_post_init__(self):
+        self.registered_devices.append(self)
         self.load_state()
         atexit.register(self.save_state)
 
@@ -45,9 +54,6 @@ class IDevice(abc.ABC):
 
         return thr
 
-    def extra_opts(self):
-        pass
-
     def get_state(self) -> dict:
         return dict()
 
@@ -57,17 +63,22 @@ class IDevice(abc.ABC):
             with open(self.name + '.cfg', 'w') as f:
                 json.dump(d, f)
 
-    def load_state(self, exclude: T.Optional[T.List[str]]=None):
+    def load_state(self, exclude: T.Optional[T.List[str]] = None):
+        """
+        Looks for a .cfg file. If found, uses all values in the json
+        as attributes.
+        """
         try:
             with open(self.name + '.cfg', 'r') as f:
                 d = json.load(f)
-            for key, val in d:
-                if key not in exclude:
+            for key, val in d.items():
+                if not hasattr(self, key):
+                    warnings.warn(f"Config file for {self.name} has value for {key}, which is not "
+                                  f"an attribute of the class.")
+                if exclude and key not in exclude:
                     setattr(self, key, val)
         except FileNotFoundError:
             return
-
-
 
 
 # Defining a minimal interface for each hardware
@@ -145,6 +156,16 @@ class ICam(IDevice):
     def get_slit(self) -> float:
         return 0
 
+    @property
+    def gratings(self) -> T.Dict[int, str]:
+        return {0: 'std'}
+
+    def set_grating(self, idx: int):
+        pass
+
+    def get_grating(self) -> int:
+        pass
+
     async def async_make_read(self):
 
         out = asyncio.Queue()
@@ -187,6 +208,9 @@ class IDelayLine(IDevice):
     home_pos: float = attr.Factory(_try_load)
     pos_sign: float = 1
 
+    def get_state(self) -> dict:
+        return dict(home_pos=self.home_pos)
+
     @abc.abstractmethod
     def move_mm(self, mm, *args, **kwargs):
         pass
@@ -212,16 +236,8 @@ class IDelayLine(IDevice):
         return False
 
     def def_home(self):
-        import json
         self.home_pos = self.get_pos_mm()
-        with open("home_pos", 'w') as f:
-            json.dump(dict(home=self.home_pos), f)
-
-    def load_home(self):
-        import json
-        with open("home_pos", 'r') as f:
-            self.home_pos = json.load(f)['home']
-        print(self.home_pos)
+        self.save_state()
 
     async def async_move_mm(self, mm, do_wait=False):
         self.move_mm(mm)
@@ -370,7 +386,7 @@ class DAC(abc.ABC):
         pass
 
 
-@attr.s
+@attr.s(kw_only=True)
 class IAOMPulseShaper(PulseShaper):
     dac: DAC
     disp: T.Optional[np.ndarray] = None
@@ -389,7 +405,7 @@ class IAOMPulseShaper(PulseShaper):
         pass
 
     def set_mask(self, amp, phase):
-        return dac.set_mask(amp, phase)
+        return self.dac.set_mask(amp, phase)
 
     def mask_wfn(self, masks):
         wfn = np.zeros((self.pixel, len(masks)))
@@ -400,7 +416,6 @@ class IAOMPulseShaper(PulseShaper):
 
     def set_disp_mask(self, mask):
         pass
-
 
     def set_mode(self, chopped=True, phase_cycling=False):
         mask1 = np.ones(self.pixel)
