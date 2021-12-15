@@ -11,8 +11,9 @@ from .imaq_nicelib import Cam
 from .spec_sp2500i import SP2500i
 from typing import List, Optional, Tuple, Dict
 from scipy.stats import trim_mean
+from math import log
 
-LOG10 = np.log(10)
+LOG10 = log(10)
 PROBE_CENTER = 115
 PROBE_CENTER_2 = 70
 REF_CENTER = 26
@@ -41,6 +42,7 @@ class PhaseTecCam(ICam):
         line_names: List[str] = ['Probe', 'Probe2', 'Ref', 'max']
         std_names: List[str] = ['Probe', 'Probe2', 'Ref', 'Probe/Ref']
         sig_names: List[str] = ['SigNoRef', 'Sig',  'Sig2NoRef', 'Sig2']
+
     beta1: Optional[object] = None
     beta2: Optional[object] = None
     channels: int = 128
@@ -75,9 +77,6 @@ class PhaseTecCam(ICam):
         except IOError:
             pass
         return None
-
-    def __attr_post_init__(self):
-        super(PhaseTecCam, self).__attr_post_init__()
 
     def get_state(self):
         d = {
