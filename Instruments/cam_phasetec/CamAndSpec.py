@@ -2,7 +2,7 @@ from pathlib import Path
 import numpy as np
 import wrapt
 from Instruments.interfaces import ICam
-from Instruments.signal_processing import Reading, Spectrum, first
+from Instruments.signal_processing import Reading, Spectrum, first, fast_col_mean
 from Config import config
 import attr
 
@@ -48,6 +48,7 @@ class PhaseTecCam(ICam):
     changeable_wavelength: bool = True
     changeable_slit: bool = False
     background: Optional[np.ndarray] = attr.ib()
+    valid_pixel: Optional[List[np.ndarray]] = None
     _cam: Cam = attr.ib(factory=Cam)
 
     @probe_rows.default
@@ -106,6 +107,21 @@ class PhaseTecCam(ICam):
     def read_cam(self):
         return self._cam.read_cam()
 
+    def mark_valid_pixel(self,  min_val=1000, max_val=8000):
+        arr, ch = self._cam.read_cam()
+
+        pr_range = self.probe_rows
+        ref_range = self.ref_rows
+        pr2_range = self.probe2_rows
+
+        self.valid_pixel = []
+        for (l, u) in [pr_range, ref_range, pr2_range,]:
+            sub_arr = arr[l:u, :, :]
+            self.valid_pixel += [(min_val < sub_arr) & (sub_arr < max_val)]
+
+    def delete_valid_pixel(self):
+        self.valid_pixel = None
+
     def get_spectra(self, frames=None) -> Tuple[Dict[str, Spectrum], object]:
         arr, ch = self._cam.read_cam()
         if self.background is not None:
@@ -119,15 +135,23 @@ class PhaseTecCam(ICam):
         pr2_range = self.probe2_rows
         ref_range = self.ref_rows
 
-        probe = np.nanmean(arr[pr_range[0]:pr_range[1], :, :], 0)
-        ref = np.nanmean(arr[ref_range[0]:ref_range[1], :, :], 0)
+        if self.valid_pixel is not None:
+            probe = fast_col_mean(arr[pr_range[0]:pr_range[1], ...], self.valid_pixel[0])
+            ref = fast_col_mean(arr[ref_range[0]:ref_range[1], ...], self.valid_pixel[1])
+            if TWO_PROBES:
+                probe2 = fast_col_mean(arr[pr2_range[0]:pr2_range[1], ...], self.valid_pixel[2])
+        else:
+            probe = np.nanmean(arr[pr_range[0]:pr_range[1], :, :], 0)
+            ref = np.nanmean(arr[ref_range[0]:ref_range[1], :, :], 0)
+            if TWO_PROBES:
+                probe2 = np.nanmean(arr[pr2_range[0]:pr2_range[1], :, :], 0)
 
-        if TWO_PROBES:
-            probe2 = np.nanmean(arr[pr2_range[0]:pr2_range[1], :, :], 0)
-            probe2 = Spectrum.create(probe2, name='Probe2', frames=frames, first_frame=first_frame)
         probemax = np.nanmax(arr[:, :, :10], 0)
         probe = Spectrum.create(probe, probemax, name='Probe1', frames=frames, first_frame=first_frame)
         ref = Spectrum.create(ref, name='Ref', frames=frames, first_frame=first_frame)
+
+        if TWO_PROBES:
+            probe2 = Spectrum.create(probe2, name='Probe2', frames=frames, first_frame=first_frame)
         return {i.name: i for i in (probe, probe2, ref)}, ch
 
     def make_reading(self, frame_data=None):
@@ -227,7 +251,6 @@ class PhaseTecCam(ICam):
         return self._spec.set_wavelength(wl, timeout=timeout)
 
     def set_background(self, shots=0):
-        print("bla")
         arr = self._cam.read_cam()[0]
         back_probe = np.nanmean(arr[:, :, :], 2)
         self.background = back_probe
