@@ -130,13 +130,13 @@ class AOM(IDevice):
         f = self.dac_freq_MHz/self.rf_freq_MHz
         return amp * np.cos(self.pixel[:, None]/ f * 2 * np.pi + phase)
 
-    def double_pulse(self, tau_max: float, tau_step: float, rot_frame: float) -> Tuple[np.ndarray, np.ndarray]:
+    def double_pulse(self, taus, rot_frame: float) -> Tuple[np.ndarray, np.ndarray]:
         """
         Calculates the masks for creating a series a double pulses with phase cycling.
         """
         if self.nu is None:
             raise ValueError("Spectral calibration is required to calculate the masks.")
-        taus = np.arange(0, tau_max + 1e-3, tau_step)
+
         # Four step phase cycling only
         phase = np.array([(1, 0), (1, 1), (0, 1), (0, 0)]) * np.pi
         phase = np.repeat(phase, repeats=taus.shape[0], axis=0)
@@ -229,12 +229,17 @@ class AOM(IDevice):
         self.dac.BeginRamPlaybackXD48(0, full_mask.size * 2, PIXEL * 2 * 2)
 
     def start_playback(self):
+        """Start playback of the current mask"""
         self.dac.BeginRamPlaybackXD48(0, self.mask.size * 2, PIXEL * 2 * 2)
 
     def end_playback(self):
+        """End playback of the current mask"""
         self.dac.EndRamPlaybackXD48()
 
     def make_calib_mask(self, width=150, separation=350, n_single=15):
+        """
+        Calculates a calibration mask onto the shaper.
+        """
         full_mask = np.cos(np.arange(PIXEL) / 16 * 2 * np.pi)
         pulse_train_mask = np.zeros_like(full_mask)
         single_mask = np.zeros_like(full_mask)
@@ -248,11 +253,15 @@ class AOM(IDevice):
         mask = np.stack((pulse_train_mask, single_mask, full_mask), axis=1)
         return mask
 
-    def load_calib_mask(self):
-        mask = self.make_calib_mask()
+    def load_calib_mask(self, width=150, seperation=350, n_single=15):
+        """
+        Sets a calibration mask onto the shaper.
+        """
+        mask = self.make_calib_mask(width, seperation, n_single)
         self.load_mask(mask)
 
     def load_full_mask(self):
+        """Loads a full mask using a frequency of 75 MHz"""
         full_mask = np.cos(np.arange(PIXEL) / 16 * 2 * np.pi)
         self.load_mask(full_mask)
 
