@@ -1,7 +1,7 @@
 from Config import config
 import attr, time, json
 from datetime import datetime
-from typing import Optional, ClassVar
+from typing import Optional, ClassVar, Tuple
 from qtpy.QtCore import QObject, Signal
 from pathlib import Path
 from Instruments.interfaces import IDevice
@@ -28,9 +28,9 @@ class Plan(QObject):
     sigPlanFinished: ClassVar[Signal] = Signal()
     sigPlanStarted: ClassVar[Signal] = Signal()
 
-    def get_file_name(self):
+    def get_file_name(self) -> Tuple[Path, Path]:
         """Builds the filename and the metafilename"""
-        date_str = self.creation_dt.strftime(Y)
+        date_str = self.creation_dt.strftime("%y-%m-%d %H:%M")
         name = f"{date_str} {self.name}.{self.plan_shorthand}.messpy"
         meta_name = f"{date_str} {self.name}.{self.plan_shorthand}.json"
         p = Path(config.data_directory)
