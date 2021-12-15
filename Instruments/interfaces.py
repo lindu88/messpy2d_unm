@@ -24,7 +24,7 @@ class QABCMeta(QObjectType, abc.ABCMeta):
 class IDevice(QObject, metaclass=QABCMeta):
     name: str
 
-    registered_devices: T.ClassVar[list['IDevice']] = []
+    registered_devices: T.ClassVar[T.List['IDevice']] = []
 
     def __attrs_post_init__(self):
         self.registered_devices.append(self)
