@@ -104,6 +104,24 @@ def fast_signal2d(arr):
     return res
 
 
+@jit(parallel=True)
+def fast_col_mean(arr, idx):
+    """
+    Given a (pixel_a, pixel_b, shots) array together with a index array
+    (pixel_a, pixel_b), return the mean value along the pixel_a (rows)
+    dimension where the index array is true. (pixel_b, shots).
+
+    Useful for filtering a two dimensional senor along the columns.
+    """
+    s = np.zeros(arr.shape[1:])
+    for c in prange(arr.shape[1]):
+        for r in range(arr.shape[0]):
+            if idx[r, c]:
+                s[c, :] += arr[r, c, :]
+        s[c, :] /= idx[:, c].sum()
+    return s
+
+
 @attr.s(auto_attribs=True)
 class Spectrum:
     data: np.ndarray
@@ -143,7 +161,7 @@ class Spectrum:
 
 @attr.s(auto_attribs=True, cmp=False)
 class Reading:
-    "Each array has the shape (n_type, pixel)"
+    """Each array has the shape (n_type, pixel)"""
     lines: np.ndarray
     stds: np.ndarray
     signals: np.ndarray
@@ -152,7 +170,7 @@ class Reading:
 
 @attr.s(auto_attribs=True, cmp=False)
 class Reading2D:
-    "Has the shape (pixel, t2)"
+    """Has the shape (pixel, t2)"""
     interferogram: np.ndarray
     t2_ps: np.ndarray
     signal_2D: np.ndarray = attr.ib()

@@ -1,4 +1,4 @@
-from Instruments.signal_processing import first, fast_stats, fast_stats2d, fast_signal, fast_signal2d
+from Instruments.signal_processing import first, fast_stats, fast_stats2d, fast_signal, fast_signal2d, fast_col_mean
 import numpy as np
 from numpy.testing import assert_almost_equal
 
@@ -66,8 +66,10 @@ def test_classic_signal(array, benchmark):
     a = array[0, :]
     benchmark(classic_signal, a)
 
+
 def test_classic_signal2d(array, benchmark):
     benchmark(classic_signal2d, array)
+
 
 def test_fast_signal(array, benchmark):
     a = array[0, :]
@@ -78,3 +80,14 @@ def test_fast_signal(array, benchmark):
 
 def test_fast_signal2d(array, benchmark):
     benchmark(fast_signal2d, array)
+
+
+def test_col_mean():
+    arr = np.random.normal(size=(30, 128, 200))
+    x = np.linspace(0, 100, 30) - 50
+    arr += 2 / (1 + x[:, None, None] ** 2 / 20 ** 2)
+    idx = arr.mean(2) > 1
+    idx2 = np.tile(idx[..., None], arr.shape[2])
+    true_val = np.average(arr, axis=0, weights=idx2)
+    assert_almost_equal(true_val, fast_col_mean(arr, idx))
+
