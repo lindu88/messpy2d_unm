@@ -49,6 +49,7 @@ class SP2500i(ISpectrograph):
 
     def set_wavelength(self, nm: float, timeout: float = 1):
         self._write(b'%.3f GOTO' % nm, timeout=timeout)
+        self.sigWavelengthChanged.emit(self.get_wavelength())
 
     def get_installed_gratings(self) -> str:
         self._write(b'?GRATINGS', False)
@@ -66,14 +67,13 @@ class SP2500i(ISpectrograph):
 
     def set_grating(self, grating: int):
         self._write(b'%d GRATING' % grating, timeout=5)
+        self.sigGratingChanged(grating)
 
     def reset(self):
         self._write(b'MONO-RESET')
 
     def disconnect(self):
         self.port.close()
-
-
 
 if __name__ == "__main__":
     log = logging.getLogger()
