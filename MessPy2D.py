@@ -6,7 +6,7 @@ from qtpy.QtWidgets import (QMainWindow, QApplication, QWidget, QDockWidget, QEr
                             QPushButton, QLabel, QVBoxLayout, QSizePolicy, QFormLayout,
                             QToolBar, QCheckBox)
 import qtawesome as qta
-from Instruments.interfaces import IAOMPulseShaper
+from Instruments.interfaces import IAOMPulseShaper, ICam
 from Plans import *
 from Plans.ShaperCalibPlan import CalibScanView, CalibPlan
 from QtHelpers import dark_palette, ControlFactory, make_groupbox, \
@@ -220,7 +220,7 @@ class CommandMenu(QWidget):
         self._layout.addWidget(gb)
 
         for cam in c.cam_list:
-            if cam.cam.changeable_wavelength:
+            if cam.changeable_wavelength:
                 gb = self.add_spec(cam)
                 self._layout.addWidget(gb)
 
@@ -277,6 +277,9 @@ class CommandMenu(QWidget):
             bg_buttons.append(('Record Ref. Calib.', c.cam.calibrate_ref))
         if c.cam2:
             bg_buttons.append(('Record BG2', c.cam2.get_bg))
+        if c.cam.cam.can_validate_pixel:
+            bg_buttons.append(("Mark valid pix", c.cam.cam.mark_valid_pixel))
+            bg_buttons.append(("Delete valid pix", c.cam.cam.delete_valid_pixel))
         sc = ControlFactory('Shots', c.cam.set_shots, format_str='%d',
                             presets=[20, 100, 500, 1000], extra_buttons=bg_buttons)
         sc.edit_box.setValidator(QIntValidator(10, 50000))
@@ -322,19 +325,19 @@ class CommandMenu(QWidget):
         gb = make_groupbox([move_wid], "Sample Holder")
         self._layout.addWidget(gb)
 
-    def add_spec(self, cam):
-        if not cam.cam.changeable_wavelength:
+    def add_spec(self, cam: ICam):
+        if not cam.changeable_wavelength:
             return ''
-        spec = cam
+        spec = cam.cam.spectrograph
         pre_fcn = lambda x: spec.set_wavelength(spec.get_wavelength() + x)
 
         def calc_and_set_wl(s):
             s = s.strip()
             try:
                 if s[-1] == 'c':
-                    wl =  1e7/float(s[:-1])
+                    wl = 1e7/float(s[:-1])
                 else:
-                    wl =  float(s)
+                    wl = float(s)
                 spec.set_wavelength(wl)
             except ValueError:
                 pass
@@ -349,9 +352,9 @@ class CommandMenu(QWidget):
 
         l = [spec_control]
 
-        if spec.cam.changeable_slit:
-            pre_fcn = lambda x: spec.set_slit(spec.get_slit() + x)
-            slit_control = ControlFactory('Slit (μm)', cam.set_slit, presets=[-10, 10], preset_func=pre_fcn)
+        if spec.changeable_slit:
+            pre_fcn = lambda x: spec.spectrograph.set_slit(spec.get_slit() + x)
+            slit_control = ControlFactory('Slit (μm)', spec.set_slit, presets=[-10, 10], preset_func=pre_fcn)
             slit_control.update_value(spec.get_slit())
             spec.sigSlitChanged.connect(slit_control.update_value)
             l.append(slit_control)
@@ -359,14 +362,14 @@ class CommandMenu(QWidget):
 
         cb = QCheckBox('Use Wavenumbers')
         l[-1].layout().addRow(cb)
-        if len(spec.cam.gratings) > 1:
-            gratings = spec.cam.gratings
-            cur_grating = spec.cam.get_grating()
+        if len(spec.gratings) > 1:
+            gratings = spec.gratings
+            cur_grating = spec.get_grating()
             lbl = QLabel('G: %s' % gratings[cur_grating])
             btns = [lbl]
             for idx, name in gratings.items():
                 btn = QPushButton(name)
-                btn.clicked.connect(lambda idx=idx: spec.cam.set_grating(idx))
+                btn.clicked.connect(lambda idx=idx: spec.set_grating(idx))
                 btn.clicked.connect(lambda idx=idx, name=name: lbl.setText('G: %s' % name))
                 btn.setFixedSize(80, 40)
                 btns.append(btn)
@@ -426,7 +429,7 @@ if __name__ == '__main__':
     font.setStyleStrategy(QFont.PreferQuality)
     app.setFont(font)
     mw = MainWindow(controller=controller)
-
+    print(controller.cam.cam.registered_devices)
     mw.showMaximized()
     app.exec()
 
