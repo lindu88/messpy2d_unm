@@ -5,9 +5,7 @@ import threading, time
 import typing as T
 from HwRegistry import _cam, _cam2, _dl, _dl2, _rot_stage, _shutter, _sh, _shaper
 import Instruments.interfaces as I
-#from Signal import Signal
 
-import pickle
 
 Reading = I.Reading
 
@@ -29,11 +27,8 @@ class Cam(QObject):
     disp_axis: np.ndarray = attrib(init=False)
     disp_wavelengths: bool = attrib(True)
 
-
     sigShotsChanged: Signal = Signal(int)
     sigReadCompleted: Signal = Signal()
-    sigWavelengthChanged: Signal = Signal(float)
-    sigSlitChanged: Signal = Signal(float)
     sigRefCalibrationFinished = Signal(object, object)
     
     def __attrs_post_init__(self):
@@ -53,9 +48,6 @@ class Cam(QObject):
         self.wavelengths = self.get_wavelengths()
         self.wavenumbers = 1e7 / self.wavelengths
         self.disp_axis = self.wavelengths.copy()
-
-
-
 
     def _update_wl_arrays(self, cwl=None):
         self.wavelengths[:] = self.get_wavelengths()

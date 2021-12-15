@@ -24,9 +24,9 @@ REF_RANGE = (REF_CENTER - k, REF_CENTER + k + 1)
 TWO_PROBES = True
 
 
-@attr.s(auto_attribs=True)
+@attr.s(auto_attribs=True, kw_only=True)
 class PhaseTecCam(ICam):
-    _spec: SP2500i = attr.ib()
+    spectrograph: SP2500i = attr.ib()
     probe_rows: Tuple[int, int] = attr.ib()
     ref_rows: Tuple[int, int] = attr.ib()
     name: str = 'Phasetec Array'
@@ -54,26 +54,17 @@ class PhaseTecCam(ICam):
 
     @probe_rows.default
     def _probe_rows_default(self):
-        if hasattr(config, 'probe_rows'):
-            return config.probe_rows
-        else:
-            return PROBE_RANGE
+        return getattr(config, 'probe2_rows', PROBE_RANGE)
 
     @probe2_rows.default
-    def _probe_rows_default(self):
-        if hasattr(config, 'probe2_rows'):
-            return config.probe_rows
-        else:
-            return PROBE2_RANGE
+    def _probe2_rows_default(self):
+        return getattr(config, 'probe2_rows', PROBE2_RANGE)
 
     @ref_rows.default
     def _ref_rows_default(self):
-        if hasattr(config, 'probe_rows'):
-            return config.probe_rows
-        else:
-            return REF_RANGE
+        return getattr(config, 'ref_rows', REF_RANGE)
 
-    @_spec.default
+    @spectrograph.default
     def _default_spec(self):
         return SP2500i(comport='COM4')
 
@@ -248,12 +239,6 @@ class PhaseTecCam(ICam):
             self.deltaK2 = 1000 / LOG10 * (
                 dp2 - self.beta2 @ dr).mean(1) / probe2.mean(1)
 
-    def get_wavelength(self):
-        return self._spec.get_wavelength()
-
-    def set_wavelength(self, wl, timeout):
-        return self._spec.set_wavelength(wl, timeout=timeout)
-
     def set_background(self, shots=0):
         arr = self._cam.read_cam()[0]
         back_probe = np.nanmean(arr[:, :, :], 2)
@@ -274,14 +259,5 @@ class PhaseTecCam(ICam):
         else:
             return (np.arange(128) - center_ch) * disp + center_wl
 
-    @property
-    def gratings(self) -> Dict[int, str]:
-        return {0: '75', 1: '30'}
-
-    def set_grating(self, idx: int):
-        self._spec.set_grating(idx)
-
-    def get_grating(self) -> int:
-        return self._spec.get_grating()
 
 _ircam = PhaseTecCam()
