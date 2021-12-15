@@ -1,11 +1,15 @@
-import serial, attr, time, logging, contextlib, atexit
+from typing import Dict
 
+import serial, attr,  logging, atexit
+from Instruments.interfaces import ISpectrograph
 
 @attr.s(auto_attribs=True)
-class SP2500i:
+class SP2500i(ISpectrograph):
     comport: str = 'COM4'
     pos_nm: float = 0
     port: serial.Serial = attr.ib()
+    changeable_slit: bool = False
+    changeable_wavelength: bool = True
 
     @port.default
     def serial_connect(self):
@@ -50,6 +54,10 @@ class SP2500i:
         self._write(b'?GRATINGS', False)
         resp = self.port.read(1000)
         return resp.decode('utf-8')
+
+    @property
+    def gratings(self) -> Dict[int, str]:
+        return {0: '75', 1: '30'}
 
     def get_grating(self) -> int:
         self._write(b'?GRATING', False)
