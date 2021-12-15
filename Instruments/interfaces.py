@@ -1,21 +1,25 @@
-import typing, abc, time, attr, threading, multiprocessing
+import abc
+import asyncio
+import atexit
+import attr
+import contextlib
+import json
+import multiprocessing
+import threading
+import time
+import typing
 import warnings
 import xmlrpc.server as rpc
 
 import numpy as np
-
-T = typing
-import asyncio, contextlib
-
-from qtpy.QtWidgets import QWidget
 from qtpy.QtCore import Signal, QObject
 from scipy.constants import c
-import json
-import atexit
 
 from .signal_processing import Reading, Reading2D, Spectrum
 
 QObjectType = type(QObject)
+
+T = typing
 
 class QABCMeta(QObjectType, abc.ABCMeta):
     pass
@@ -27,6 +31,7 @@ class IDevice(QObject, metaclass=QABCMeta):
     registered_devices: T.ClassVar[T.List['IDevice']] = []
 
     def __attrs_post_init__(self):
+        QObject.__init__(self)
         self.registered_devices.append(self)
         self.load_state()
         atexit.register(self.save_state)
@@ -81,6 +86,41 @@ class IDevice(QObject, metaclass=QABCMeta):
             return
 
 
+@attr.s(auto_attribs=True, cmp=False)
+class ISpectrograph(IDevice):
+    changeable_wavelength: bool = False
+    changeable_slit: bool = False
+    center_wl: typing.Optional[float] = None
+
+    sigWavelengthChanged = Signal(float)
+    sigSlitChanged = Signal(float)
+    sigGratingChanged = Signal(int)
+
+    @property
+    def gratings(self):
+        return [0]
+
+    @abc.abstractmethod
+    def set_wavelength(self, wl: float):
+        pass
+
+    @abc.abstractmethod
+    def get_wavelength(self) -> float:
+        pass
+
+    def get_slit(self) -> float:
+        pass
+
+    def set_slit(self, slit: float):
+        pass
+
+    def set_grating(self, idx):
+        pass
+
+    def get_grating(self) -> int:
+        pass
+
+
 # Defining a minimal interface for each hardware
 @attr.s(auto_attribs=True, cmp=False)
 class ICam(IDevice):
@@ -91,10 +131,9 @@ class ICam(IDevice):
     channels: int
     ext_channels: int
     background: object = None
-    changeable_wavelength: bool = False
-    changeable_slit: bool = False
-    center_wl: typing.Optional[float] = None
-    slit_width: typing.Optional[float] = None
+    spectrograph: T.Optional[ISpectrograph] = None
+
+    can_validate_pixel: bool = None
 
     @property
     def sig_lines(self):
@@ -120,7 +159,7 @@ class ICam(IDevice):
     def get_spectra(self, frames: int) -> T.Dict[str, Spectrum]:
         pass
 
-    def make_2D_reading(self, t2: np.ndarray, rot_frame: float) -> Reading2D:
+    def make_2D_reading(self, t2: np.ndarray, rot_frame: float) -> T.Dict[str, Reading2D]:
         pass
 
     @abc.abstractmethod
@@ -144,41 +183,12 @@ class ICam(IDevice):
     def get_wavelength_array(self, center_wl):
         return np.arange(self.channels)
 
-    def get_wavelength(self) -> float:
-        return 0
+    def mark_valid_pixel(self):
+        raise NotImplementedError
 
-    def set_wavelength(self, wl: float):
-        pass
+    def delete_valid_pixel(self):
+        raise NotImplementedError("Should not be called")
 
-    def set_slit(self, slit: float):
-        pass
-
-    def get_slit(self) -> float:
-        return 0
-
-    @property
-    def gratings(self) -> T.Dict[int, str]:
-        return {0: 'std'}
-
-    def set_grating(self, idx: int):
-        pass
-
-    def get_grating(self) -> int:
-        pass
-
-    async def async_make_read(self):
-
-        out = asyncio.Queue()
-
-        def reader():
-            out.append(self.make_reading())
-
-        thread = threading.Thread(target=reader)
-        thread.start()
-        while thread.is_alive():
-            await asyncio.sleep(0.01)
-
-        return await out.get()
 
 
 def mm_to_fs(pos_in_mm):

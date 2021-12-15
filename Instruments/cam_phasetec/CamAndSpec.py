@@ -2,7 +2,7 @@ from pathlib import Path
 import numpy as np
 import wrapt
 from Instruments.interfaces import ICam
-from Instruments.signal_processing import Reading, Spectrum, first, fast_col_mean
+from Instruments.signal_processing import Reading, Spectrum, first, fast_col_mean, Reading2D
 from Config import config
 import attr
 
@@ -48,6 +48,7 @@ class PhaseTecCam(ICam):
     changeable_wavelength: bool = True
     changeable_slit: bool = False
     background: Optional[np.ndarray] = attr.ib()
+    can_validate_pixel: bool = True
     valid_pixel: Optional[List[np.ndarray]] = None
     _cam: Cam = attr.ib(factory=Cam)
 
@@ -154,7 +155,7 @@ class PhaseTecCam(ICam):
             probe2 = Spectrum.create(probe2, name='Probe2', frames=frames, first_frame=first_frame)
         return {i.name: i for i in (probe, probe2, ref)}, ch
 
-    def make_reading(self, frame_data=None):
+    def make_reading(self, frame_data=None) -> Reading:
         d, ch = self.get_spectra(frames=2)
         probe = d['Probe1']
         ref = d['Ref']
@@ -168,7 +169,6 @@ class PhaseTecCam(ICam):
                 f = 1000
             else:
                 f = -1000
-
 
             pu = trim_mean(normed[:, ::2], 0.2, 1)
             not_pu = trim_mean(normed[:, 1::2], 0.2, 1)
@@ -185,10 +185,8 @@ class PhaseTecCam(ICam):
                               valid=True)
 
         else:
-
             probe2 = d['Probe2']
             normed2 = probe2.data / ref.data
-
 
             pu2 = trim_mean(normed2[:, ::2], 0.2, 1)
             not_pu2 = trim_mean(normed2[:, 1::2], 0.2, 1)
@@ -215,9 +213,15 @@ class PhaseTecCam(ICam):
                                   (probe.std, probe2.std, ref.std, norm_std)),
                               signals=np.stack(
                                   (sig2, sig, sig_pr2_noref, sig_pr2)),
-                              valid=True)
-            #
+                              valid=True)            #
         return reading
+
+    def make_2D_reading(self, t2: np.ndarray, rot_frame: float) -> Dict[str, Reading2D]:
+        spectra = self.get_spectra(frames=t2.size*4)
+        two_d_data = {}
+        for name in ('Probe', 'Probe2'):
+            two_d_data[name] = Reading2D.from_spectrum(spectra[name], t2, rot_frame)
+        return two_d_data
 
     def calibrate_ref(self):
         tmp_shots = self.shots

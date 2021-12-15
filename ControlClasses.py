@@ -29,6 +29,7 @@ class Cam(QObject):
     disp_axis: np.ndarray = attrib(init=False)
     disp_wavelengths: bool = attrib(True)
 
+
     sigShotsChanged: Signal = Signal(int)
     sigReadCompleted: Signal = Signal()
     sigWavelengthChanged: Signal = Signal(float)
@@ -43,12 +44,18 @@ class Cam(QObject):
         self.lines = c.lines
         self.sig_lines = c.sig_lines
         self.name = c.name
-        self.changeable_wavelength = c.changeable_wavelength
+        if c.spectrograph is not None:
+            self.changeable_wavelength = c.spectrograph.changeable_wavelength
+            c.spectrograph.sigWavelengthChanged.connect(self._update_wl_arrays)
+        else:
+            self.changeable_wavelength = False
+
         self.wavelengths = self.get_wavelengths()
         self.wavenumbers = 1e7 / self.wavelengths
         self.disp_axis = self.wavelengths.copy()
 
-        self.sigWavelengthChanged.connect(self._update_wl_arrays)
+
+
 
     def _update_wl_arrays(self, cwl=None):
         self.wavelengths[:] = self.get_wavelengths()
@@ -79,11 +86,11 @@ class Cam(QObject):
         pass
 
     def set_wavelength(self, wl, timeout=5):
-        self.cam.set_wavelength(wl, timeout=timeout)
+        self.cam.spectrograph.set_wavelength(wl, timeout=timeout)
         self.sigWavelengthChanged.emit(wl)
 
     def get_wavelength(self):
-        return self.cam.get_wavelength()
+        return self.cam.spectrograph.get_wavelength()
 
     def get_wavelengths(self, center_wl=None):
         return self.cam.get_wavelength_array(center_wl)
@@ -95,12 +102,12 @@ class Cam(QObject):
         self.cam.remove_background()
 
     def set_slit(self, slit):
-        self.cam.set_slit(slit)
-        slit = self.cam.get_slit()
+        self.cam.spectrograph.set_slit(slit)
+        slit = self.cam.spectrograph.get_slit()
         self.sigSlitChanged.emit(slit)
 
     def get_slit(self):
-        return self.cam.get_slit()
+        return self.cam.spectrograph.get_slit()
 
     def calibrate_ref(self):
         self.cam.calibrate_ref()

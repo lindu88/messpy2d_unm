@@ -1,8 +1,9 @@
-from typing import Dict
+from typing import Dict, Optional
 
 import numpy as np
 import attr
-from Instruments.interfaces import ICam, IDelayLine, IRotationStage, IShutter, Reading, Spectrum
+from Instruments.interfaces import ICam, IDelayLine, IRotationStage, \
+    IShutter, Reading, Spectrum, ISpectrograph
 import time
 import threading
 
@@ -15,6 +16,32 @@ class MockState:
 
 state = MockState()
 
+@attr.s(auto_attribs=True)
+class MockSpectrograph(ISpectrograph):
+    name: str = 'MockSpec'
+    changeable_wavelength: bool = True
+    center_wl: float = 300
+    _cur_grating: int = 0
+
+    def set_wavelength(self, wl: float):
+        self.center_wl = wl
+        state.wl = wl
+        self.sigWavelengthChanged.emit(wl)
+
+    def get_wavelength(self):
+        return self.center_wl
+
+    @property
+    def gratings(self) -> Dict[int, str]:
+        return {0: "0", 1: "1"}
+
+    def set_grating(self, idx: int):
+        self._cur_grating = idx
+        self.sigGratingChanged.emit(idx)
+
+    def get_grating(self) -> int:
+        return self._cur_grating
+
 
 @attr.s(auto_attribs=True)
 class CamMock(ICam):
@@ -26,9 +53,7 @@ class CamMock(ICam):
     channels: int = 200
     ext_channels: int = 3
     background: object = None
-    changeable_wavelength: True = True
-    center_wl: float = 300
-    _cur_grating: int = 0
+    spectrograph: Optional[ISpectrograph] = attr.Factory(MockSpectrograph)
 
     def set_shots(self, shots):
         self.shots = shots
@@ -56,37 +81,18 @@ class CamMock(ICam):
             valid=True,
         )
 
-    def set_wavelength(self, wl, timeout=None):
-        self.center_wl = wl
-        state.wl = wl
-
-    def set_background(self, shots):
-        pass
-
-    def get_wavelength(self):
-        return self.center_wl
-
-    def get_wavelength_array(self, center_wl=None):
-        if not center_wl:
-            center_wl = self.center_wl
-        x = (np.arange(self.channels)-self.channels//2)
-        return x*0.5 + center_wl
-
-    def set_background(self, shots):
-        pass
-
     def get_spectra(self):
         pass
 
-    @property
-    def gratings(self) -> Dict[int, str]:
-        return {0: "0", 1: "1"}
+    def set_background(self, shots):
+        pass
 
-    def set_grating(self, idx: int):
-        self._cur_grating = idx
+    def get_wavelength_array(self, center_wl=None):
+        if not center_wl:
+            center_wl = self.spectrograph.center_wl
+        x = (np.arange(self.channels)-self.channels//2)
+        return x*0.5 + center_wl
 
-    def get_grating(self) -> int:
-        return self._cur_grating
 
 @attr.s(auto_attribs=True)
 class DelayLineMock(IDelayLine):
