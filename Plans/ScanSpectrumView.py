@@ -79,7 +79,7 @@ class ScanSpectrumStarter(PlanStartDialog):
                {'name': 'timeout', 'type': 'float', 'value': 3}
                ]
 
-        self.candidate_cams = {c.cam.name: c for c in self.controller.cam_list if c.cam.changeable_wavelength}
+        self.candidate_cams = {c.cam.name: c for c in self.controller.cam_list if c.changeable_wavelength}
 
         tmp.append(dict(name='Cam', type='list', values=self.candidate_cams.keys()))
         p = pt.Parameter(name='Exp. Settings', type='group',

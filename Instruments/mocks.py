@@ -23,7 +23,7 @@ class MockSpectrograph(ISpectrograph):
     center_wl: float = 300
     _cur_grating: int = 0
 
-    def set_wavelength(self, wl: float):
+    def set_wavelength(self, wl: float, timeout=3):
         self.center_wl = wl
         state.wl = wl
         self.sigWavelengthChanged.emit(wl)

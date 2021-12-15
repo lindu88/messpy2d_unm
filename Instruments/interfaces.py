@@ -101,7 +101,7 @@ class ISpectrograph(IDevice):
         return [0]
 
     @abc.abstractmethod
-    def set_wavelength(self, wl: float):
+    def set_wavelength(self, wl: float, timeout=3):
         pass
 
     @abc.abstractmethod
