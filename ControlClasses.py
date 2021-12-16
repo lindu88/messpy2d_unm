@@ -187,8 +187,6 @@ class Controller(QObject):
         self.shutter = _shutter
         self.cam_list = [self.cam]
 
-
-
         if _cam2 is not None:
             self.cam2 = Cam(cam=_cam2)
             self.cam2.read_cam()
@@ -216,9 +214,6 @@ class Controller(QObject):
         self.pause_plan = False
         self.running_step = False
         self.thread = None
-
-
-        # self.loop = lambda: next(self.loop_gen())
 
     def loop(self):
         if self.plan is None or self.pause_plan:
