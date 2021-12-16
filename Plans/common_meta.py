@@ -21,26 +21,32 @@ class Plan(QObject):
     plan_shorthand: ClassVar[str]
 
     name: str = ''
-    meta: Optional[dict] = None
+    meta: dict = attr.Factory(dict)
     status: str = ''
     creation_dt: datetime = attr.Factory(datetime.now)
 
     sigPlanFinished: ClassVar[Signal] = Signal()
     sigPlanStarted: ClassVar[Signal] = Signal()
+    
+    def __attrs_post_init__(self):
+        super(Plan, self).__init__()
 
     def get_file_name(self) -> Tuple[Path, Path]:
         """Builds the filename and the metafilename"""
-        date_str = self.creation_dt.strftime("%y-%m-%d %H:%M")
-        name = f"{date_str} {self.name}.{self.plan_shorthand}.messpy"
-        meta_name = f"{date_str} {self.name}.{self.plan_shorthand}.json"
+        date_str = self.creation_dt.strftime("%y-%m-%d %H_%M")
+        name = f"{date_str} {self.name}.{self.plan_shorthand}"
+        meta_name = f"{date_str} {self.name}.{self.plan_shorthand}"
         p = Path(config.data_directory)
         if not p.exists():
             raise IOError("Data path in config not existing")
-        return p / name, p / meta_name
+        if (p / name).with_suffix('json').exists():
+            name = name + "_0"
+        return (p / name).with_suffix('messpy'), (p / meta_name).with_suffix('json')
 
     def save_meta(self):
         """Saves the metadata in the metafile"""
         self.get_app_state()
+        print(self.meta)
         if self.meta is not None:
             _, meta_file = self.get_file_name()
             with meta_file.open('w') as f:
