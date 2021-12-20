@@ -20,9 +20,9 @@ from .CalibView import CalibView
 @attr.s(auto_attribs=True, cmp=False)
 class CalibPlan(QObject):
     cam: ICam
+    dac: AOM
     move_func: Callable
     points: List[float]
-    dac: AOM = attr.Factory(AOM)
     amps: List[List[float]] = attr.Factory(list)
     num_shots = 100
     start_pos: Tuple[float, float] = 0
@@ -39,7 +39,7 @@ class CalibPlan(QObject):
         self.cam.set_shots(self.num_shots)
         loop = asyncio.get_running_loop()
         if self.check_zero_order:
-            self.cam.set_wavelength(0, 10)  #
+            self.cam.spectrograph.set_wavelength(0, 10)  #
             reading = await loop.run_in_executor(None, self.cam.make_reading)
             self.channel = np.argmax(reading.lines[: 1])
 
@@ -52,14 +52,14 @@ class CalibPlan(QObject):
 
     async def pre_scan(self):
         self.dac.load_mask(self.dac.make_calib_mask())
-        self.cam.set_wavelength(self.start_pos, 10)
+        self.cam.spectrograph.set_wavelength(self.start_pos, 10)
 
     async def post_scan(self):
         self.sigPlanDone.emit()
 
     async def read_point(self, p):
         loop = asyncio.get_running_loop()
-        await loop.run_in_executor(None, self.cam.set_wavelength, p, 10)
+        await loop.run_in_executor(None, self.cam.spectrograph.set_wavelength, p, 10)
         spectra, ch = await loop.run_in_executor(None, self.cam.get_spectra, 3)
         self.amps.append(spectra['Probe2'].frame_data[67, :])
 

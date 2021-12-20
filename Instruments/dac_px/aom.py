@@ -31,7 +31,7 @@ class AOM(IDevice):
 
     amp_fac: float = 1.0
     wave_amp: float = 0.4
-    calib: Optional[tuple] = None
+    calib: Optional[np.ndarray] = None
     nu: Optional[np.ndarray] = None
     nu0_THz: float = 55
     dac_freq_MHz: float = 1200
@@ -63,7 +63,7 @@ class AOM(IDevice):
 
     def get_state(self) -> dict:
         d = {
-            'calib': self.calib,
+            'calib': self.calib.tolist() if self.calib is not None else None,
             'gvd': self.gvd,
             'fod': self.fod,
             'tod': self.tod,
@@ -74,11 +74,14 @@ class AOM(IDevice):
             'mode': self.mode,
             'nu0_THz': self.nu0_THz,
         }
+        return d
 
     def load_state(self):
         super(AOM, self).load_state()
+
         self.set_wave_amp(self.wave_amp)
         if self.calib:
+            self.calib = np.array(self.calib)
             self.set_calib(self.calib)
             self.update_dispersion_compensation()
 
@@ -120,6 +123,7 @@ class AOM(IDevice):
         np.save(Path(__file__).parent/'calib_coef.npy', self.calib)
         self.nu = np.polyval(p, self.pixel)
         self.sigCalibChanged.emit(self.calib)
+        self.save_state()
 
     def bragg_wf(self, amp, phase):
         """Calculates a Bragg-correct AOM waveform for given phase and shape"""
@@ -217,7 +221,7 @@ class AOM(IDevice):
         if len(self.mask.shape) == 2:
             assert(self.mask.shape[0] == PIXEL)
             self.mask = self.mask.ravel(order='f')
-
+        print(self.amp_fac)
         mask = (self.amp_fac * MAX_16_Bit * self.mask).astype('int16')
 
         assert (mask.dtype == np.int16)
