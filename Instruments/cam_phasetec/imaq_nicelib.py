@@ -103,12 +103,13 @@ class Cam:
         IMAQ.imgSessionStartAcquisition(self.s)
         self.task.start()
         ba = bytearray(128 * 128 * 2)
+        bap = ffi.from_buffer(ba)
         bi = np.frombuffer(ba).view('u2')
         chop = []
         status, buf = IMAQ.imgSessionStatus(self.s)
 
         for i in range(self.shots):
-            IMAQ.imgSessionCopyBufferByNumber(self.s, i + self.frames, ffi.from_buffer(ba), IMAQ.IMG_OVERWRITE_FAIL)
+            IMAQ.imgSessionCopyBufferByNumber(self.s, i + self.frames, bap, IMAQ.IMG_OVERWRITE_FAIL)
             a = np.swapaxes(bi.reshape(32, 128, 4), 0, 1).reshape(128, 128)
             self.data[:, :, i] = (1 << 14) - a.T
             # hop.append(self.task.read(1)[0])

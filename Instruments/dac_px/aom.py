@@ -27,6 +27,7 @@ from qtpy.QtCore import Signal
 @attr.s(auto_attribs=True)
 class AOM(IDevice):
     dac: 'PXDAC.DAC' = attr.Factory(default_dac)
+    name: str = "Phasetech AOM"
 
     amp_fac: float = 1.0
     wave_amp: float = 0.4
@@ -57,7 +58,7 @@ class AOM(IDevice):
     sigModeChanged = Signal(str)
 
     def __attrs_post_init__(self):
-        super(AOM, self).__init__()
+        super(AOM, self).__attrs_post_init__()
         self.setup_dac()
 
     def get_state(self) -> dict:
@@ -77,7 +78,9 @@ class AOM(IDevice):
     def load_state(self):
         super(AOM, self).load_state()
         self.set_wave_amp(self.wave_amp)
-        self.update_dispersion_compensation()
+        if self.calib:
+            self.set_calib(self.calib)
+            self.update_dispersion_compensation()
 
     def setup_dac(self):
         dac = self.dac

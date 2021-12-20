@@ -63,12 +63,13 @@ class Cam(QObject):
 
     def set_shots(self, shots):
         """Sets the number of shots recorded"""
-        self.shots = shots
-        self.cam.set_shots(int(shots))
+        self.shots = int(shots)
+        self.cam.set_shots(self.shots)
         config.shots = shots
-        self.sigShotsChanged.emit(shots)
+        self.sigShotsChanged.emit(self.shots)
 
     def read_cam(self, two_dim=False):
+
         rd = self.cam.make_reading()
         self.last_read = rd
         # self.sigReadCompleted.emit()
@@ -217,6 +218,7 @@ class Controller(QObject):
 
     def loop(self):
         if self.plan is None or self.pause_plan:
+            t0 = time.time()
             t1 = threading.Thread(target=self.cam.read_cam)
             t1.start()
             t2 = threading.Thread()
@@ -227,6 +229,7 @@ class Controller(QObject):
             while t1.is_alive() or t2.is_alive():
                 QApplication.instance().processEvents()
             self.cam.sigReadCompleted.emit()
+            print((time.time()-t0)*1000)
             if self.cam2:
                 self.cam2.sigReadCompleted.emit()
             t1.join()

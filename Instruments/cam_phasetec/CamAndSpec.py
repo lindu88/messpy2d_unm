@@ -17,7 +17,7 @@ LOG10 = log(10)
 PROBE_CENTER = 115
 PROBE_CENTER_2 = 70
 REF_CENTER = 26
-k = 3
+k = 5
 PROBE_RANGE = (PROBE_CENTER - k, PROBE_CENTER + k + 1)
 PROBE2_RANGE = (PROBE_CENTER_2 - k, PROBE_CENTER_2 + k + 1)
 REF_RANGE = (REF_CENTER - k, REF_CENTER + k + 1)
@@ -31,7 +31,7 @@ class PhaseTecCam(ICam):
     probe_rows: Tuple[int, int] = attr.ib()
     ref_rows: Tuple[int, int] = attr.ib()
     name: str = 'Phasetec Array'
-    shots: int = config.shots
+    shots: int = 50
 
     if not TWO_PROBES:
         line_names: List[str] = ['Probe', 'Ref', 'max']
@@ -68,7 +68,7 @@ class PhaseTecCam(ICam):
 
     @spectrograph.default
     def _default_spec(self):
-        return SP2500i(comport='COM4')
+        return SP2500i(comport='COM4', name='spec')
 
     @background.default
     def _back_default(self):
@@ -98,7 +98,7 @@ class PhaseTecCam(ICam):
     def read_cam(self):
         return self._cam.read_cam()
 
-    def mark_valid_pixel(self,  min_val=1000, max_val=8000):
+    def mark_valid_pixel(self,  min_val=3000, max_val=12000):
         arr, ch = self._cam.read_cam()
 
         pr_range = self.probe_rows
@@ -107,7 +107,7 @@ class PhaseTecCam(ICam):
 
         self.valid_pixel = []
         for (l, u) in [pr_range, ref_range, pr2_range,]:
-            sub_arr = arr[l:u, :, :]
+            sub_arr = arr[l:u, :, :].mean(-1)
             self.valid_pixel += [(min_val < sub_arr) & (sub_arr < max_val)]
 
     def delete_valid_pixel(self):
@@ -250,7 +250,7 @@ class PhaseTecCam(ICam):
         self.background = None
 
     def get_wavelength_array(self, center_wl):
-        center_wl = self.get_wavelength()
+        center_wl = self.spectrograph.get_wavelength()
         disp = 7.69
         center_ch = 63
         if center_wl < 1000:
