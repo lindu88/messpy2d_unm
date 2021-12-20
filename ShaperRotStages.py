@@ -49,7 +49,8 @@ class ShaperControl(QtWidgets.QWidget):
         calib_label = QtWidgets.QLabel()
         f = lambda x: calib_label.setText("%.2e %.2e %.2e" % tuple(x))
         self.aom.sigCalibChanged.connect(f)
-        self.aom.sigCalibChanged.emit(self.aom.calib)
+        if self.aom.calib is not None:
+            self.aom.sigCalibChanged.emit(self.aom.calib)
 
         self.chopped = QtWidgets.QCheckBox("Chopped")
         self.chopped.setChecked(self.aom.chopped)
