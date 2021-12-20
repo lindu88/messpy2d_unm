@@ -73,7 +73,7 @@ elif pc_name == 'DESKTOP-BBLLUO7':
     from Instruments.delay_line_newport import NewportDelay
     _dl = NewportDelay(name='IR Delay', pos_sign=-1)
     from Instruments.dac_px import AOM
-    _shaper = AOM()
+    _shaper = AOM(name='AOM')
     from Instruments.RotationStage import RotationStage
     r1 = RotationStage(name="Grating1", comport="COM5")
     r2 = RotationStage(name="Grating2", comport="COM6")
