@@ -163,7 +163,7 @@ class MainWindow(QMainWindow):
 
     def toggle_run(self, bool):
         if bool:
-            self.timer.start(30)
+            self.timer.start(5)
         else:
             self.timer.stop()
 
