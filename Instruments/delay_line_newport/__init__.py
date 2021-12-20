@@ -95,7 +95,7 @@ class NewportDelay(IDelayLine):
         setter_str = f'1PA{pos}\r\n'
         self.rot.write(setter_str.encode('utf-8'))
         self.rot.timeout = 3
-        self._busy_cnt = 3
+        self._busy_cnt = 2
 
     def get_state(self) -> dict:
         return dict(last_pos=self.last_pos)

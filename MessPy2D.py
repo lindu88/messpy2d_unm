@@ -145,6 +145,7 @@ class MainWindow(QMainWindow):
         def start_calib():
             c = self.controller
             fs = CalibPlan(cam=c.cam.cam,
+                           dac=c.shaper,
                        move_func=c.cam.set_wavelength,
                        points=range(5500, 6500, 5))
             self.cal_viewer = CalibScanView(fs)
