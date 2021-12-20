@@ -10,6 +10,7 @@ class SP2500i(ISpectrograph):
     port: serial.Serial = attr.ib()
     changeable_slit: bool = False
     changeable_wavelength: bool = True
+    name: str = 'SP2500i'
 
     @port.default
     def serial_connect(self):
@@ -47,7 +48,7 @@ class SP2500i(ISpectrograph):
         resp = self._write(b'?NM')
         return float(resp.strip(b' ').split(b' ')[0])
 
-    def set_wavelength(self, nm: float, timeout: float = 1):
+    def set_wavelength(self, nm: float, timeout: float = 4):
         self._write(b'%.3f GOTO' % nm, timeout=timeout)
         self.sigWavelengthChanged.emit(self.get_wavelength())
 
@@ -58,7 +59,7 @@ class SP2500i(ISpectrograph):
 
     @property
     def gratings(self) -> Dict[int, str]:
-        return {0: '75', 1: '30'}
+        return {1: '75', 2: '30'}
 
     def get_grating(self) -> int:
         self._write(b'?GRATING', False)
@@ -66,8 +67,8 @@ class SP2500i(ISpectrograph):
         return int(resp)
 
     def set_grating(self, grating: int):
-        self._write(b'%d GRATING' % grating, timeout=5)
-        self.sigGratingChanged(grating)
+        self._write(b'%d GRATING' % grating, timeout=15)
+        self.sigGratingChanged.emit(grating)
 
     def reset(self):
         self._write(b'MONO-RESET')
@@ -84,3 +85,4 @@ if __name__ == "__main__":
     #print(f'Current wavelength {spec.get_wavelength()}')
     print(f'Current grating {spec.get_grating()}')
     spec.set_wavelength(wl + 200)
+    spec.set_grating(2)
