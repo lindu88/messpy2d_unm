@@ -14,11 +14,8 @@ from QtHelpers import dark_palette, ControlFactory, make_groupbox, \
 from SampleMoveWidget import MoveWidget
 from ControlClasses import Controller
 
-START_QT_CONSOLE = False
-if START_QT_CONSOLE:
-    from qtconsole.inprocess import QtInProcessKernelManager
-    from qtconsole.rich_jupyter_widget import RichJupyterWidget
-
+from functools import partial
+import logging
 
 class SelectPlan(QWidget):
     def __init__(self, parent=None):
@@ -169,7 +166,6 @@ class MainWindow(QMainWindow):
             self.timer.stop()
 
     def toggle_wl(self, c):
-        print(c)
         self.xaxis[c][:] = 1e7/self.xaxis[c][:]
 
     def show_planview(self):
@@ -370,8 +366,8 @@ class CommandMenu(QWidget):
             btns = [lbl]
             for idx, name in gratings.items():
                 btn = QPushButton(name)
-                btn.clicked.connect(lambda idx=idx: spec.set_grating(idx))
-                btn.clicked.connect(lambda idx=idx, name=name: lbl.setText('G: %s' % name))
+                btn.clicked.connect(lambda: partial(spec.set_grating, idx))
+                btn.clicked.connect(lambda: lbl.setText('G: %s' % name))
                 btn.setFixedSize(80, 40)
                 btns.append(btn)
 

@@ -73,7 +73,7 @@ class NewportDelay(IDelayLine):
         super(NewportDelay, self).__attrs_post_init__()
         state = self.controller_state()
         if state.startswith('DISABLE'):
-            self.w('1MM')
+            self.w('1MM1')
         elif state.startswith("NOT REFERENCED"):
             self.w(b'1RS')
             self.rot.write(b'1OR\r\n')
@@ -81,7 +81,7 @@ class NewportDelay(IDelayLine):
                 time.sleep(0.3)
 
         if self.last_pos != 0:
-            self.set_pos_mm(self.last_pos)
+            self.move_mm(self.last_pos)
 
     def w(self, x):
         writer_str = f'{x}\r\n'
@@ -98,7 +98,8 @@ class NewportDelay(IDelayLine):
         self._busy_cnt = 2
 
     def get_state(self) -> dict:
-        return dict(last_pos=self.last_pos)
+        return dict(last_pos=self.last_pos,
+                    home_pos=self.home_pos)
 
     def controller_state(self) -> str:
         self.w('1MM?')
@@ -114,7 +115,8 @@ class NewportDelay(IDelayLine):
         try:
             ans = self.rot.read_until(b'\r\n')
             ans = ans.decode()
-            return float(ans[ans.find("TP") + 2:-2])
+            self.last_pos = float(ans[ans.find("TP") + 2:-2])
+            return self.last_pos
         except ValueError:
             print(ans)
             return 0

@@ -28,7 +28,7 @@ class CalibPlan(QObject):
     start_pos: Tuple[float, float] = 0
     check_zero_order: bool = True
     channel: int = 67
-    is_async : bool = True
+    is_async: bool = True
     sigStepDone = Signal()
     sigPlanDone = Signal()
 

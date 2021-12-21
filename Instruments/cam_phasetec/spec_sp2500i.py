@@ -67,8 +67,9 @@ class SP2500i(ISpectrograph):
         return int(resp)
 
     def set_grating(self, grating: int):
-        self._write(b'%d GRATING' % grating, timeout=15)
+        self._write(b'%d GRATING' % grating, timeout=35)
         self.sigGratingChanged.emit(grating)
+        print("set grating", grating)
 
     def reset(self):
         self._write(b'MONO-RESET')
@@ -85,4 +86,4 @@ if __name__ == "__main__":
     #print(f'Current wavelength {spec.get_wavelength()}')
     print(f'Current grating {spec.get_grating()}')
     spec.set_wavelength(wl + 200)
-    spec.set_grating(2)
+    spec.set_grating(1)
