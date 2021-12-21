@@ -182,12 +182,19 @@ class ControlFactory(QWidget):
             self._layout.addRow(hlay)
 
     def setup_extra_buttons(self, extra_buttons):
+        row_cnt = 0
         hlay = QHBoxLayout()
+        self._layout.addRow(hlay)
         for (s, fn) in extra_buttons:
             but = QPushButton(s)
             but.clicked.connect(fn)
             hlay.addWidget(but)
-        self._layout.addRow(hlay)
+            row_cnt += 1
+            if row_cnt == 2:
+                hlay = QHBoxLayout()
+                self._layout.addRow(hlay)
+                row_cnt = 0
+
 
 
 class PlanStartDialog(QDialog):
@@ -267,7 +274,6 @@ class PlanStartDialog(QDialog):
             self.recent_settings_list.addItem(name)
 
         self.recent_settings_list.setCurrentRow(len(self.recent_settings)-1)
-
         self.load_recent(-1)
 
     def load_recent(self, new):
