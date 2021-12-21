@@ -42,6 +42,7 @@ class Cam(QObject):
         if c.spectrograph is not None:
             self.changeable_wavelength = c.spectrograph.changeable_wavelength
             c.spectrograph.sigWavelengthChanged.connect(self._update_wl_arrays)
+
         else:
             self.changeable_wavelength = False
 
@@ -143,17 +144,12 @@ class Delayline(QObject):
         self.pos = self._dl.get_pos_fs()
         self.sigPosChanged.emit(self.pos)
         if self._dl.is_moving():
-            QTimer.singleShot(100, self.wait_and_update)
+            QTimer.singleShot(30, self.wait_and_update)
         else:
             self.moving = False
 
     def get_pos(self) -> float:
         return self._dl.get_pos_fs()
-
-    async def async_set_pos(self):
-        self._dl.move_fs(pos_fs, do_wait=False)
-        while _dl.is_moving():
-            aio.sleep(0.1)
 
     def set_speed(self, ps_per_sec: float):
         self._dl.set_speed(ps_per_sec)
@@ -218,7 +214,7 @@ class Controller(QObject):
 
     def loop(self):
         if self.plan is None or self.pause_plan:
-            t0 = time.time()
+            #t0 = time.time()
             t1 = threading.Thread(target=self.cam.read_cam)
             t1.start()
             t2 = threading.Thread()
@@ -229,7 +225,7 @@ class Controller(QObject):
             while t1.is_alive() or t2.is_alive():
                 QApplication.instance().processEvents()
             self.cam.sigReadCompleted.emit()
-            print((time.time()-t0)*1000)
+            #print((time.time()-t0)*1000)
             if self.cam2:
                 self.cam2.sigReadCompleted.emit()
             t1.join()

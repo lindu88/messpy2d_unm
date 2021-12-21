@@ -81,7 +81,6 @@ class AOM(IDevice):
 
         self.set_wave_amp(self.wave_amp)
         if self.calib:
-            self.calib = np.array(self.calib)
             self.set_calib(self.calib)
             self.update_dispersion_compensation()
 
@@ -95,7 +94,7 @@ class AOM(IDevice):
         dac.set_output_voltage(ch1=200, ch2=1000)
         log.info("Output Voltage %s", dac.get_output_voltage())
         dac.SetExternalTriggerEnableXD48(1)
-        log.info("ExtTigger %s", dac.GetExternalTriggerEnableXD48(1))
+        log.info("ExtTrigger %s", dac.GetExternalTriggerEnableXD48(1))
         dac.SetTriggerModeXD48(0)
         dac.SetActiveChannelMaskXD48(0x1 | 0x2)
         dac.SetDacSampleSizeXD48(1)
