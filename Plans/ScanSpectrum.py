@@ -18,9 +18,7 @@ class ScanSpectrum(Plan):
     wl_list: np.ndarray = attr.ib()
     wl_idx: int = -1
     timeout: float = 3
-
     sigPointRead: T.ClassVar[Signal] = Signal()
-
 
     def __attrs_post_init__(self):
         super(ScanSpectrum, self).__attrs_post_init__()

@@ -81,10 +81,12 @@ class ScanSpectrumStarter(PlanStartDialog):
                          children=tmp)
         params = [sample_parameters, p]
         self.paras = pt.Parameter.create(name='Scan Spectrum', type='group', children=params)
+        self.paras.getValues()
         self.save_defaults()
 
     def create_plan(self, controller: Controller):
         p = self.paras.child('Exp. Settings')
+
         s = self.paras.child('Sample')
         mapper = {'nm': 'Wavelength (nm)', 'cm-1': 'Wavenumber (cm-1)'}
         unit = mapper[p['Linear Axis']]
@@ -96,7 +98,7 @@ class ScanSpectrumStarter(PlanStartDialog):
         scan = ScanSpectrum(
             name=p['Filename'],
             cam=self.candidate_cams[p['Cam']],
-            meta=s,
+            meta=s.getValues(),
             wl_list=wl_list,
             timeout=p['timeout']
         )
