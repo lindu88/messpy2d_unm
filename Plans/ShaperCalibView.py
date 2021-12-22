@@ -31,7 +31,8 @@ class CalibView(QWidget):
 
     prominence: float = 50
     distance: int = 3
-    filter: float = 1
+    filter: float = 0
+
     coeff: Optional[np.ndarray] = None
 
     sigCalibrationAccepted = Signal(object)
@@ -43,7 +44,7 @@ class CalibView(QWidget):
         self.setWindowTitle("Calibration")
         self.setWindowIcon(icon('fa5s.ruler-horizontal'))
         self.fig = Figure(dpi=dpi, constrained_layout=True)
-        self.ax, self.ax1 = self.fig.subplots(2)
+        self.ax0, self.ax2 = self.fig.subplots(3)
         self.canvas = FigureCanvas(self.fig)
 
         self.setLayout(QVBoxLayout())
@@ -76,6 +77,7 @@ class CalibView(QWidget):
         self.row.addWidget(self.sb_prom)
 
         self.use_norm = QCheckBox("Normalize")
+        self.use_norm.setChecked(True)
         self.use_norm.toggled.connect(self.analyze)
         self.row.addWidget(self.use_norm)
 
@@ -121,16 +123,16 @@ class CalibView(QWidget):
         p0, _ = find_peaks(y_train, prominence=self.prominence, distance=self.distance)
         p1, _ = find_peaks(y_single, prominence=self.prominence, distance=self.distance)
 
-        self.ax.cla()
-        self.ax1.cla()
-        self.ax.plot(self.x, y_train)
-        self.ax.plot(self.x, y_single)
+        self.ax0.cla()
+        self.ax2.cla()
+        self.ax0.plot(self.x, y_train)
+        self.ax0.plot(self.x, y_single)
         if self.y_full is not None and not self.use_norm.isChecked():
-            self.ax.plot(self.x, y_full)
-        ax1 = self.ax1
+            self.ax0.plot(self.x, y_full)
+        ax1 = self.ax2
         x = self.x
-        self.ax.plot(self.x[p0], y_train[p0], '|', ms=7, c='r')
-        self.ax.plot(self.x[p1], y_single[p1], '^', ms=7, c='r')
+        self.ax0.plot(self.x[p0], y_train[p0], '|', ms=7, c='r')
+        self.ax0.plot(self.x[p1], y_single[p1], '^', ms=7, c='r')
         if len(p0) > 1 and len(p1) == 1:
             a = np.arange(0, 4096 * 3, self.width + self.dist)
             align = np.argmin(abs(x[p0] - x[p1]))
@@ -143,7 +145,7 @@ class CalibView(QWidget):
             ax1.plot(pix0, freq0, marker='o', ms=10)
             ax1.set_xlabel('Pixel')
             ax1.set_ylabel('Freq / THz')
-            self.ax.set(xlabel='Wavelength / nm', ylabel='Counts')
+            self.ax0.set(xlabel='Wavelength / nm', ylabel='Counts')
 
             ax1.plot(pixel, freqs, marker='x', ms=10)
             all_pix = np.arange(pixel.min(), pixel.max())
