@@ -1,9 +1,11 @@
 from functools import partial
+
+
 from Config import config
 from qtpy.QtCore import QTimer, Qt, QThread, QSettings
 from qtpy.QtGui import QFont, QIntValidator
 from qtpy.QtWidgets import (QMainWindow, QApplication, QWidget, QDockWidget, QErrorMessage,
-                            QPushButton, QLabel, QVBoxLayout, QSizePolicy, QFormLayout,
+                            QPushButton, QLabel, QVBoxLayout, QSizePolicy, QFormLayout, QMessageBox,
                             QToolBar, QCheckBox)
 import qtawesome as qta
 from Instruments.interfaces import IAOMPulseShaper, ICam
@@ -15,7 +17,7 @@ from SampleMoveWidget import MoveWidget
 from ControlClasses import Controller
 
 from functools import partial
-import logging
+
 
 class SelectPlan(QWidget):
     def __init__(self, parent=None):
@@ -128,14 +130,16 @@ class MainWindow(QMainWindow):
                            move_func=c.cam.set_wavelength,
                            points=range(5500, 6500, 5))
             self.cal_viewer = CalibScanView(fs)
+            fs.sigTaskReady.connect(lambda x: c.async_tasks.append(x))
             c.async_plan = True
+            #c.async_tasks = self.cal_viewer.task
             fs.sigPlanDone.connect(lambda: setattr(c, 'async_plan', False))
             self.cal_viewer.show()
         pp.clicked.connect(start_calib)
         tb.addWidget(pp)
 
         alg_icon = qta.icon('mdi.chart-line', color='white')
-        pp = QPushButton('Show alignment helper')
+        pp = QPushButton('Show alignment helper', icon=asl_icon)
         pp.clicked.connect(self.show_alignment_helper)
         tb.addWidget(pp)
 
@@ -375,15 +379,27 @@ if __name__ == '__main__':
     app.setOrganizationName("USD")
     app.setApplicationName("MessPy3")
     loop = qasync.QEventLoop()
+
     aio.set_event_loop(loop)
+    aio.get_event_loop().set_debug(True)
     sys._excepthook = sys.excepthook
 
+
     def exception_hook(exctype, value, tb):
-        #err = QErrorMessage()
-        #err.showMessage(''.join(traceback.format_tb(tb)))
-        #err.exec_()
-        sys._excepthook(exctype, value, tb)
-        sys.exit(1)
+        emsg = QMessageBox ()
+        emsg.setWindowModality(Qt.WindowModal)
+        traceback.print_tb(tb)
+        tb = traceback.format_tb(tb)
+        emsg.setText('Exception raised')
+        emsg.setInformativeText(''.join(tb))
+        emsg.setStandardButtons(QMessageBox.Abort|QMessageBox.Ok)
+        result = emsg.exec_()
+        print(result)
+        if not result == QMessageBox.Ok:
+            sys._excepthook(exctype, value, tb)
+            sys.exit(1)
+        else:
+            pass
 
     sys.excepthook = exception_hook
 

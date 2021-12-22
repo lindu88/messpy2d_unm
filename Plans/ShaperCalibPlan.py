@@ -30,12 +30,14 @@ class CalibPlan(QObject):
     check_zero_order: bool = True
     channel: int = 67
     is_async: bool = True
+
+    sigTaskReady = Signal(object)
     sigStepDone = Signal()
     sigPlanDone = Signal()
 
     def __attrs_post_init__(self):
         super().__init__()
-        self.single_spectra = np.zeros((cam.channels, len(self.points)))
+        self.single_spectra = np.zeros((self.cam.channels, len(self.points)))
 
     async def step(self):
         self.cam.set_shots(self.num_shots)
@@ -114,10 +116,10 @@ class CalibScanView(QWidget):
         self.focus_scan.num_shots = self.params['shots']
         self.focus_scan.amps = []
         self.params.setReadonly(True)
-
         #self.params.child('start').setOpts(enabled=False)
-        loop = aio.get_event_loop()
-        loop.create_task(self.focus_scan.step())
+        self.focus_scan.sigTaskReady.emit(aio.create_task(self.focus_scan.step()))
+
+
 
     @asyncSlot()
     async def update_view(self):

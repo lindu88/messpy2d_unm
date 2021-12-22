@@ -177,12 +177,14 @@ class Controller(QObject):
     shaper: T.Optional[object] = None
     loop_finnished = Signal()
 
+
     def __init__(self):
         super(Controller, self).__init__()
         self.cam = Cam()
         self.cam.read_cam()
         self.shutter = _shutter
         self.cam_list = [self.cam]
+        self.async_tasks = []
 
         if _cam2 is not None:
             self.cam2 = Cam(cam=_cam2)
@@ -212,25 +214,39 @@ class Controller(QObject):
         self.running_step = False
         self.thread = None
 
-    def loop(self):
-        if self.plan is None or self.pause_plan:
-            #t0 = time.time()
-            t1 = threading.Thread(target=self.cam.read_cam)
-            t1.start()
-            t2 = threading.Thread()
-            if self.cam2:
-                t2 = threading.Thread(target=self.cam2.read_cam)
-                t2.start()
+    def standard_read(self):
+        # t0 = time.time()
+        t1 = threading.Thread(target=self.cam.read_cam)
+        t1.start()
+        t2 = threading.Thread()
+        if self.cam2:
+            t2 = threading.Thread(target=self.cam2.read_cam)
+            t2.start()
 
-            while t1.is_alive() or t2.is_alive():
-                QApplication.instance().processEvents()
-            self.cam.sigReadCompleted.emit()
-            #print((time.time()-t0)*1000)
-            if self.cam2:
-                self.cam2.sigReadCompleted.emit()
-            t1.join()
-            if self.cam2:
-                t2.join()
+        while t1.is_alive() or t2.is_alive():
+            QApplication.instance().processEvents()
+        self.cam.sigReadCompleted.emit()
+        # print((time.time()-t0)*1000)
+        if self.cam2:
+            self.cam2.sigReadCompleted.emit()
+        t1.join()
+        if self.cam2:
+            t2.join()
+
+    def loop(self):
+
+        if (t := aio.current_task()) is not None:
+            print(t)
+        elif self.async_tasks:
+            for t in self.async_tasks:
+                t: aio.Task
+                if t.done():
+                    if t.exception():
+                        self.async_tasks.remove(t)
+                        raise t.exception()
+                    self.async_tasks.remove(t)
+        elif self.plan is None or self.pause_plan:
+            self.standard_read()
         else:
             try:
                 self.plan.make_step()
