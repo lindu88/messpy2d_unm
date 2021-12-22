@@ -36,7 +36,7 @@ def fit_step_function(t, data) -> ModelResult:
     return fit_result
 
 
-@attr.s(auto_attrib=True)
+@attr.s(auto_attribs=True)
 class AdaptiveTimeZeroPlan(Plan):
     cam: Cam
     delay_line: Delayline
