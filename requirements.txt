@@ -17,3 +17,7 @@ nidaqmx
 cffi
 numba
 skultrafast
+
+h5py
+lmfit
+pytest-qt
