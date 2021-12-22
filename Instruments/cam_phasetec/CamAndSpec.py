@@ -207,9 +207,9 @@ class PhaseTecCam(ICam):
         return reading
 
     def make_2D_reading(self, t2: np.ndarray, rot_frame: float) -> Dict[str, Reading2D]:
-        spectra = self.get_spectra(frames=t2.size*4)
+        spectra, ch = self.get_spectra(frames=self.shots)
         two_d_data = {}
-        for name in ('Probe', 'Probe2'):
+        for name in ('Probe1', 'Probe2'):
             two_d_data[name] = Reading2D.from_spectrum(spectra[name], t2, rot_frame)
         return two_d_data
 

@@ -50,7 +50,7 @@ class SP2500i(ISpectrograph):
 
     def set_wavelength(self, nm: float, timeout: float = 4):
         self._write(b'%.3f GOTO' % nm, timeout=timeout)
-        self.sigWavelengthChanged.emit(self.get_wavelength())
+        self.sigWavelengthChanged.emit(nm)
 
     def get_installed_gratings(self) -> str:
         self._write(b'?GRATINGS', False)

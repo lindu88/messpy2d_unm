@@ -44,7 +44,7 @@ class CalibView(QWidget):
         self.setWindowTitle("Calibration")
         self.setWindowIcon(icon('fa5s.ruler-horizontal'))
         self.fig = Figure(dpi=dpi, constrained_layout=True)
-        self.ax0, self.ax2 = self.fig.subplots(3)
+        self.ax0, self.ax2 = self.fig.subplots(2)
         self.canvas = FigureCanvas(self.fig)
 
         self.setLayout(QVBoxLayout())

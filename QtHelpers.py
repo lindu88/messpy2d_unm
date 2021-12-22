@@ -441,8 +441,8 @@ def make_groupbox(widgets, title=''):
 def hlay(*widgets, add_stretch=False):
     lay = QHBoxLayout()
     if len(widgets) == 1:
-        widgets = widgets[0]
-
+        if isinstance(widgets[0], (list, tuple)):
+            widgets = widgets[0]
     for w in widgets:
         try:
             lay.addWidget(w)
@@ -457,7 +457,8 @@ def hlay(*widgets, add_stretch=False):
 def vlay(*widgets, add_stretch=False):
     lay = QVBoxLayout()
     if len(widgets) == 1:
-        widgets = widgets[0]
+        if isinstance(widgets[0], (list, tuple)):
+            widgets = widgets[0]
     for w in widgets:
         try:
             lay.addWidget(w)
