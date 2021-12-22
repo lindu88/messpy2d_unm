@@ -9,7 +9,8 @@ from .GVDScan import GVDScan
 from .GVDScanView import GVDScanView, GVDScanStarter
 from .AdaptiveTimeZeroPlan import AdaptiveTimeZeroPlan
 from .AdaptiveTimeZeroView import AdaptiveTZViewer, AdaptiveTZStarter
+from .AOMTwoPlan import AOMTwoDPlan
+from .AOMTwoDView import AOMTwoDViewer, AOMTwoDStarter
 #from .GermaniumPlan import GermaniumPlan
 #from .GermaniumView import GermaniumView, GermaniumStarter
 #__all__ = [PumpProbePlan, PumpProbeViewer, pump_probe_starter,  TwoDViewer, TwoDStarter]
-

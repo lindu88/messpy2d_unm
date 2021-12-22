@@ -113,6 +113,7 @@ class MainWindow(QMainWindow):
             ]
         if controller.shaper is not None:
             plans += [('GVD Scan', 'ei.graph', GVDScanStarter)]
+            plans += [('2D Measurement', 'ei.flicker', AOMTwoDStarter)]
 
         for text, icon, starter in plans:
             asl_icon = qta.icon(icon, color='white')
@@ -428,7 +429,3 @@ if __name__ == '__main__':
     app.exec()
 
     #app.aboutToQuit = lambda x: controller.shutdown()
-
-
-
-
