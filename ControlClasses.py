@@ -235,7 +235,6 @@ class Controller(QObject):
             t1.join()
             if self.cam2:
                 t2.join()
-
         else:
             try:
                 self.plan.make_step()
