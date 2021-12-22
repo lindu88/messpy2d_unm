@@ -153,7 +153,7 @@ class AOM(IDevice):
                                   taus[None, :], phi1[None, :], phi2[None, :])
         return np.abs(masks), np.angle(masks)
 
-    def set_amp_and_phase(self, phase=None, amp=None):
+    def set_amp_and_phase(self, amp=None, phase=None):
         """
         Sets the amplitude and/or the phase of the spectral map.
         Notice that the compensation dispersion phase will be added separately.
@@ -168,7 +168,7 @@ class AOM(IDevice):
         Actually generates the waveform from set phase and amp. If turned on,
         it will also add the dispersion compensation phase in addition.
         Depending on the `mode` attribute, it will either use a bragg corrected
-        waveform or the classic wavevorm.
+        waveform or the classic waveform.
         """
         if self.compensation_phase is not None and self.do_dispersion_compensation:
             phase = self.phase - self.compensation_phase
