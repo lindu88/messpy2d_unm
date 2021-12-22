@@ -90,8 +90,8 @@ class MainWindow(QMainWindow):
         self._win = win
 
     def setup_toolbar(self):
-        self.tb = self.addToolBar('Begin Plan')
-        tb = self.tb
+        self.toolbar = self.addToolBar('Begin Plan')
+        tb = self.toolbar
 
         def plan_starter(PlanClass):
             def f():
@@ -108,36 +108,18 @@ class MainWindow(QMainWindow):
                     self.toggle_run(True)
             return f
 
-        #asl_icon = qta.icon('fa.percent', color='white')
-        #pp = QPushButton('2D Experiment', icon=asl_icon)
-        #pp.clicked.connect(plan_starter(TwoDStarter))
-        #tb.addWidget(pp)
-
-        asl_icon = qta.icon('ei.graph', color='white')
-        pp = QPushButton('Pump Probe', icon=asl_icon)
-        pp.clicked.connect(plan_starter(PumpProbeStarter))
-        tb.addWidget(pp)
-
-        asl_icon = qta.icon('ei.barcode', color='white')
-        pp = QPushButton('Scan Spectrum', icon=asl_icon)
-        pp.clicked.connect(plan_starter(ScanSpectrumStarter))
-        tb.addWidget(pp)
-
+        plans = [
+            ('Pump Probe', 'ei.graph', PumpProbeStarter),
+            ('Scan Spectrum', 'ei.barcode', ScanSpectrumStarter),
+            ]
         if controller.shaper is not None:
-            asl_icon = qta.icon('ei.barcode', color='white')
-            pp = QPushButton('GVD Scan', icon=asl_icon)
-            pp.clicked.connect(plan_starter(GVDScanStarter))
+            plans += [('GVD Scan', 'ei.graph', GVDScanStarter)]
+
+        for text, icon, starter in plans:
+            asl_icon = qta.icon(icon, color='white')
+            pp = QPushButton(text, icon=asl_icon)
+            pp.clicked.connect(plan_starter(starter))
             tb.addWidget(pp)
-
-
-        asl_icon = qta.icon('ei.download', color='white')
-        pp = QPushButton('Save current Spec', icon=asl_icon)
-        tb.addWidget(pp)
-
-        asl_icon = qta.icon('ei.graph', color='white')
-        pp = QPushButton('Focus Scan', icon=asl_icon)
-        pp.clicked.connect(plan_starter(FocusScanStarter))
-        tb.addWidget(pp)
 
         asl_icon = qta.icon('mdi.chart-line', color='white')
         pp = QPushButton('Shaper Calibration', icon=asl_icon)
@@ -146,8 +128,8 @@ class MainWindow(QMainWindow):
             c = self.controller
             fs = CalibPlan(cam=c.cam.cam,
                            dac=c.shaper,
-                       move_func=c.cam.set_wavelength,
-                       points=range(5500, 6500, 5))
+                           move_func=c.cam.set_wavelength,
+                           points=range(5500, 6500, 5))
             self.cal_viewer = CalibScanView(fs)
             c.async_plan = True
             fs.sigPlanDone.connect(lambda: setattr(c, 'async_plan', False))
@@ -159,7 +141,6 @@ class MainWindow(QMainWindow):
         pp = QPushButton('Show alignment helper')
         pp.clicked.connect(self.show_alignment_helper)
         tb.addWidget(pp)
-
 
 
     def toggle_run(self, bool):
