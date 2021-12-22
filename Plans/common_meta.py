@@ -16,7 +16,7 @@ sample_parameters = {'name': 'Sample', 'type': 'group', 'children': [
 ]}
 
 
-@attr.s(auto_attribs=True)
+@attr.s(auto_attribs=True, kw_only=True)
 class Plan(QObject):
     plan_shorthand: ClassVar[str]
 
@@ -24,6 +24,7 @@ class Plan(QObject):
     meta: dict = attr.Factory(dict)
     status: str = ''
     creation_dt: datetime = attr.Factory(datetime.now)
+    is_async: bool = False
 
     sigPlanFinished: ClassVar[Signal] = Signal()
     sigPlanStarted: ClassVar[Signal] = Signal()
