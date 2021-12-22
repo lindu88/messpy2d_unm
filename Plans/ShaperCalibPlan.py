@@ -15,7 +15,7 @@ import pyqtgraph as pg
 from pyqtgraph.parametertree import Parameter, ParameterTree
 import numpy as np
 from Instruments.dac_px import AOM
-from .CalibView import CalibView
+from .ShaperCalibView import CalibView
 
 @attr.s(auto_attribs=True, cmp=False)
 class CalibPlan(QObject):
@@ -24,16 +24,18 @@ class CalibPlan(QObject):
     move_func: Callable
     points: List[float]
     amps: List[List[float]] = attr.Factory(list)
+    single_spectra: np.ndarray = attr.ib(init=False)
     num_shots = 100
     start_pos: Tuple[float, float] = 0
     check_zero_order: bool = True
     channel: int = 67
-    is_async : bool = True
+    is_async: bool = True
     sigStepDone = Signal()
     sigPlanDone = Signal()
 
     def __attrs_post_init__(self):
         super().__init__()
+        self.single_spectra = np.zeros((cam.channels, len(self.points)))
 
     async def step(self):
         self.cam.set_shots(self.num_shots)
@@ -44,8 +46,8 @@ class CalibPlan(QObject):
             self.channel = np.argmax(reading.lines[: 1])
 
         await self.pre_scan()
-        for p in self.points:
-            await self.read_point(p)
+        for i, p in enumerate(self.points):
+            await self.read_point(i, p)
             self.sigStepDone.emit()
 
         await self.post_scan()
@@ -57,11 +59,12 @@ class CalibPlan(QObject):
     async def post_scan(self):
         self.sigPlanDone.emit()
 
-    async def read_point(self, p):
+    async def read_point(self, i, p):
         loop = asyncio.get_running_loop()
         await loop.run_in_executor(None, self.cam.spectrograph.set_wavelength, p, 10)
         spectra, ch = await loop.run_in_executor(None, self.cam.get_spectra, 3)
-        self.amps.append(spectra['Probe2'].frame_data[67, :])
+        self.amps.append(spectra['Probe2'].frame_data[self.channel, :])
+        self.single_spectra[:, i] = spectra['Probe2'].frame_data[:, 1]
 
 
 class CalibScanView(QWidget):
@@ -134,15 +137,15 @@ class CalibScanView(QWidget):
     def analyse(self):
         plan = self.focus_scan
         x = np.array(plan.points)
-        y0 = np.array(plan.amps)[:, 0]
-        y1 = np.array(plan.amps)[:, 1]
-        y2 = np.array(plan.amps)[:, 2]
-        np.save('calib.npy', np.column_stack((x, y0, y1, y2)))
-        self._view = CalibView(x=x, y_train=y0-y0.min(), y_single=y1-y1.min(), y_full=y2-y2.min())
+        y_train = np.array(plan.amps)[:, 0]
+        y_single = np.array(plan.amps)[:, 1]
+        y_full = np.array(plan.amps)[:, 2]
+        np.save('calib.npy', np.column_stack((x, y_train, y_single, y_full)))
+        np.save(f'wl_calib_{plan.ch: %d}.npy', np.column_stack((x, plan.single_spectra)))
+        self._view = CalibView(x=x, y_train=y_train-y_train.min(), y_single=y_single-y_single.min(), y_full=y_full-y_full.min())
         self._view.show()
         self._view.sigCalibrationAccepted.connect(plan.dac.set_calib)
         self._view.sigCalibrationAccepted.connect(lambda arg: plan.dac.generate_waveform())
-
 
 
 if __name__ == '__main__':
