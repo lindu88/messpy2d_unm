@@ -236,14 +236,16 @@ class Controller(QObject):
     def loop(self):
 
         if (t := aio.current_task()) is not None:
-            print(t)
+            pass
         elif self.async_tasks:
             for t in self.async_tasks:
                 t: aio.Task
                 if t.done():
                     if t.exception():
                         self.async_tasks.remove(t)
+                        t.cancel()
                         raise t.exception()
+
                     self.async_tasks.remove(t)
         elif self.plan is None or self.pause_plan:
             self.standard_read()

@@ -16,10 +16,11 @@ from pyqtgraph.parametertree import Parameter, ParameterTree
 import numpy as np
 from Instruments.dac_px import AOM
 from .ShaperCalibView import CalibView
+from ControlClasses import Cam
 
 @attr.s(auto_attribs=True, cmp=False)
 class CalibPlan(QObject):
-    cam: ICam
+    cam: Cam
     dac: AOM
     move_func: Callable
     points: List[float]
@@ -43,8 +44,8 @@ class CalibPlan(QObject):
         self.cam.set_shots(self.num_shots)
         loop = asyncio.get_running_loop()
         if self.check_zero_order:
-            self.cam.spectrograph.set_wavelength(0, 10)  #
-            reading = await loop.run_in_executor(None, self.cam.make_reading)
+            await loop.run_in_executor(None, self.cam.cam.spectrograph.set_wavelength, 0, 10) #
+            reading = await loop.run_in_executor(None, self.cam.read_cam)
             self.channel = np.argmax(reading.lines[: 1])
 
         await self.pre_scan()
@@ -55,19 +56,20 @@ class CalibPlan(QObject):
         await self.post_scan()
 
     async def pre_scan(self):
+        self.single_spectra = np.zeros((self.cam.channels, len(self.points)))
         self.dac.load_mask(self.dac.make_calib_mask())
-        self.cam.spectrograph.set_wavelength(self.start_pos, 10)
 
     async def post_scan(self):
         self.sigPlanDone.emit()
 
     async def read_point(self, i, p):
         loop = asyncio.get_running_loop()
-        await loop.run_in_executor(None, self.cam.spectrograph.set_wavelength, p, 10)
-        spectra, ch = await loop.run_in_executor(None, self.cam.get_spectra, 3)
+        await loop.run_in_executor(None, self.cam.cam.spectrograph.set_wavelength, p, 10)
+        spectra, ch = await loop.run_in_executor(None, self.cam.cam.get_spectra, 3)
+
+        #self.cam.sigReadCompleted.emit()
         self.amps.append(spectra['Probe2'].frame_data[self.channel, :])
         self.single_spectra[:, i] = spectra['Probe2'].frame_data[:, 1]
-
 
 class CalibScanView(QWidget):
     def __init__(self, focus_scan: CalibPlan, *args, **kwargs):
@@ -119,19 +121,17 @@ class CalibScanView(QWidget):
         #self.params.child('start').setOpts(enabled=False)
         self.focus_scan.sigTaskReady.emit(aio.create_task(self.focus_scan.step()))
 
-
-
     @asyncSlot()
     async def update_view(self):
-        print('update')
+
         plan = self.focus_scan
-        #self.info_label.setText(str(plan.amps[-1]))
+
         self.plot.plotItem.clear()
         n = len(plan.amps)
         x = plan.points[:n]
 
         y = np.array(plan.amps)
-        print(y.shape)
+
         self.plot.plotItem.plot(x, y[:, 0], pen='r')
         self.plot.plotItem.plot(x, y[:, 1], pen='g')
         self.plot.plotItem.plot(x, y[:, 2], pen='y')
@@ -143,7 +143,9 @@ class CalibScanView(QWidget):
         y_single = np.array(plan.amps)[:, 1]
         y_full = np.array(plan.amps)[:, 2]
         np.save('calib.npy', np.column_stack((x, y_train, y_single, y_full)))
-        np.save(f'wl_calib_{plan.ch: %d}.npy', np.column_stack((x, plan.single_spectra)))
+        print(x.shape, plan.single_spectra.shape)
+        single_arr = np.column_stack((x[:, None], plan.single_spectra.T))
+        np.save(f'wl_calib_{plan.channel}.npy', single_arr)
         self._view = CalibView(x=x, y_train=y_train-y_train.min(), y_single=y_single-y_single.min(), y_full=y_full-y_full.min())
         self._view.show()
         self._view.sigCalibrationAccepted.connect(plan.dac.set_calib)

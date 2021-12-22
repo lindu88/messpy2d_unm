@@ -171,34 +171,41 @@ class Reading:
 @attr.s(auto_attribs=True, cmp=False)
 class Reading2D:
     """Has the shape (pixel, t2)"""
+    spectra: Spectrum
     interferogram: np.ndarray
     t2_ps: np.ndarray
-    signal_2D: np.ndarray = attr.ib()
-    freqs: np.ndarray = attr.ib()
     window: Optional[Callable] = np.hanning
     upsample: int = 2
     rot_frame: float = 0
+    freqs: np.ndarray = attr.ib()
+    signal_2D: np.ndarray = attr.ib()
 
     @classmethod
     def from_spectrum(cls, s: Spectrum, t2_ps, rot_frame, **kwargs) -> 'Reading2D':
-        assert (s.frames and s.frames % 4 == 0 and (s.frame_data is not None))
+        #assert (s.frames and s.frames % 4 == 0 and (s.frame_data is not None))
         f = s.frame_data
-        f.reshape((f.shape[0], 4, f.shape[1] // 4))
+        #f = f.reshape((f.shape[0], f.shape[1] // 4, 4))
         # 4 Frames for each tau
-        sig = 1000 / LOG10 * (f[:, 0, :] - f[:, 1, :] + f[:, 2, :] - f[:, 3, :])
-        assert (sig.shape[1] == len(t2_ps))
-        return cls(interferogram=sig, t2_ps=t2_ps, rot_frame=rot_frame, **kwargs)
+        #sig = 1000 / LOG10 * (f[:, :, 0] - f[:, :, 1])#+ f[:, :, 2] - f[:, :, 3])
 
-    @signal_2D.default
-    def calc_2d(self):
-        a = self.interferogram.copy()
-        a[:, 0] *= 0.5
-        if self.window is not None:
-            win = self.window(a.shape[1] * 2)
-            a = a * win[None, a.shape[1]:]
-        return np.fft.rfft(a, a.shape[1] * self.upsample, 1).real
+        #f = f.reshape((f.shape[0], 4, -1))
+        #sig =  (f[:, 0, :] - f[:, 1, :] + f[:, 2, :] - f[:, 3, :])#*1000 / LOG10
+        #sig = f[:, :, 0]-f[:, 1, :]+ f[:, 2, :] - f[:, 3, :]
+        sig = f[:, ::4] - f[:, ::4].mean(1, keepdims=True) #- f[:, 1::4] + f[:, 2::4] - f[:, 3::4]
+        assert (sig.shape[1] == len(t2_ps))
+        return cls(spectra=s, interferogram=sig, t2_ps=t2_ps, rot_frame=rot_frame, **kwargs)
 
     @freqs.default
     def calc_freqs(self):
         freqs = np.fft.rfftfreq(len(self.t2_ps) * self.upsample, self.t2_ps[1] - self.t2_ps[0])
         return THz2cm(freqs) + self.rot_frame
+
+    @signal_2D.default
+    def calc_2d(self):
+        a = self.interferogram.copy()
+        #a[:, 0] *= 0.5
+        if self.window is not None:
+            win = self.window(a.shape[1] * 2)
+            a = a * win[None, a.shape[1]:]
+        return np.fft.rfft(a, a.shape[1] * self.upsample, 1).real
+

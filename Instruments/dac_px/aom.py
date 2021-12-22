@@ -79,10 +79,10 @@ class AOM(IDevice):
     def load_state(self):
         super(AOM, self).load_state()
 
-        self.set_wave_amp(self.wave_amp)
         if self.calib:
             self.set_calib(self.calib)
             self.update_dispersion_compensation()
+        self.set_wave_amp(self.wave_amp)
 
     def setup_dac(self):
         dac = self.dac
@@ -144,11 +144,16 @@ class AOM(IDevice):
             raise ValueError("Spectral calibration is required to calculate the masks.")
 
         # Four step phase cycling only
-        phase = np.array([(1, 0), (1, 1), (0, 1), (0, 0)]) * np.pi
-        phase = np.repeat(phase, repeats=taus.shape[0], axis=0)
+        phase = np.pi * np.array([(1, 1),
+                                  (1, 0),
+                                  (0, 1),
+                                  (0, 0)])
+        #phase = np.repeat(phase, repeats=taus.shape[0], axis=0)
+        phase = np.tile(phase, (taus.shape[0], 1))
         phi1 = phase[:, 0]
         phi2 = phase[:, 1]
         taus = taus.repeat(4)
+        print(taus[:4], phi1[:4], phi2[:4])
         masks = double_pulse_mask(self.nu[:, None], rot_frame,
                                   taus[None, :], phi1[None, :], phi2[None, :])
         return np.abs(masks), np.angle(masks)
@@ -220,11 +225,12 @@ class AOM(IDevice):
         if len(self.mask.shape) == 2:
             assert(self.mask.shape[0] == PIXEL)
             self.mask = self.mask.ravel(order='f')
-        print(self.amp_fac)
+
         mask = (self.amp_fac * MAX_16_Bit * self.mask).astype('int16')
 
         assert (mask.dtype == np.int16)
         assert ((mask.size % PIXEL) == 0)
+        print(mask.size // PIXEL)
         self.end_playback()
         mask1 = np.zeros_like(mask)
         mask1[:PIXEL] = MAX_16_Bit

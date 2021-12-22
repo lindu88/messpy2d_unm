@@ -113,7 +113,7 @@ class MainWindow(QMainWindow):
             ]
         if controller.shaper is not None:
             plans += [('GVD Scan', 'ei.graph', GVDScanStarter)]
-            plans += [('2D Measurement', 'ei.flicker', AOMTwoDStarter)]
+            plans += [('2D Measurement', 'ei.graph', AOMTwoDStarter)]
 
         for text, icon, starter in plans:
             asl_icon = qta.icon(icon, color='white')
@@ -126,7 +126,7 @@ class MainWindow(QMainWindow):
 
         def start_calib():
             c = self.controller
-            fs = CalibPlan(cam=c.cam.cam,
+            fs = CalibPlan(cam=c.cam,
                            dac=c.shaper,
                            move_func=c.cam.set_wavelength,
                            points=range(5500, 6500, 5))

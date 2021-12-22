@@ -40,9 +40,9 @@ class Plan(QObject):
         p = Path(config.data_directory)
         if not p.exists():
             raise IOError("Data path in config not existing")
-        if (p / name).with_suffix('json').exists():
+        if (p / name).with_suffix('.json').exists():
             name = name + "_0"
-        return (p / name).with_suffix('messpy'), (p / meta_name).with_suffix('json')
+        return (p / name).with_suffix('.messpy'), (p / meta_name).with_suffix('.json')
 
     def save_meta(self):
         """Saves the metadata in the metafile"""

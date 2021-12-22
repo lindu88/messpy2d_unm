@@ -15,6 +15,7 @@ from Instruments.signal_processing import cm2THz
 from qtpy.QtCore import Signal
 import h5py
 
+from typing import Optional
 
 @attrs(auto_attribs=True, kw_only=True)
 class AOMTwoDPlan(Plan):
@@ -50,13 +51,16 @@ class AOMTwoDPlan(Plan):
 
     @inferogramm_data.default
     def _default_store(self):
-        return np.zeros(self.controller.cam.channels, self.t2 * 2, len(self.t3_list))
+        return np.zeros((self.controller.cam.channels, len(self.t2) * 2, len(self.t3_list)))
 
     @make_step.default
+    def _tmp(self):
+        return self.make_step_gen().__next__
+
     def make_step_gen(self):
         c = self.controller
         self.setup_shaper()
-        for self.t3_idx, self.t3 in self.t3_list:
+        for self.t3_idx, self.t3 in enumerate(self.t3_list):
             c.delay_line.set_pos(self.t3, do_wait=False)
             while c.delay_line.moving:
                 yield
@@ -64,9 +68,16 @@ class AOMTwoDPlan(Plan):
             self.sigStepDone.emit()
 
     def setup_shaper(self):
-        amp, phase = self.shaper.double_pulse(self.max_t2, self.step_t2, cm2THz(self.rot_frame_freq))
+        print(cm2THz(self.rot_frame_freq))
+        amp, phase = self.shaper.double_pulse(self.t2, cm2THz(self.rot_frame_freq))
+        #amp[:, ::4] *= 0
         self.shaper.set_amp_and_phase(amp, phase)
+
+        self.shaper.chopped = False
+        self.shaper.phase_cycle = False
+        self.shaper.do_dispersion_compensation = True
         self.shaper.generate_waveform()
+        self.controller.cam.set_shots(amp.shape[1])
 
     def measure_point(self):
         # t = threading.Thread(target=self.controller.cam.cam.make_2D_reading,
@@ -81,4 +92,8 @@ class AOMTwoDPlan(Plan):
         for line, data in ret.items():
             self.data_file.create_dataset(f'if_data/{line}/{self.t3_idx}', data=data.interferogram)
             self.data_file.create_dataset(f'2d_data/{line}/{self.t3_idx}', data=data.signal_2D)
+
         self.last_2d = data.signal_2D
+        self.last_ir = data.interferogram
+        tmp = np.save(data.spectra.frame_data)
+        self.last_freq = data.freqs
