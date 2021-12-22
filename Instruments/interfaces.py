@@ -73,6 +73,8 @@ class IDevice(QObject, metaclass=QABCMeta):
         Looks for a .cfg file. If found, uses all values in the json
         as attributes.
         """
+        if exclude is None:
+            exclude = []
         try:
             with open(self.name + '.cfg', 'r') as f:
                 d = json.load(f)
@@ -80,7 +82,7 @@ class IDevice(QObject, metaclass=QABCMeta):
                 if not hasattr(self, key):
                     warnings.warn(f"Config file for {self.name} has value for {key}, which is not "
                                   f"an attribute of the class.")
-                if exclude and key not in exclude:
+                if key not in exclude:
                     setattr(self, key, val)
         except FileNotFoundError:
             return

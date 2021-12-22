@@ -70,6 +70,7 @@ class RotationStage(IRotationStage):
         return rot
 
     def __attrs_post_init__(self):
+        super(RotationStage, self).__attrs_post_init__()
         state = self.controller_state()
         print(state)
         if state.startswith('DISABLE'):
@@ -142,7 +143,7 @@ class RotationStage(IRotationStage):
 
 if __name__ == '__main__':
     import time
-
+    rs = RotationStage(comport='COM6')
     print('change first')
     rs.set_degrees(0)
     time.sleep(8)
