@@ -134,26 +134,23 @@ class AOM(IDevice):
     def classic_wf(self, amp, phase):
         """Calculates a uncorrected AOM waveform for given amplitude and shape"""
         f = self.dac_freq_MHz/self.rf_freq_MHz
-        return amp * np.cos(self.pixel[:, None]/ f * 2 * np.pi + phase)
+        return amp * np.cos(self.pixel[:, None] / f * 2 * np.pi + phase)
 
-    def double_pulse(self, taus, rot_frame: float) -> Tuple[np.ndarray, np.ndarray]:
+    def double_pulse(self, taus, rot_frame: float, phase_frames: Literal[1, 2, 4] = 4) -> Tuple[np.ndarray, np.ndarray]:
         """
         Calculates the masks for creating a series a double pulses with phase cycling.
         """
         if self.nu is None:
             raise ValueError("Spectral calibration is required to calculate the masks.")
-
-        # Four step phase cycling only
         phase = np.pi * np.array([(1, 1),
                                   (1, 0),
                                   (0, 1),
                                   (0, 0)])
-        #phase = np.repeat(phase, repeats=taus.shape[0], axis=0)
+        phase = phase[:phase_frames, :]
         phase = np.tile(phase, (taus.shape[0], 1))
         phi1 = phase[:, 0]
         phi2 = phase[:, 1]
-        taus = taus.repeat(4)
-        print(taus[:4], phi1[:4], phi2[:4])
+        taus = taus.repeat(phase_frames)
         masks = double_pulse_mask(self.nu[:, None], rot_frame,
                                   taus[None, :], phi1[None, :], phi2[None, :])
         return np.abs(masks), np.angle(masks)
