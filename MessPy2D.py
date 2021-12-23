@@ -29,7 +29,7 @@ class MainWindow(QMainWindow):
         super(MainWindow, self).__init__()
         self.setWindowTitle("Messpy-2D Edition")
         # self.setWindowFlags
-        self.controller = controller # type: Controller
+        self.controller = controller
         self.setup_toolbar()
         self.view = None
 
@@ -277,8 +277,8 @@ class CommandMenu(QWidget):
         dl = controller.delay_line
         dl1c = ControlFactory('Delay 1', lambda x: c.delay_line.set_pos(x, do_wait=False), format_str='%.1f fs',
                               extra_buttons=[("Set Home", dl.set_home)],
-                              presets=[-50000, -10000, -1001, -50,
-                                       50000, 10000, 1001, 50],
+                              presets=[-50000, -10000, -1000.0001, -50,
+                                       50000, 10000, 1000.0001, 50],
                               preset_func=lambda x: dl.set_pos(dl.get_pos() + x, do_wait=False),
                               )
         c.delay_line.sigPosChanged.connect(dl1c.update_value)
@@ -354,7 +354,7 @@ class CommandMenu(QWidget):
                 btn = QPushButton(name)
                 btn.clicked.connect(lambda: partial(spec.set_grating, idx))
                 btn.clicked.connect(lambda: lbl.setText('G: %s' % name))
-                btn.setFixedSize(80, 40)
+                btn.setFixedWidth(70)
                 btns.append(btn)
 
             l.append(hlay(btns, add_stretch=1))
@@ -377,6 +377,9 @@ if __name__ == '__main__':
     import asyncio as aio
     import traceback
     app = QApplication([])
+
+    import qdarkstyle
+
     app.setOrganizationName("USD")
     app.setApplicationName("MessPy3")
     loop = qasync.QEventLoop()
@@ -403,28 +406,24 @@ if __name__ == '__main__':
             pass
 
     sys.excepthook = exception_hook
-
-
     controller = Controller()
+    #font = QFont('Roboto')
 
-
-
-    font = QFont()
-
-    app.setStyle('Fusion')
+    #app.setStyle('Fusion')
     #app.setAttribute(Qt.AA_EnableHighDpiScaling)
-    app.setPalette(dark_palette)
+    #app.setPalette(dark_palette)
     ss = """
         QMainWindow { font-size: 20pt;}
         QToolTip { color: #ffffff; background-color: #2a82da;
                        border: 1px solid white; }
     """
+    ss = qdarkstyle.load_stylesheet()
     app.setStyleSheet(ss)
-    font.setPointSize(11)
-    font.setStyleStrategy(QFont.PreferQuality)
-    app.setFont(font)
+    #font.setPointSize(9)
+    #font.setStyleStrategy(QFont.PreferQuality)
+    #app.setFont(font)
+
     mw = MainWindow(controller=controller)
-    print(controller.cam.cam.registered_devices)
     mw.showMaximized()
     app.exec()
 
