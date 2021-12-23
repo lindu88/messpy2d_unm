@@ -432,8 +432,9 @@ def make_groupbox(widgets, title=''):
     gb = QGroupBox()
     gb.setContentsMargins(0, 0, 0, 0)
     gb.setSizeIncrement(0, 0)
-    vl = QVBoxLayout(gb)
-    vl.setContentsMargins(0, 0, 0, 0)
+    vl = QVBoxLayout()
+    gb.setLayout(vl)
+    #vl.setContentsMargins(0, 0, 0, 0)
     for i in widgets:
         if isinstance(i, QWidget):
             vl.addWidget(i)
@@ -479,8 +480,8 @@ def partial_formatter(val):
     if val == 0:
         return '0'
     else:
-        sign = 1
-    if math.log10(abs(val)) > 3:
-        return '%dk' % (sign * (abs(val) // 1000))
+        sign = val/val
+    if math.log10(abs(val)) >= 3:
+        return '%dk' % (val/1000)
     else:
         return str(val)
