@@ -182,16 +182,15 @@ class Reading2D:
 
     @classmethod
     def from_spectrum(cls, s: Spectrum, t2_ps, rot_frame, **kwargs) -> 'Reading2D':
-        #assert (s.frames and s.frames % 4 == 0 and (s.frame_data is not None))
         f = s.frame_data
-        #f = f.reshape((f.shape[0], f.shape[1] // 4, 4))
-        # 4 Frames for each tau
-        #sig = 1000 / LOG10 * (f[:, :, 0] - f[:, :, 1])#+ f[:, :, 2] - f[:, :, 3])
+        n = s.frame_data.shape[1] / len(t2_ps)
+        if n == 1:
+            sig = f
+        elif n == 2:
+            sig = (f[:, 0::4] - f[:, 1::4])*1000/LOG10
+        elif n == 4:
+            sig = (f[:, 0::4] - f[:, 1::4] - f[:, 2::4] + f[:, 3::4])*1000/LOG10
 
-        #f = f.reshape((f.shape[0], 4, -1))
-        #sig =  (f[:, 0, :] - f[:, 1, :] + f[:, 2, :] - f[:, 3, :])#*1000 / LOG10
-        #sig = f[:, :, 0]-f[:, 1, :]+ f[:, 2, :] - f[:, 3, :]
-        sig = f[:, ::4] - f[:, ::4].mean(1, keepdims=True) #- f[:, 1::4] + f[:, 2::4] - f[:, 3::4]
         assert (sig.shape[1] == len(t2_ps))
         return cls(spectra=s, interferogram=sig, t2_ps=t2_ps, rot_frame=rot_frame, **kwargs)
 
@@ -203,7 +202,7 @@ class Reading2D:
     @signal_2D.default
     def calc_2d(self):
         a = self.interferogram.copy()
-        #a[:, 0] *= 0.5
+        a[:, 0] *= 0.5
         if self.window is not None:
             win = self.window(a.shape[1] * 2)
             a = a * win[None, a.shape[1]:]
