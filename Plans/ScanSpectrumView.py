@@ -5,7 +5,7 @@ from qtpy.QtWidgets import QWidget
 from ControlClasses import Controller
 from QtHelpers import vlay, PlanStartDialog, ObserverPlot
 from .ScanSpectrum import ScanSpectrum
-from .common_meta import sample_parameters
+from .PlanBase import sample_parameters
 
 
 class ScanSpectrumView(QWidget):

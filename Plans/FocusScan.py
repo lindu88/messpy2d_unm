@@ -5,7 +5,7 @@ from Config import config
 from pathlib import Path
 import attr
 import numpy as np
-from Plans.common_meta import Plan
+from Plans.PlanBase import Plan
 import typing as T
 from collections import namedtuple
 from ControlClasses import Cam, Controller

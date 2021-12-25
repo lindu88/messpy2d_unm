@@ -2,7 +2,7 @@ import time, threading
 from typing import Optional, List, Iterable, TYPE_CHECKING
 import numpy as np
 from attr import attrs, attrib, Factory
-from .common_meta import Plan
+from .PlanBase import Plan
 from ControlClasses import Controller, Cam
 from qtpy.QtCore import QObject, Signal
 from pathlib import Path

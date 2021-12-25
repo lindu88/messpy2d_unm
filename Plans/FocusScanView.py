@@ -10,7 +10,7 @@ from qtpy.QtGui import QPalette, QFont
 from qtpy.QtCore import Qt, QTimer, QObject, Signal
 from ControlClasses import Controller, Cam
 from QtHelpers import vlay, hlay, PlanStartDialog, ObserverPlot
-from .common_meta import sample_parameters
+from .PlanBase import sample_parameters
 
 class FocusScanView(QWidget):
     def __init__(self, fsPlan: FocusScan, *args, **kwargs):

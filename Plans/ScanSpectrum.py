@@ -2,12 +2,12 @@ import threading
 import typing as T
 
 import attr
-import matplotlib.pyplot as plt
+from matplotlib.figure import Figure
 import numpy as np
 from qtpy.QtCore import QObject, Signal
 
 from ControlClasses import Cam
-from Plans.common_meta import Plan
+from Plans.PlanBase import Plan
 
 
 @attr.s(auto_attribs=True, cmp=False, kw_only=True)
@@ -70,12 +70,11 @@ class ScanSpectrum(Plan):
                 'signal': self.signal}
         # data['meta'] = self.meta
         self.save_meta()
-        fig = plt.figure()
-        plt.plot(self.wls[:, 64], self.probe[:, 64], label='Probe')
-        plt.plot(self.wls[:, 64], self.ref[:, 64], label='Ref')
-        plt.legend()
-        fig.show()
-
+        fig = Figure()
+        ax = fig.add_subplot()
+        ax.plot(self.wls[:, 64], self.probe[:, 64], label='Probe')
+        ax.plot(self.wls[:, 64], self.ref[:, 64], label='Ref')
+        ax.legend()
         name = self.get_file_name()[0]
         np.savez(name, **data)
         fig.savefig(name.with_suffix('.png'))

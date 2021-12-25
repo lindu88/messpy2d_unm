@@ -21,7 +21,7 @@ from typing import List, TYPE_CHECKING
 #if TYPE_CHECKING:
 from Plans.PumpProbe import PumpProbeData, PumpProbePlan
 
-from .common_meta import sample_parameters
+from .PlanBase import sample_parameters
 
 
 
