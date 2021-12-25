@@ -7,7 +7,7 @@ from qtpy.QtCore import Signal
 
 from ControlClasses import Cam, Delayline
 
-from Plans.common_meta import Plan
+from Plans.PlanBase import Plan
 from scipy.special import erf
 import lmfit
 from lmfit.model import ModelResult

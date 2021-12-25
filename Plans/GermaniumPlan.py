@@ -5,7 +5,7 @@ from attr import attrs, attrib, Factory
 from collections import namedtuple
 from ControlClasses import Controller, Cam
 import attr
-from common_meta import Plan
+from PlanBase import Plan
 import scipy.special as spec
 import scipy.optimize as opt
 

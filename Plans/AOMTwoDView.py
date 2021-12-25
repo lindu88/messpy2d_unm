@@ -5,7 +5,7 @@ from qtpy.QtWidgets import QWidget
 import numpy as np
 from ControlClasses import Controller
 from QtHelpers import vlay, PlanStartDialog, hlay
-from .common_meta import sample_parameters
+from .PlanBase import sample_parameters
 from .AOMTwoPlan import AOMTwoDPlan
 
 @attr.s(auto_attribs=True)
@@ -47,6 +47,19 @@ class AOMTwoDViewer(QWidget):
         self.plot4.plot(self.plan.last_freq[:], self.plan.last_2d.sum(0))
         #self.l3.setData(self.plan.last_ir[:, 50])
 
+    def update_label(self):
+        p = self.plan
+        s = f'''
+            <h3>Current Experiment</h3>
+            <big>
+            <dl>
+            <dt>Name:<dd>{p.name}
+            <dt>Shots:<dd>{p.t}
+            <dt>Scan:<dd>{p.cur_scan} / {p.max_scan}                     
+            </dl>
+            </big>
+            '''
+
 
 class AOMTwoDStarter(PlanStartDialog):
     title = "New 2D-experiment"
@@ -61,26 +74,20 @@ class AOMTwoDStarter(PlanStartDialog):
                {'name': 'Operator', 'type': 'str', 'value': 'Till'},
                {'name': 't2 (+)', 'suffix': 'ps', 'type': 'float', 'value': 4},
                {'name': 't2 (step)', 'suffix': 'ps', 'type': 'float', 'value': 0.1},
+               {'name': 'Phase Cycles', 'type': 'list', 'values': [1, 2, 4]},
                {'name': 'Rot. Frame', 'suffix': 'cm-1', 'type': 'float', 'value': 2000},
                {'name': 'Linear Range (-)', 'suffix': 'ps', 'type': 'float', 'value': 0},
                {'name': 'Linear Range (+)', 'suffix': 'ps', 'type': 'float', 'value': 1},
                {'name': 'Linear Range (step)', 'suffix': 'ps', 'type': 'float', 'min': 0.2},
                {'name': 'Logarithmic Scan', 'type': 'bool'},
-               {'name': 'Logarithmic End', 'type': 'float', 'suffix': 'ps',
-                'min': 0.},
+               {'name': 'Logarithmic End', 'type': 'float', 'suffix': 'ps', 'min': 0.},
                {'name': 'Logarithmic Points', 'type': 'int', 'min': 0},
                dict(name="Add pre-zero times", type='bool', value=False),
                dict(name="Num pre-zero points", type='int', value=10, min=0, max=20),
                dict(name="Pre-Zero pos", type='float', value=-60., suffix='ps'),
-               #dict(name='Use Shutter', type='bool', value=True, enabled=has_shutter, visible=has_shutter),
-               #dict(name='Use Rotation Stage', type='bool', value=True, enabled=has_rot, visible=has_rot),
-               #dict(name='Angles in deg.', type='str', value='0, 45', enabled=has_rot, visible=has_rot),
+
                ]
 
-        #for c in self.controller.cam_list:
-        #    if c.cam.changeable_wavelength:
-        #        name = c.cam.name
-        #        tmp.append(dict(name=f'{name} center wls', type='str', value='0'))
 
         two_d = {'name': 'Exp. Settings', 'type': 'group', 'children': tmp}
 
@@ -102,12 +109,6 @@ class AOMTwoDStarter(PlanStartDialog):
             times = np.linspace(pos - 1, pos, n).tolist()
             t_list = times + t_list
 
-        #if p['Use Rotation Stage'] and self.controller.rot_stage:
-        #    s = p['Angles in deg.'].split(',')
-        #    angles = list(map(float, s))
-        #else:
-        #    angles = None
-
         self.save_defaults()
         p = AOMTwoDPlan(
             name=p['Filename'],
@@ -118,9 +119,17 @@ class AOMTwoDStarter(PlanStartDialog):
             step_t2=p['t2 (step)'],
             rot_frame_freq=p['Rot. Frame'],
             shaper=controller.shaper,
-            #center_wl_list=cwls,
-            #use_shutter=p['Use Shutter'] and self.controller.shutter,
-            #use_rot_stage=p['Use Rotation Stage'],
-            #rot_stage_angles=angles
+            phase_frames=p['Phase Cycles'],
         )
         return p
+
+
+if __name__ == '__main__':
+    from qtpy.QtWidgets import QApplication
+    from ControlClasses import Controller
+
+    app = QApplication([])
+    p = AOMTwoDPlan(controller=Controller(), shaper=None, t3_list=[1, 2])
+    w = AOMTwoDViewer(plan=p)
+    w.show()
+    app.exec_()
