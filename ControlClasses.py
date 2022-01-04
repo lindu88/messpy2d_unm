@@ -186,7 +186,6 @@ class Controller(QObject):
     loop_finished: T.ClassVar[Signal] = Signal()
 
     def __attrs_post_init__(self):
-        print("Blaa")
         super(QObject, self).__init__()
         self.cam = Cam()
         self.shutter = _shutter
