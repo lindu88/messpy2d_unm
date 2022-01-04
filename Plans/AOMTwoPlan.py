@@ -24,12 +24,14 @@ class AOMTwoDPlan(ScanPlan):
     plan_shorthand: ClassVar[str] = "2D"
     controller: Controller
     shaper: AOM
-    t3_list: np.ndarray
+    t3: np.ndarray
     t3_idx: int = 0
+    cur_t3: float = 0
     do_stop: bool = False
     max_t2: float = 4
     step_t2: float = 0.05
     t2: np.ndarray = attrib()
+
     phase_frames: Literal[1, 2, 4] = 4
     rot_frame_freq: float = 0
     data_file: h5py.File = attrib()
@@ -49,7 +51,7 @@ class AOMTwoDPlan(ScanPlan):
         f = h5py.File(name, mode='w')
         return f
         f.create_dataset("t2", data=self.t2)
-        f.create_dataset("t3", data=self.t3_list)
+        f.create_dataset("t3", data=self.t3)
         f.create_group("data")
         f['t2'].attrs['rot_frame'] = self.rot_frame_freq
         f.create_dataset("wn", data=self.controller.cam.wavenumbers)
@@ -58,13 +60,13 @@ class AOMTwoDPlan(ScanPlan):
 
     def scan(self):
         c = self.controller
-        for self.t3_idx, self.t3 in enumerate(self.t3_list):
+        for self.t3_idx, self.cur_t3 in enumerate(self.t3):
             self.time_tracker.point_starting()
-            c.delay_line.set_pos(self.t3*1000, do_wait=False)
+            c.delay_line.set_pos(self.cur_t3*1000, do_wait=False)
             while c.delay_line.moving:
                 yield
             yield from self.measure_point()
-            self.time_tracker.point_end_time()
+            self.time_tracker.point_ending()
             self.sigStepDone.emit()
 
     def setup_plan(self) -> Generator:
@@ -84,6 +86,7 @@ class AOMTwoDPlan(ScanPlan):
     def post_plan(self) -> Generator:
         for k in 'amp', 'phase', 'chopped', 'phase_cycle', 'do_dispersion_compensation':
             setattr(self.shaper, k, self.initial_state[k])
+        self.shaper.generate_waveform()
         self.controller.cam.set_shots(self.initial_state[k])
 
     def measure_point(self):
@@ -94,8 +97,10 @@ class AOMTwoDPlan(ScanPlan):
                 yield
             ret = future.result()
         for line, data in ret.items():
-            self.data_file.create_dataset(f'if_data/{line}/{self.t3_idx}', data=data.interferogram)
-            self.data_file.create_dataset(f'2d_data/{line}/{self.t3_idx}', data=data.signal_2D)
+            ds = self.data_file.create_dataset(f'if_data/{self.cur_scan}/{line}/{self.t3_idx}', data=data.interferogram)
+            ds.attrs['time'] = self.cur_t3
+            ds = self.data_file.create_dataset(f'2d_data/{self.cur_scan}/{line}/{self.t3_idx}', data=data.signal_2D)
+            ds.attrs['time'] = self.cur_t3
 
         self.last_2d = data.signal_2D
         self.last_ir = data.interferogram
