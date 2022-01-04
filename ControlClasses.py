@@ -1,7 +1,7 @@
 import numpy as np
 from attr import attrs, attrib, Factory, define
 import os
-os.environ['QT_API'] = 'pyside2'
+
 from qtpy.QtWidgets import QApplication
 from qtpy.QtCore import QThread, QTimer, QObject, Signal
 from Config import config

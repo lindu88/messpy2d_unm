@@ -1,6 +1,6 @@
 import os
 
-os.environ['QT_API'] = 'pyside2'
+
 from ControlClasses import Controller
 
 controller = Controller()
