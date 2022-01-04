@@ -106,7 +106,6 @@ class AOM(IDevice):
         x = self.nu - self.nu0_THz
         x *= (2 * np.pi) / 1000 # PHz -> disp params in fs^-n (n=2,3,4)
         coef = np.array([self.gvd, self.tod, self.fod]) / np.array([2, 6, 24])
-        print(self.gvd, self.tod, self.fod, self.nu0_THz)
         phase = x ** 2 * coef[0] + x ** 3 * coef[1] + x ** 4 * coef[2]
         self.do_dispersion_compensation = True
         self.compensation_phase = -phase[:, None]
