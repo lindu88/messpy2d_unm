@@ -21,11 +21,6 @@ from SampleMoveWidget import MoveWidget
 from functools import partial
 
 
-class SelectPlan(QWidget):
-    def __init__(self, parent=None):
-        super(SelectPlan, self).__init__(parent=parent)
-
-
 class MainWindow(QMainWindow):
     def __init__(self):
         super(MainWindow, self).__init__()
@@ -166,15 +161,11 @@ class MainWindow(QMainWindow):
         # dw = QDockWidget(self._ah)
         # self.addDockWidget(Qt.LeftDockWidgetArea, dw)
 
-    def closeEvent(self, event):
-        print('closing')
-
     def closeEvent(self, *args, **kwargs):
         config.save()
         settings = QSettings()
         settings.setValue('geometry', self.saveGeometry())
         settings.setValue('windowState', self.saveState())
-
         super(MainWindow, self).closeEvent(*args, **kwargs)
 
     def readSettings(self):
@@ -193,7 +184,6 @@ class CommandMenu(QWidget):
 
         self.add_plan_controls()
 
-        self.add_loop_control(parent)
         gb = self.add_cam(c)
         self._layout.addWidget(gb)
 
@@ -214,12 +204,10 @@ class CommandMenu(QWidget):
             self.add_shaper(c.shaper)
 
     def add_plan_controls(self):
-        self.start_but = QPushButton('Start Plan')
-        self._sp = SelectPlan(self)
-        self.start_but.clicked.connect(lambda: self._sp.show())
-        self.plan_label = QLabel('Default loop')
-        self.plan_label.setAlignment(Qt.AlignHCenter)
-        self.pause_plan_but = QPushButton("Pause plan")
+        #self.plan_label = QLabel('Default loop')
+        #self.plan_label.setAlignment(Qt.AlignHCenter)
+        self.pause_plan_but = QPushButton("Pause plan",
+                                          icon=qta.icon('fa.pause', color="white"))
         self.pause_plan_but.setCheckable(True)
         c = self.parent().controller  # type: Controller
 
@@ -231,8 +219,12 @@ class CommandMenu(QWidget):
         self.reopen_planview_but = QPushButton('Reopen Planview')
         self.reopen_planview_but.setEnabled(False)
         self.reopen_planview_but.clicked.connect(self.parent().show_planview)
-        for w in (self.start_but, self.plan_label,
-                  self.reopen_planview_but, self.pause_plan_but):
+        cb_running = QPushButton('Running',
+                                 icon=qta.icon('fa.play', color='white'))
+        cb_running.setCheckable(True)
+        cb_running.setChecked(True)
+        cb_running.toggled.connect(self.parent().toggle_run)
+        for w in (self.reopen_planview_but, self.pause_plan_but, cb_running):
             self._layout.addWidget(w)
 
     def add_ext_view(self):
@@ -243,17 +235,6 @@ class CommandMenu(QWidget):
         vl = ValueLabels([('Ext 1', partial(get_ext, 1))])
         self._layout.addWidget(make_groupbox([vl], 'Ext.'))
         # self._layout.addStretch(10)
-
-    def add_loop_control(self, parent):
-        cb_running = QPushButton('Running',
-                                 icon=qta.icon('fa.play', color='white'))
-        cb_running.setCheckable(True)
-        cb_running.setChecked(True)
-        cb_running.toggled.connect(parent.toggle_run)
-        gb = make_groupbox([self.start_but, cb_running, self.plan_label],
-                           'Plans')
-        self._layout.addWidget(gb)
-        return gb
 
     def add_cam(self, c: Controller):
         bg_buttons = [('Record BG', c.cam.get_bg)]

@@ -251,7 +251,11 @@ class PhaseTecCam(ICam):
 
     def get_wavelength_array(self, center_wl):
         center_wl = self.spectrograph.get_wavelength()
+        grating = self.spectrograph.get_grating()
         disp = 7.69
+        if grating == 1:
+            disp *= 30/75
+
         center_ch = 63
         if center_wl < 1000:
             return np.arange(-64, 64, 1)
