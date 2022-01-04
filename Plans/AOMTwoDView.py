@@ -1,36 +1,38 @@
 import attr
 import pyqtgraph.parametertree as pt
 from pyqtgraph import PlotWidget, ImageItem
-from qtpy.QtWidgets import QWidget
+from qtpy.QtWidgets import QWidget, QLabel
 import numpy as np
 from ControlClasses import Controller
 from QtHelpers import vlay, PlanStartDialog, hlay
 from .PlanBase import sample_parameters
 from .AOMTwoPlan import AOMTwoDPlan
 
+
 @attr.s(auto_attribs=True)
 class AOMTwoDViewer(QWidget):
     plan: AOMTwoDPlan
-    plot: PlotWidget = attr.ib(init=False)
-    plot2: PlotWidget = attr.ib(init=False)
-    plot3: PlotWidget = attr.ib(init=False)
+    ifr_pw: PlotWidget = attr.ib(factory=PlotWidget)
+    ifr_plot: PlotWidget = attr.ib(factory=PlotWidget)
+    spec_pw: PlotWidget = attr.ib(factory=PlotWidget)
+    spec_img_pw: PlotWidget = attr.ib(factory=PlotWidget)
     data_image: ImageItem = attr.ib(init=False)
+    spec_image: ImageItem = attr.ib(init=False)
+    label: QLabel = attr.Factory(QLabel)
 
     def __attrs_post_init__(self):
         super(AOMTwoDViewer, self).__init__()
         self.plan.sigStepDone.connect(self.update_image)
-        self.plot = PlotWidget()
-        self.plot2 = PlotWidget()
-        self.plot3 = PlotWidget()
-        self.plot4 = PlotWidget()
         self.data_image = ImageItem()
         self.spec_image = ImageItem()
-        self.plot3.addItem(self.spec_image)
-        self.plot3.plotItem.setTitle("2D Spectrum")
-        self.plot.addItem(self.data_image)
-        self.plot.plotItem.setTitle("Inferogram")
-        self.setLayout(vlay(hlay(self.plot, self.plot3), hlay(self.plot2, self.plot4)))
-        self.l1 = self.plot2.plotItem.plot([1,2,3])
+        self.spec_img_pw.addItem(self.spec_image)
+        self.spec_img_pw.plotItem.setTitle("2D Spectrum")
+        self.ifr_pw.plotItem.addItem(self.data_image)
+        self.ifr_pw.plotItem.setTitle("Inferogram")
+        self.setLayout(vlay(hlay(self.ifr_pw, self.spec_img_pw),
+                            hlay(self.ifr_plot, self.plot4),
+                            self.label))
+        self.l1 = self.spec_plot.plotItem.plot([1, 2, 3])
         self.l3 = self.plot4.plotItem.plot([1, 2, 3])
 
     def update_image(self):
@@ -59,6 +61,8 @@ class AOMTwoDViewer(QWidget):
             </dl>
             </big>
             '''
+        s = s + p.time_tracker.as_string()
+        self.label.setText(s)
 
 
 class AOMTwoDStarter(PlanStartDialog):
@@ -85,12 +89,9 @@ class AOMTwoDStarter(PlanStartDialog):
                dict(name="Add pre-zero times", type='bool', value=False),
                dict(name="Num pre-zero points", type='int', value=10, min=0, max=20),
                dict(name="Pre-Zero pos", type='float', value=-60., suffix='ps'),
-
                ]
 
-
         two_d = {'name': 'Exp. Settings', 'type': 'group', 'children': tmp}
-
         params = [sample_parameters, two_d]
         self.paras = pt.Parameter.create(name='Pump Probe', type='group', children=params)
 
