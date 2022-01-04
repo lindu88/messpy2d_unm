@@ -22,12 +22,15 @@ class AlignmentHelper(QWidget):
         self.std_lines = {}
 
         for cam in controller.cam_list:
-            amp_plot = self.graph_layouter.addPlot()
+            amp_plot: pg.PlotItem = self.graph_layouter.addPlot()
+            amp_plot.setTitle("Amplitude")
             for line_name in range(len(cam.cam.line_names)):
                 c = pg.mkPen(color=qh.col[line_name])
                 self.amp_lines[(cam, line_name)] = amp_plot.plot(pen=c), []
 
             std_plot = self.graph_layouter.addPlot()
+
+            std_plot.setTitle("Std")
             for std_name in range(len(cam.cam.std_names)):
                 c = pg.mkPen(color=qh.col[std_name])
                 self.std_lines[(cam, std_name)] = std_plot.plot(pen=c), []
@@ -74,8 +77,3 @@ if __name__ == '__main__':
     app.aboutToQuit.conenct(t.s)
     a.show()
     app.exec_()
-
-
-
-
-

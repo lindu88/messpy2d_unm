@@ -1,32 +1,43 @@
-import os
-
-
 from ControlClasses import Controller
-
-controller = Controller()
 from Config import config
-from qtpy.QtCore import QTimer, Qt, QThread, QSettings
-from qtpy.QtGui import QFont, QIntValidator
-from qtpy.QtWidgets import (QMainWindow, QApplication, QWidget, QDockWidget, QErrorMessage,
-                            QPushButton, QLabel, QVBoxLayout, QSizePolicy, QFormLayout, QMessageBox,
-                            QToolBar, QCheckBox)
+from qtpy.QtCore import QTimer, Qt, QSettings
+from qtpy.QtGui import QIntValidator
+from qtpy.QtWidgets import (QMainWindow, QApplication, QWidget, QDockWidget, QPushButton, QLabel, QSizePolicy,
+                            QFormLayout, QMessageBox,
+                            QCheckBox)
 import qtawesome as qta
 from Instruments.interfaces import IAOMPulseShaper, ICam
 from Plans import *
 from Plans.ShaperCalibPlan import CalibScanView, CalibPlan
-from QtHelpers import dark_palette, ControlFactory, make_groupbox, \
-    ObserverPlot, ValueLabels, ObserverPlotWithControls, hlay
+from QtHelpers import ControlFactory, make_groupbox, \
+    ValueLabels, ObserverPlotWithControls, hlay
 from SampleMoveWidget import MoveWidget
 
 from functools import partial
 
+import qtawesome as qta
+from qtpy.QtCore import QTimer, Qt, QSettings
+from qtpy.QtGui import QIntValidator
+from qtpy.QtWidgets import (QMainWindow, QApplication, QWidget, QDockWidget, QPushButton, QLabel, QSizePolicy,
+                            QFormLayout, QMessageBox,
+                            QCheckBox)
+
+from Config import config
+from ControlClasses import Controller
+from Instruments.interfaces import IAOMPulseShaper, ICam
+from Plans import *
+from Plans.ShaperCalibPlan import CalibScanView, CalibPlan
+from QtHelpers import ControlFactory, make_groupbox, \
+    ValueLabels, ObserverPlotWithControls, hlay
+from SampleMoveWidget import MoveWidget
+
 
 class MainWindow(QMainWindow):
-    def __init__(self):
+    def __init__(self, controller):
         super(MainWindow, self).__init__()
         self.setWindowTitle("Messpy-2D Edition")
         self.setWindowIcon(qta.icon('fa.play'))
-        self.controller = Controller()  # controller
+        self.controller = controller  # controller
 
         self.setup_toolbar()
 
@@ -204,8 +215,8 @@ class CommandMenu(QWidget):
             self.add_shaper(c.shaper)
 
     def add_plan_controls(self):
-        #self.plan_label = QLabel('Default loop')
-        #self.plan_label.setAlignment(Qt.AlignHCenter)
+        # self.plan_label = QLabel('Default loop')
+        # self.plan_label.setAlignment(Qt.AlignHCenter)
         self.pause_plan_but = QPushButton("Pause plan",
                                           icon=qta.icon('fa.pause', color="white"))
         self.pause_plan_but.setCheckable(True)
@@ -255,7 +266,7 @@ class CommandMenu(QWidget):
         return gb
 
     def add_delaystages(self, c):
-        dl = controller.delay_line
+        dl = c.delay_line
         dl1c = ControlFactory('Delay 1', lambda x: c.delay_line.set_pos(x, do_wait=False), format_str='%.1f fs',
                               extra_buttons=[("Set Home", dl.set_home)],
                               presets=[-50000, -10000, -1000.0001, -50,
@@ -266,7 +277,7 @@ class CommandMenu(QWidget):
         dl1c.update_value(c.delay_line.get_pos())
         dls = [dl1c]
         if c.delay_line_second:
-            dl2 = controller.delay_line_second
+            dl2 = c.delay_line_second
             dl2c = ControlFactory('Delay 2', dl2.set_pos, format_str='%.1f fs',
                                   extra_buttons=[("Set Home", dl2.set_pos)],
                                   )
@@ -403,7 +414,7 @@ if __name__ == '__main__':
     # font.setStyleStrategy(QFont.PreferQuality)
     # app.setFont(font)
 
-    mw = MainWindow()
+    mw = MainWindow(Controller())
     mw.showMaximized()
     loop = qasync.QEventLoop()
 
