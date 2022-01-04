@@ -32,7 +32,7 @@ class AlignmentHelper(QWidget):
                 c = pg.mkPen(color=qh.col[std_name])
                 self.std_lines[(cam, std_name)] = std_plot.plot(pen=c), []
             self.graph_layouter.nextRow()
-        controller.loop_finnished.connect(self.update_plots)
+        controller.loop_finished.connect(self.update_plots)
 
     def update_plots(self):
 

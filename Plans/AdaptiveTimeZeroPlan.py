@@ -5,7 +5,7 @@ import numpy as np
 import attr
 from qtpy.QtCore import Signal
 
-from ControlClasses import Cam, Delayline
+from ControlClasses import Cam, DelayLine
 
 from Plans.PlanBase import Plan
 from scipy.special import erf
@@ -39,7 +39,7 @@ def fit_step_function(t, data) -> ModelResult:
 @attr.s(auto_attribs=True)
 class AdaptiveTimeZeroPlan(Plan):
     cam: Cam
-    delay_line: Delayline
+    delay_line: DelayLine
     mode: Literal['mean', 'max'] = 'mean'
     is_running: bool = True
     max_diff: float = 50
