@@ -1,16 +1,18 @@
 import numpy as np
-from attr import attrs, attrib, Factory
+from attr import attrs, attrib, Factory, define
+import os
+os.environ['QT_API'] = 'pyside2'
+from qtpy.QtWidgets import QApplication
+from qtpy.QtCore import QThread, QTimer, QObject, Signal
 from Config import config
 import threading, time
 import typing as T
 from HwRegistry import _cam, _cam2, _dl, _dl2, _rot_stage, _shutter, _sh, _shaper
 import Instruments.interfaces as I
 
-
 Reading = I.Reading
 
-from qtpy.QtWidgets import QApplication
-from qtpy.QtCore import QThread, QTimer, QObject, Signal
+
 import asyncio as aio
 
 
@@ -108,18 +110,17 @@ class Cam(QObject):
         self.sigRefCalibrationFinished.emit(self.cam.deltaK1, self.cam.deltaK2)
 
 
-@attrs(cmp=False)
-class Delayline(QObject):
-    pos = attrib(0)
-    moving = attrib(False)
-    _dl = attrib(I.IDelayLine)
-    _thread = attrib(None)
-    sigPosChanged = Signal(float)
+@define(auto_attribs=True, slots=False)
+class DelayLine(QObject):
+    pos: float = 0
+    moving: bool = False
+    _dl: I.IDelayLine = _dl
+    _thread: T.Optional[object] = attrib(None)
+    sigPosChanged: T.ClassVar[Signal] = Signal(float)
 
     def __attrs_post_init__(self):
         QObject.__init__(self)
         self.pos = self._dl.get_pos_fs()
-
         self.sigPosChanged.emit(self.pos)
 
     def set_pos(self, pos_fs: float, do_wait=True):
@@ -165,54 +166,35 @@ class Delayline(QObject):
 arr_factory = Factory(lambda: np.zeros(16))
 
 
+@define(slots=False, auto_attribs=True)
 class Controller(QObject):
     """Class which controls the main loop."""
-    cam: Cam
-    cam2: T.Optional[Cam]
-    cam_list: T.List[Cam]
-    shutter: T.Optional[I.IShutter]
-    delay_line: Delayline
-    rot_stage: T.Optional[I.IRotationStage]
-    sample_holder: T.Optional[I.ILissajousScanner]
-    shaper: T.Optional[object] = None
-    loop_finnished = Signal()
+    cam: Cam = attrib(init=False)
+    delay_line: DelayLine = Factory(lambda: DelayLine(dl=_dl))
+    delay_line_second: T.Optional[DelayLine] = None
+    cam2: T.Optional[Cam] = attrib(init=False)
+    cam_list: T.List[Cam] = Factory(list)
+    shutter: T.Optional[I.IShutter] = _shutter
+    rot_stage: T.Optional[I.IRotationStage] = _rot_stage
+    sample_holder: T.Optional[I.ILissajousScanner] = _sh
+    shaper: T.Optional[object] = _shaper
 
+    async_tasks: list = Factory(list)
+    plan: T.Optional[object] = None
+    pause_plan: bool = False
 
-    def __init__(self):
-        super(Controller, self).__init__()
+    loop_finished: T.ClassVar[Signal] = Signal()
+
+    def __attrs_post_init__(self):
+        print("Blaa")
+        super(QObject, self).__init__()
         self.cam = Cam()
-        self.cam.read_cam()
         self.shutter = _shutter
         self.cam_list = [self.cam]
-        self.async_tasks = []
-
         if _cam2 is not None:
-            self.cam2 = Cam(cam=_cam2)
-            self.cam2.read_cam()
+            self.cam2 = Cam(_cam2)
             self.cam.sigShotsChanged.connect(self.cam2.set_shots)
             self.cam_list.append(self.cam2)
-        else:
-            self.cam2 = None
-
-        self.delay_line = Delayline(dl=_dl)
-        self.rot_stage = _rot_stage
-
-        if _dl2:
-            self.delay_line_second = Delayline(dl=_dl2)
-        else:
-            self.delay_line_second = None
-
-        if _sh:
-            self.sample_holder = _sh
-        else:
-            self.sample_holder = None
-
-        self.shaper = _shaper
-        self.async_plan = False
-        self.plan = None
-        self.pause_plan = False
-        self.running_step = False
-        self.thread = None
 
     def standard_read(self):
         # t0 = time.time()
@@ -234,7 +216,6 @@ class Controller(QObject):
             t2.join()
 
     def loop(self):
-
         if (t := aio.current_task()) is not None:
             pass
         elif self.async_tasks:
@@ -254,7 +235,7 @@ class Controller(QObject):
                 self.plan.make_step()
             except StopIteration:
                 self.pause_plan = True
-        self.loop_finnished.emit()
+        self.loop_finished.emit()
 
         # print(time.time() - t)
 
@@ -265,3 +246,7 @@ class Controller(QObject):
         _cam.shutdown()
         if _cam2 is not None:
             _cam2.shutdown()
+
+if __name__ == '__main__':
+    c = Controller()
+    print(c)

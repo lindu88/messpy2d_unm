@@ -1,6 +1,9 @@
-from functools import partial
+import os
 
+os.environ['QT_API'] = 'pyside2'
+from ControlClasses import Controller
 
+controller = Controller()
 from Config import config
 from qtpy.QtCore import QTimer, Qt, QThread, QSettings
 from qtpy.QtGui import QFont, QIntValidator
@@ -14,7 +17,6 @@ from Plans.ShaperCalibPlan import CalibScanView, CalibPlan
 from QtHelpers import dark_palette, ControlFactory, make_groupbox, \
     ObserverPlot, ValueLabels, ObserverPlotWithControls, hlay
 from SampleMoveWidget import MoveWidget
-from ControlClasses import Controller
 
 from functools import partial
 
@@ -25,14 +27,13 @@ class SelectPlan(QWidget):
 
 
 class MainWindow(QMainWindow):
-    def __init__(self, controller: Controller):
+    def __init__(self):
         super(MainWindow, self).__init__()
         self.setWindowTitle("Messpy-2D Edition")
-        # self.setWindowFlags
-        self.controller = controller
-        self.setup_toolbar()
-        self.view = None
+        self.setWindowIcon(qta.icon('fa.play'))
+        self.controller = Controller()  # controller
 
+        self.setup_toolbar()
 
         self.cm = CommandMenu(parent=self)
         self.timer = QTimer()
@@ -43,7 +44,7 @@ class MainWindow(QMainWindow):
 
         dock_wigdets = []
         for c in controller.cam_list:
-            lf = controller.loop_finnished
+            lf = controller.loop_finished
             lr = c.last_read
             self.xaxis[c] = c.wavelengths.copy()
 
@@ -66,10 +67,8 @@ class MainWindow(QMainWindow):
             dw.setWidget(op3)
             dock_wigdets.append(dw)
 
-
         for dw in dock_wigdets:
             self.addDockWidget(Qt.LeftDockWidgetArea, dw)
-
 
         if len(dock_wigdets) > 3:
             self.splitDockWidget(dock_wigdets[0], dock_wigdets[3], Qt.Horizontal)
@@ -105,13 +104,14 @@ class MainWindow(QMainWindow):
                     self.cm.reopen_planview_but.setEnabled(True)
                     self.controller.pause_plan = False
                     self.toggle_run(True)
+
             return f
 
         plans = [
             ('Pump Probe', 'ei.graph', PumpProbeStarter),
             ('Scan Spectrum', 'ei.barcode', ScanSpectrumStarter),
-            ]
-        if controller.shaper is not None:
+        ]
+        if self.controller.shaper is not None:
             plans += [('GVD Scan', 'ei.graph', GVDScanStarter)]
             plans += [('2D Measurement', 'ei.graph', AOMTwoDStarter)]
 
@@ -133,9 +133,10 @@ class MainWindow(QMainWindow):
             self.cal_viewer = CalibScanView(fs)
             fs.sigTaskReady.connect(lambda x: c.async_tasks.append(x))
             c.async_plan = True
-            #c.async_tasks = self.cal_viewer.task
+            # c.async_tasks = self.cal_viewer.task
             fs.sigPlanDone.connect(lambda: setattr(c, 'async_plan', False))
             self.cal_viewer.show()
+
         pp.clicked.connect(start_calib)
         tb.addWidget(pp)
 
@@ -144,7 +145,6 @@ class MainWindow(QMainWindow):
         pp.clicked.connect(self.show_alignment_helper)
         tb.addWidget(pp)
 
-
     def toggle_run(self, bool):
         if bool:
             self.timer.start(5)
@@ -152,7 +152,7 @@ class MainWindow(QMainWindow):
             self.timer.stop()
 
     def toggle_wl(self, c):
-        self.xaxis[c][:] = 1e7/self.xaxis[c][:]
+        self.xaxis[c][:] = 1e7 / self.xaxis[c][:]
 
     def show_planview(self):
         if self.view is not None:
@@ -163,9 +163,8 @@ class MainWindow(QMainWindow):
     def show_alignment_helper(self):
         self._ah = AlignmentHelper(self.controller)
         self._ah.show()
-        #dw = QDockWidget(self._ah)
-        #self.addDockWidget(Qt.LeftDockWidgetArea, dw)
-
+        # dw = QDockWidget(self._ah)
+        # self.addDockWidget(Qt.LeftDockWidgetArea, dw)
 
     def closeEvent(self, event):
         print('closing')
@@ -190,7 +189,7 @@ class CommandMenu(QWidget):
         super(CommandMenu, self).__init__(parent=parent)
         self.setSizePolicy(QSizePolicy.Fixed, QSizePolicy.Fixed)
         self._layout = QFormLayout(self)
-        c = parent.controller # type: Controller
+        c = parent.controller  # type: Controller
 
         self.add_plan_controls()
 
@@ -223,8 +222,10 @@ class CommandMenu(QWidget):
         self.pause_plan_but = QPushButton("Pause plan")
         self.pause_plan_but.setCheckable(True)
         c = self.parent().controller  # type: Controller
+
         def switch_pause(ev):
             c.pause_plan = self.pause_plan_but.isChecked()
+
         self.pause_plan_but.clicked.connect(switch_pause)
 
         self.reopen_planview_but = QPushButton('Reopen Planview')
@@ -241,7 +242,7 @@ class CommandMenu(QWidget):
 
         vl = ValueLabels([('Ext 1', partial(get_ext, 1))])
         self._layout.addWidget(make_groupbox([vl], 'Ext.'))
-        #self._layout.addStretch(10)
+        # self._layout.addStretch(10)
 
     def add_loop_control(self, parent):
         cb_running = QPushButton('Running',
@@ -272,7 +273,6 @@ class CommandMenu(QWidget):
         gb = make_groupbox([sc], "ADC")
         return gb
 
-
     def add_delaystages(self, c):
         dl = controller.delay_line
         dl1c = ControlFactory('Delay 1', lambda x: c.delay_line.set_pos(x, do_wait=False), format_str='%.1f fs',
@@ -293,7 +293,7 @@ class CommandMenu(QWidget):
             dl2.sigPosChanged.connect(dl2c.update_value)
         return dls
 
-    def add_rot_stage(self, rs ):
+    def add_rot_stage(self, rs):
         rsi = ControlFactory('Angle', rs.set_degrees,
                              format_str='%.1f deg', presets=[0, 45])
 
@@ -318,7 +318,7 @@ class CommandMenu(QWidget):
             s = s.strip()
             try:
                 if s[-1] == 'c':
-                    wl = 1e7/float(s[:-1])
+                    wl = 1e7 / float(s[:-1])
                 else:
                     wl = float(s)
                 spec.set_wavelength(wl)
@@ -328,7 +328,7 @@ class CommandMenu(QWidget):
         spec_control = ControlFactory('Wavelength', calc_and_set_wl,
                                       format_str='%.1f nm',
                                       presets=[-100, -50, 50, 100],
-                                      preset_func=pre_fcn,)
+                                      preset_func=pre_fcn, )
 
         spec.sigWavelengthChanged.connect(spec_control.update_value)
         spec.sigWavelengthChanged.emit(spec.get_wavelength())
@@ -341,7 +341,6 @@ class CommandMenu(QWidget):
             slit_control.update_value(spec.get_slit())
             spec.sigSlitChanged.connect(slit_control.update_value)
             l.append(slit_control)
-
 
         cb = QCheckBox('Use Wavenumbers')
         l[-1].layout().addRow(cb)
@@ -362,7 +361,7 @@ class CommandMenu(QWidget):
         cb.clicked.connect(cam.set_disp_wavelengths)
         return gb
 
-    def add_shaper(self, sh : IAOMPulseShaper):
+    def add_shaper(self, sh: IAOMPulseShaper):
         from ShaperRotStages import ShaperControl
 
         self.shaper_controls = ShaperControl(sh.rot1, sh.rot2, sh)
@@ -371,32 +370,31 @@ class CommandMenu(QWidget):
         self._layout.addWidget(but)
         return
 
+
 if __name__ == '__main__':
     import sys
     import qasync
     import asyncio as aio
     import traceback
+
     app = QApplication([])
 
     import qdarkstyle
 
     app.setOrganizationName("USD")
     app.setApplicationName("MessPy3")
-    loop = qasync.QEventLoop()
 
-    aio.set_event_loop(loop)
-    aio.get_event_loop().set_debug(True)
     sys._excepthook = sys.excepthook
 
 
     def exception_hook(exctype, value, tb):
-        emsg = QMessageBox ()
+        emsg = QMessageBox()
         emsg.setWindowModality(Qt.WindowModal)
         traceback.print_tb(tb)
         tb = traceback.format_tb(tb)
         emsg.setText('Exception raised')
         emsg.setInformativeText(''.join(tb))
-        emsg.setStandardButtons(QMessageBox.Abort|QMessageBox.Ok)
+        emsg.setStandardButtons(QMessageBox.Abort | QMessageBox.Ok)
         result = emsg.exec_()
         print(result)
         if not result == QMessageBox.Ok:
@@ -405,13 +403,14 @@ if __name__ == '__main__':
         else:
             pass
 
-    sys.excepthook = exception_hook
-    controller = Controller()
-    #font = QFont('Roboto')
 
-    #app.setStyle('Fusion')
-    #app.setAttribute(Qt.AA_EnableHighDpiScaling)
-    #app.setPalette(dark_palette)
+    sys.excepthook = exception_hook
+
+    # font = QFont('Roboto')
+
+    # app.setStyle('Fusion')
+    # app.setAttribute(Qt.AA_EnableHighDpiScaling)
+    # app.setPalette(dark_palette)
     ss = """
         QMainWindow { font-size: 20pt;}
         QToolTip { color: #ffffff; background-color: #2a82da;
@@ -419,12 +418,16 @@ if __name__ == '__main__':
     """
     ss = qdarkstyle.load_stylesheet()
     app.setStyleSheet(ss)
-    #font.setPointSize(9)
-    #font.setStyleStrategy(QFont.PreferQuality)
-    #app.setFont(font)
+    # font.setPointSize(9)
+    # font.setStyleStrategy(QFont.PreferQuality)
+    # app.setFont(font)
 
-    mw = MainWindow(controller=controller)
+    mw = MainWindow()
     mw.showMaximized()
+    loop = qasync.QEventLoop()
+
+    aio.set_event_loop(loop)
+    aio.get_event_loop().set_debug(True)
     app.exec()
 
-    #app.aboutToQuit = lambda x: controller.shutdown()
+    # app.aboutToQuit = lambda x: controller.shutdown()
