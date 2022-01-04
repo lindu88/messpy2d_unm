@@ -11,6 +11,7 @@ class SP2500i(ISpectrograph):
     changeable_slit: bool = False
     changeable_wavelength: bool = True
     name: str = 'SP2500i'
+    _last_grating: int = attr.ib()
 
     @port.default
     def serial_connect(self):
@@ -19,6 +20,10 @@ class SP2500i(ISpectrograph):
         port.timeout = 2
         atexit.register(self.disconnect)
         return port
+
+    @_last_grating.default
+    def _read_grating(self):
+        return self.get_grating()
 
     def _write(self, cmd: bytes, await_resp: bool = True,
                timeout: float = 2):
@@ -64,11 +69,13 @@ class SP2500i(ISpectrograph):
     def get_grating(self) -> int:
         self._write(b'?GRATING', False)
         resp = self._readline()[:-2]
+        self._last_grating = int(resp)
         return int(resp)
 
     def set_grating(self, grating: int):
         self._write(b'%d GRATING' % grating, timeout=35)
         self.sigGratingChanged.emit(grating)
+        self._last_grating = grating
         print("set grating", grating)
 
     def reset(self):
