@@ -94,7 +94,6 @@ class AOMTwoDViewer(GraphicsLayoutWidget):
         line.sigClicked.connect(delete)
         line.sigPositionChanged.connect(update)
 
-
     def update_plots(self):
         self.spec_plot.plot(self.probe_freq, self.plan.last_2d.mean(1))
         for line in self.ifr_lines:
@@ -188,7 +187,7 @@ class AOMTwoDStarter(PlanStartDialog):
 
         tmp = [{'name': 'Filename', 'type': 'str', 'value': 'temp'},
                {'name': 'Operator', 'type': 'str', 'value': 'Till'},
-               {'name': 't2 (+)', 'suffix': 'ps', 'type': 'float', 'value': 4},
+               {'name': 't2 (+)', 'suffix': 'ps', 'type': 'float', 'value': -4},
                {'name': 't2 (step)', 'suffix': 'ps', 'type': 'float', 'value': 0.1},
                {'name': 'Phase Cycles', 'type': 'list', 'values': [1, 2, 4]},
                {'name': 'Rot. Frame', 'suffix': 'cm-1', 'type': 'float', 'value': 2000},

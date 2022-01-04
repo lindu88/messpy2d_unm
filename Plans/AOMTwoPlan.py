@@ -12,7 +12,7 @@ if TYPE_CHECKING:
 from Instruments.dac_px import AOM
 
 # from qtpy.QtWidgets import QApplication
-from Instruments.signal_processing import cm2THz
+from Instruments.signal_processing import cm2THz, THz2cm
 from qtpy.QtCore import Signal
 import h5py
 
@@ -32,6 +32,9 @@ class AOMTwoDPlan(ScanPlan):
     step_t2: float = 0.05
     t2: np.ndarray = attrib()
 
+    pump_freqs: np.ndarray = attrib()
+    probe_freqs: np.ndarray = attrib()
+
     phase_frames: Literal[1, 2, 4] = 4
     rot_frame_freq: float = 0
     data_file: h5py.File = attrib()
@@ -41,9 +44,21 @@ class AOMTwoDPlan(ScanPlan):
 
     sigStepDone: ClassVar[Signal] = Signal()
 
+    @probe_freqs.default
+    def _read_freqs(self):
+        return self.controller.cam.wavenumbers
+
     @t2.default
     def _t2_default(self):
-        return np.arange(0, self.max_t2 + 1e-3, self.step_t2)
+        t2 = np.arange(0, abs(self.max_t2) + 1e-3, self.step_t2)
+        if self.max_t2 < 0:
+            t2 = -t2
+        return t2
+
+    @pump_freqs.default
+    def _calc_freqs(self):
+        THz = np.fft.rfftfreq(self.t2.size*2, d=self.step_t2)
+        return THz2cm(THz) + self.rot_frame_freq
 
     @data_file.default
     def _default_file(self):
