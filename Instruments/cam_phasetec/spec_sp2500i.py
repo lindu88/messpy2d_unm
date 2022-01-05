@@ -16,7 +16,7 @@ class SP2500i(ISpectrograph):
     @port.default
     def serial_connect(self):
         logging.info(f'SP2500i: Connecting to {self.comport}')
-        port = serial.Serial(self.comport)
+        port = serial.Serial(self.comport, baudrate=9600*12)
         port.timeout = 2
         atexit.register(self.disconnect)
         return port
@@ -73,6 +73,7 @@ class SP2500i(ISpectrograph):
         return int(resp)
 
     def set_grating(self, grating: int):
+        print("set_grating", grating)
         self._write(b'%d GRATING' % grating, timeout=35)
         self.sigGratingChanged.emit(grating)
         self._last_grating = grating
@@ -93,4 +94,4 @@ if __name__ == "__main__":
     #print(f'Current wavelength {spec.get_wavelength()}')
     print(f'Current grating {spec.get_grating()}')
     spec.set_wavelength(wl + 200)
-    spec.set_grating(1)
+    spec.set_grating(2)

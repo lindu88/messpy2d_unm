@@ -194,6 +194,8 @@ class Controller(QObject):
             self.cam2 = Cam(_cam2)
             self.cam.sigShotsChanged.connect(self.cam2.set_shots)
             self.cam_list.append(self.cam2)
+        else:
+            self.cam2 = None
 
     def standard_read(self):
         # t0 = time.time()

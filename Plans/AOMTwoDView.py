@@ -9,20 +9,21 @@ from ControlClasses import Controller
 from QtHelpers import vlay, PlanStartDialog, hlay
 from .AOMTwoPlan import AOMTwoDPlan
 from .PlanBase import sample_parameters
-
+from typing import Callable
 
 class AOMTwoDViewer(GraphicsLayoutWidget):
     def __init__(self, plan: AOMTwoDPlan, parent=None):
         super().__init__(parent=parent)
-        self.pump_freq = plan.last_freq
-        self.probe_freq = plan.probe_freq
+        self.plan = plan
+        self.pump_freqs = plan.pump_freqs
+        self.probe_freq = plan.probe_freqs
 
         pw = self.addPlot()
         pw: PlotItem
         pw.setLabels(bottom='Probe Freq', left='Time')
         cmap = colormap.get("CET-D1")
         self.ifr_img = ImageItem()
-        self.ift_img.setImage(np.zeros(128, 128), rect=(self.probe_freq.min(), 0, self.probe_freq.ptp(), plan.max_t2))
+        self.ifr_img.setImage(np.zeros((128, 128)), rect=(self.probe_freq.max(), 0, -self.probe_freq.ptp(), plan.max_t2))
         pw.addItem(self.ifr_img)
         self.spec_image_view = pw
         self.ifr_img.mouseClickEvent = self.ifr_clicked
@@ -32,17 +33,17 @@ class AOMTwoDViewer(GraphicsLayoutWidget):
         self.addItem(hist)
         self.ifr_lines: dict[InfiniteLine, PlotDataItem] = {}
         self.ifr_free_colors = list(range(9))
-
+        self.addPlot: Callable[[], PlotItem]
         pw = self.addPlot()
-        pw: PlotItem
+
         pw.setLabels(bottom='Probe Freq', left='Pump Freq')
         cmap = colormap.get("CET-D1")
         self.spec_img = ImageItem()
-        self.spec_img.setImage(np.zeros(128, 128),
-                               rect=(self.probe_freq.min(), self.pump_freqs.min(), self.probe_freq.ptp(),
-                                     self.pump_freqs.ptp()))
+        self.spec_img.setImage(np.zeros((128, 128)),
+                               rect=(self.probe_freq.max(), self.pump_freqs.max(), -self.probe_freq.ptp(),
+                                     -self.pump_freqs.ptp()))
         pw.addItem(self.spec_img)
-        self.spec_line = InfiniteLine(pos=self.pump_freqs[64], angle=0,
+        self.spec_line = InfiniteLine(pos=self.pump_freqs[self.pump_freqs.size//2], angle=0,
                                       bounds=(self.pump_freqs.min(), self.pump_freqs.max()),
                                       movable=True)
         pw.addItem(self.spec_line)
@@ -59,15 +60,15 @@ class AOMTwoDViewer(GraphicsLayoutWidget):
         self.spec_cut_line = self.spec_plot.plot()
         self.ci.nextRow()
         self.info_label = self.ci.addLabel("Hallo", colspan=4)
-        self.update_plots()
+        #self.update_plots()
         self.spec_line.sigPositionChanged.connect(self.update_spec_lines)
         self.plan.sigStepDone.connect(self.update_images)
         self.plan.sigStepDone.connect(self.update_plots)
         self.plan.sigStepDone.connect(self.update_label)
 
-    def update_images(self):
-        self.ifr_img.setImage(self.plan.last_ir)
-        self.spec_img.setImage(self.plan.last_2d)
+    def update_images(self, al=False):
+        self.ifr_img.setImage(self.plan.last_ir, autoLevels=al)
+        self.spec_img.setImage(self.plan.last_2d, autoLevels=al)
 
     def ifr_clicked(self, ev):
         x, y = ev.pos()
@@ -78,11 +79,11 @@ class AOMTwoDViewer(GraphicsLayoutWidget):
                                             bounds=(self.probe_freq.min(), self.probe_freq.max()),
                                             pen=mkPen(_int_color, width=1))
         line._int_color = _int_color
-        self.ifr_lines[line] = self.trans_plot.plot(self.t, self.plan.last_ir[round(x), :], pen=line.pen)
+        self.ifr_lines[line] = self.trans_plot.plot(self.plan.t2, self.plan.last_ir[round(x), :], pen=line.pen)
 
         def update(line: InfiniteLine):
             idx = np.argmin(abs(self.probe_freq - line.pos()[0]))
-            self.ifr_lines[line].setData(self.t, self.plan.last_ir[round(idx), :])
+            self.ifr_lines[line].setData(self.plan.t2, self.plan.last_ir[round(idx), :])
 
         def delete(line: InfiniteLine, ev):
             ev.accept()
@@ -95,8 +96,10 @@ class AOMTwoDViewer(GraphicsLayoutWidget):
         line.sigPositionChanged.connect(update)
 
     def update_plots(self):
+        if not hasattr(self.plan, "last2d"):
+            return
         self.spec_plot.plot(self.probe_freq, self.plan.last_2d.mean(1))
-        for line in self.ifr_lines:
+        for line in self.ifr_lines.values():
             line.sigPositionChanged.emit(line) # Causes an update
 
     def update_spec_lines(self, line: InfiniteLine):
@@ -110,14 +113,13 @@ class AOMTwoDViewer(GraphicsLayoutWidget):
             <h3>Current Experiment</h3>
             <big>
             <dl>
-            <dt>Name:<dd>{p.name}
-            <dt>Shots:<dd>{p.t}
+            <dt>Name:<dd>{p.name}            
             <dt>Scan:<dd>{p.cur_scan} / {p.max_scan}                     
             </dl>
             </big>
             '''
         s = s + p.time_tracker.as_string()
-        self.label.setText(s)
+        self.info_label.setText(s)
 
 
 @attr.s(auto_attribs=True)
@@ -225,7 +227,7 @@ class AOMTwoDStarter(PlanStartDialog):
         p = AOMTwoDPlan(
             name=p['Filename'],
             meta=self.paras.getValues(),
-            t3_list=np.asarray(t_list),
+            t3=np.asarray(t_list),
             controller=controller,
             max_t2=p['t2 (+)'],
             step_t2=p['t2 (step)'],

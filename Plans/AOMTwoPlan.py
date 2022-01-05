@@ -18,6 +18,7 @@ import h5py
 
 from typing import Optional
 
+
 @attrs(auto_attribs=True, kw_only=True)
 class AOMTwoDPlan(ScanPlan):
     """Plan used for pump-probe experiments"""
@@ -31,18 +32,20 @@ class AOMTwoDPlan(ScanPlan):
     max_t2: float = 4
     step_t2: float = 0.05
     t2: np.ndarray = attrib()
+    rot_frame_freq: float = 0
 
     pump_freqs: np.ndarray = attrib()
     probe_freqs: np.ndarray = attrib()
 
     phase_frames: Literal[1, 2, 4] = 4
-    rot_frame_freq: float = 0
+
     data_file: h5py.File = attrib()
     initial_state: dict = attr.Factory(dict)
 
     last_data: Optional[np.ndarray] = None
 
     sigStepDone: ClassVar[Signal] = Signal()
+
 
     @probe_freqs.default
     def _read_freqs(self):
@@ -91,11 +94,12 @@ class AOMTwoDPlan(ScanPlan):
 
         amp, phase = self.shaper.double_pulse(self.t2, cm2THz(self.rot_frame_freq), self.phase_frames)
         self.shaper.set_amp_and_phase(amp, phase)
+        self.shaper.set_wave_amp(0.4)
         self.shaper.chopped = False
         self.shaper.phase_cycle = False
         self.shaper.do_dispersion_compensation = True
         self.shaper.generate_waveform()
-        self.controller.cam.set_shots(amp.shape[1])
+        self.controller.cam.set_shots(10*amp.shape[1])
         yield
 
     def post_plan(self) -> Generator:
@@ -119,5 +123,5 @@ class AOMTwoDPlan(ScanPlan):
 
         self.last_2d = data.signal_2D
         self.last_ir = data.interferogram
-        tmp = np.save(data.spectra.frame_data)
+        tmp = np.save('frame_data', data.spectra.frame_data)
         self.last_freq = data.freqs
