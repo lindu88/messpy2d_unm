@@ -1,17 +1,17 @@
+from math import log
 from pathlib import Path
+from typing import List, Optional, Tuple, Dict
+
+import attr
 import numpy as np
-import wrapt
+from scipy.stats import trim_mean
+
+from Config import config
 from Instruments.interfaces import ICam
 from Instruments.signal_processing import Reading, Spectrum, first, fast_col_mean, Reading2D
-from Config import config
-import attr
-
 # from ir_cam import PT_MCT
 from .imaq_nicelib import Cam
 from .spec_sp2500i import SP2500i
-from typing import List, Optional, Tuple, Dict
-from scipy.stats import trim_mean
-from math import log
 
 LOG10 = log(10)
 PROBE_CENTER = 85
@@ -206,11 +206,13 @@ class PhaseTecCam(ICam):
                               valid=True)            #
         return reading
 
-    def make_2D_reading(self, t2: np.ndarray, rot_frame: float) -> Dict[str, Reading2D]:
-        spectra, ch = self.get_spectra(frames=self.shots//10)
+    def make_2D_reading(self, t2: np.ndarray, rot_frame: float,
+                        repetitions: int = 1, save_frames: bool = False) -> \
+            Dict[str, Reading2D]:
+        spectra, ch = self.get_spectra(frames=self.shots // repetitions)
         two_d_data = {}
         for name in ('Probe1', 'Probe2'):
-            two_d_data[name] = Reading2D.from_spectrum(spectra[name], t2, rot_frame)
+            two_d_data[name] = Reading2D.from_spectrum(spectra[name], t2, rot_frame, save_frames)
         return two_d_data
 
     def calibrate_ref(self):
