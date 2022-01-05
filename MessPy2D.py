@@ -161,10 +161,10 @@ class MainWindow(QMainWindow):
         self.xaxis[c][:] = 1e7 / self.xaxis[c][:]
 
     def show_planview(self):
-        if self.view is not None:
-            self.view.show()
+        if self.viewer is not None:
+            self.viewer.show()
         else:
-            self.view = self.plan_class.viewer(self.controller.plan)
+            self.viewer = self.plan_class.viewer(self.controller.plan)
 
     def show_alignment_helper(self):
         self._ah = AlignmentHelper(self.controller)
@@ -340,15 +340,17 @@ class CommandMenu(QWidget):
             gratings = spec.gratings
             cur_grating = spec.get_grating()
             lbl = QLabel('G: %s' % gratings[cur_grating])
-            btns = [lbl]
+            self.btns_ = [lbl]
             for idx, name in gratings.items():
                 btn = QPushButton(name)
-                btn.clicked.connect(lambda: partial(spec.set_grating, idx))
-                btn.clicked.connect(lambda: lbl.setText('G: %s' % name))
-                btn.setFixedWidth(70)
-                btns.append(btn)
 
-            l.append(hlay(btns, add_stretch=1))
+
+                btn.clicked.connect(lambda x, idx=idx: spec.set_grating(idx))
+                #btn.clicked.connect(lambda: lbl.setText('G: %s' % name))
+                btn.setFixedWidth(70)
+                self.btns_.append(btn)
+
+            l.append(hlay(self.btns_, add_stretch=1))
         gb = make_groupbox(l, f"Spec: {cam.cam.name}")
         cb.clicked.connect(cam.set_disp_wavelengths)
         return gb
