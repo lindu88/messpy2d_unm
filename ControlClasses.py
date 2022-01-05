@@ -9,6 +9,9 @@ import threading, time
 import typing as T
 from HwRegistry import _cam, _cam2, _dl, _dl2, _rot_stage, _shutter, _sh, _shaper
 import Instruments.interfaces as I
+if T.TYPE_CHECKING:
+    from Plans.PlanBase import Plan
+
 
 Reading = I.Reading
 
@@ -184,6 +187,8 @@ class Controller(QObject):
     pause_plan: bool = False
 
     loop_finished: T.ClassVar[Signal] = Signal()
+    stopping_plan: T.ClassVar[Signal] = Signal(bool)
+    starting_plan: T.ClassVar[Signal] = Signal(bool)
 
     def __attrs_post_init__(self):
         super(QObject, self).__init__()
@@ -238,15 +243,15 @@ class Controller(QObject):
                 self.pause_plan = True
         self.loop_finished.emit()
 
-        # print(time.time() - t)
+    def start_plan(self, plan):
+        self.plan = plan
+        self.starting_plan.emit(True)
 
-    def shutdown(self):
-        if _dl2 is not None:
-            _dl2.shutdown()
-        _dl.shutdown()
-        _cam.shutdown()
-        if _cam2 is not None:
-            _cam2.shutdown()
+    def stop_plan(self):
+        if self.plan:
+            self.plan.stop_plan()
+            self.plan = None
+            self.stopping_plan.emit(True)
 
 if __name__ == '__main__':
     c = Controller()

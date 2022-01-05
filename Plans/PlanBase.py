@@ -90,6 +90,7 @@ class Plan(QObject):
 
     sigPlanFinished: ClassVar[Signal] = Signal()
     sigPlanStarted: ClassVar[Signal] = Signal()
+    sigPlanStopped:  ClassVar[Signal] = Signal()
 
     def __attrs_post_init__(self):
         super(Plan, self).__init__()
@@ -118,6 +119,9 @@ class Plan(QObject):
         """Collects all devices states."""
         for i in IDevice.registered_devices:
             self.meta[i.name] = i.get_state()
+
+    def stop_plan(self):
+        self.sigPlanStopped.emit()
 
 
 @attr.s(auto_attribs=True, kw_only=True)

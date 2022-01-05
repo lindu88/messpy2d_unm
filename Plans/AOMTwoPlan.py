@@ -67,12 +67,11 @@ class AOMTwoDPlan(ScanPlan):
     def _default_file(self):
         name = self.get_file_name()[0]
         f = h5py.File(name, mode='a')
-        f.create_dataset("t2", data=self.t2)
-        f.create_dataset("t3", data=self.t3)
-        f.create_group("data")
+        f['t2'] = self.t2
+        f['t3'] = self.t3
         f['t2'].attrs['rot_frame'] = self.rot_frame_freq
-        f.create_dataset("wn", data=self.controller.cam.wavenumbers)
-        f.create_dataset("wl", data=self.controller.cam.wavelengths)
+        f['wn'] = self.controller.cam.wavenumbers
+        f['wl'] = self.controller.cam.wavelengths
         return f
 
     def scan(self):
@@ -123,6 +122,7 @@ class AOMTwoDPlan(ScanPlan):
             setattr(self.shaper, k, self.initial_state[k])
         self.shaper.generate_waveform()
         self.controller.cam.set_shots(self.initial_state[k])
+        self.data_file.close()
         yield
 
     def measure_point(self):
