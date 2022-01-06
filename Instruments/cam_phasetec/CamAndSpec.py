@@ -8,7 +8,7 @@ import attr
 
 # from ir_cam import PT_MCT
 from .imaq_nicelib import Cam
-from .spec_sp2500i import SP2500i
+from .spec_sp2500i import SP2150i
 from typing import List, Optional, Tuple, Dict
 from scipy.stats import trim_mean
 from math import log
@@ -27,7 +27,7 @@ TWO_PROBES = True
 
 @attr.s(auto_attribs=True, kw_only=True)
 class PhaseTecCam(ICam):
-    spectrograph: SP2500i = attr.ib()
+    spectrograph: SP2150i = attr.ib()
     probe_rows: Tuple[int, int] = attr.ib()
     ref_rows: Tuple[int, int] = attr.ib()
     name: str = 'Phasetec Array'
@@ -68,7 +68,7 @@ class PhaseTecCam(ICam):
 
     @spectrograph.default
     def _default_spec(self):
-        return SP2500i(comport='COM4', name='spec')
+        return SP2150i(comport='COM4', name='spec')
 
     @background.default
     def _back_default(self):
