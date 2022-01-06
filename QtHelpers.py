@@ -5,7 +5,7 @@ from itertools import cycle
 
 import pyqtgraph as pg
 import pyqtgraph.parametertree as pt
-from qtpy.QtCore import Qt, Slot, QTimer
+from qtpy.QtCore import Qt, Slot, QTimer, QObject
 from qtpy.QtGui import QPalette, QColor
 from qtpy.QtWidgets import (QWidget, QLineEdit, QLabel, QPushButton, QHBoxLayout,
                             QFormLayout, QGroupBox, QVBoxLayout, QDialog, QStyleFactory,
@@ -196,10 +196,17 @@ class ControlFactory(QWidget):
                 row_cnt = 0
 
 
+from abc import ABCMeta
 
-class PlanStartDialog(QDialog):
+
+class QProtocolMetaMeta(type(QObject), ABCMeta):
+    pass
+
+
+class PlanStartDialog(QDialog, metaclass=QProtocolMetaMeta):
     experiment_type = ''
     title = ''
+    icon = ''
 
     paras: pt.Parameter
 
@@ -298,6 +305,37 @@ class PlanStartDialog(QDialog):
             result = QDialog.Rejected
         return plan, result == QDialog.Accepted
 
+import pyqtgraph.functions as fn
+class MonkeyCurveItem(pg.PlotCurveItem):
+    def __init__(self, *args, **kwds):
+        super().__init__(*args, **kwds)
+        self.monkey_mode = 'drawLines'
+
+    def setMethod(self, param, value):
+        self.monkey_mode = value
+
+    def paint(self, painter, opt, widget):
+        if self.monkey_mode not in ['drawPolyline']:
+            return super().paint(painter, opt, widget)
+
+        painter.setRenderHint(painter.RenderHint.Antialiasing, self.opts['antialias'])
+        painter.setPen(pg.mkPen(self.opts['pen']))
+
+        if self.monkey_mode == 'drawPolyline':
+            painter.drawPolyline(fn.arrayToQPolygonF(self.xData, self.yData))
+        elif self.monkey_mode == 'drawLines':
+            lines = self._lineInstances
+            npts = len(self.xData)
+            even_slice = slice(0, 0+(npts-0)//2*2)
+            odd_slice = slice(1, 1+(npts-1)//2*2)
+            for sl in [even_slice, odd_slice]:
+                npairs = (sl.stop - sl.start) // 2
+                memory = lines.array(npairs).reshape((-1, 2))
+                memory[:, 0] = self.xData[sl]
+                memory[:, 1] = self.yData[sl]
+                painter.drawLines(lines.instances(npairs))
+
+
 
 class ObserverPlot(pg.PlotWidget):
     def __init__(self, obs, signal, x=None, parent=None, **kwargs):
@@ -344,7 +382,9 @@ class ObserverPlot(pg.PlotWidget):
     def add_observed(self, single_obs):
         self.observed.append(single_obs)
         pen = pg.mkPen(color=next(self.color_cycle), width=2)
-        self.lines[single_obs] = self.plotItem.plot([0], pen=pen)
+        curve = MonkeyCurveItem(pen=pen)
+        self.lines[single_obs] = curve
+        self.plotItem.addItem(curve)
 
     @Slot()
     def request_update(self):
