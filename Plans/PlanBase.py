@@ -70,11 +70,13 @@ class TimeTracker(QObject):
         <h4>Time-Information</h4>
         Total Time: {timedelta(seconds=self.total_duration)}
         """
+        if self.point_end_time:
+            s += f"Time per Point: {timedelta(seconds=self.point_duration)}\n"
+        if self.scan_end_time:
+            s += f"Time per Scan: {timedelta(seconds=self.scan_duration)}\n"
         return s
-        """
-        Time per Scan: {timedelta(seconds=self.scan_duration)}
-        Time per Point: {timedelta(seconds=self.point_duration)}
-        """
+
+
 
 
 @attr.s(auto_attribs=True, kw_only=True)
