@@ -43,6 +43,7 @@ class AOMTwoDPlan(ScanPlan):
     data_file: h5py.File = attrib()
     initial_state: dict = attr.Factory(dict)
 
+    disp_arrays: dict = attr.Factory(dict)
     last_data: Optional[np.ndarray] = None
 
     sigStepDone: ClassVar[Signal] = Signal()
@@ -140,7 +141,5 @@ class AOMTwoDPlan(ScanPlan):
             ds.attrs['time'] = self.cur_t3
             if self.save_frames_enabled:
                 ds = self.data_file.create_dataset(f'frames/{line}/{self.t3_idx}/{self.cur_scan}', data=data.frames)
-        self.last_2d = data.signal_2D
-        self.last_ir = data.interferogram
-        tmp = np.save('frame_data', data.spectra.frame_data)
-
+        self.last_2d = self.data_file.get(f'2d_data/{line}/{self.t3_idx}/mean', data.signal_2D)
+        self.last_ir = self.data_file.get(f'ifr_data/{line}/{self.t3_idx}/mean', data.interferogram)
