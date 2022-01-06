@@ -93,7 +93,7 @@ class MainWindow(QMainWindow):
                     self.plan_class = PlanClass
                     self.viewer = PlanClass.viewer(plan)
                     self.viewer.show()
-                    self.cm.reopen_planview_but.setEnabled(True)
+
                     self.controller.start_plan(plan)
                     self.toggle_run(True)
             return f

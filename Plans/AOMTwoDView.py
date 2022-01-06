@@ -47,6 +47,7 @@ class AOMTwoDViewer(GraphicsLayoutWidget):
                                       bounds=(self.pump_freqs.min(), self.pump_freqs.max()),
                                       movable=True)
         pw.addItem(self.spec_line)
+
         hist = HistogramLUTItem()
         hist.setImageItem(self.spec_img)
         hist.gradient.setColorMap(cmap)
@@ -58,6 +59,7 @@ class AOMTwoDViewer(GraphicsLayoutWidget):
         self.spec_plot = self.ci.addPlot(colspan=2)
         self.spec_plot.setLabels(bottom="Probe Freq", left='Signal')
         self.spec_cut_line = self.spec_plot.plot()
+        self.spec_mean_line = self.spec_plot.plot()
         self.ci.nextRow()
         self.info_label = self.ci.addLabel("Hallo", colspan=4)
         #self.update_plots()
@@ -106,6 +108,7 @@ class AOMTwoDViewer(GraphicsLayoutWidget):
         print("update", line.pos()[1])
         idx = np.argmin(abs(self.pump_freqs - line.pos()[1]))
         self.spec_cut_line.setData(self.probe_freq, self.plan.last_2d[:, idx])
+        self.spec_mean_line.setData(self.probe_freq, self.plan.last_2d.mean(1))
 
     def update_label(self):
         p = self.plan
@@ -114,7 +117,8 @@ class AOMTwoDViewer(GraphicsLayoutWidget):
             <big>
             <dl>
             <dt>Name:<dd>{p.name}            
-            <dt>Scan:<dd>{p.cur_scan} / {p.max_scan}                     
+            <dt>Scan:<dd>{p.cur_scan} / {p.max_scan}    
+            <dt>Time-point: {p.t3_idx} / {p.t3.size}: {p.cur_t3}
             </dl>
             </big>
             '''
