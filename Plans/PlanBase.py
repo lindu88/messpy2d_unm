@@ -69,6 +69,9 @@ class TimeTracker(QObject):
         s = f"""
         <h4>Time-Information</h4>
         Total Time: {timedelta(seconds=self.total_duration)}
+        """
+        return s
+        """
         Time per Scan: {timedelta(seconds=self.scan_duration)}
         Time per Point: {timedelta(seconds=self.point_duration)}
         """
@@ -87,6 +90,7 @@ class Plan(QObject):
 
     sigPlanFinished: ClassVar[Signal] = Signal()
     sigPlanStarted: ClassVar[Signal] = Signal()
+    sigPlanStopped:  ClassVar[Signal] = Signal()
 
     def __attrs_post_init__(self):
         super(Plan, self).__init__()
@@ -116,6 +120,9 @@ class Plan(QObject):
         for i in IDevice.registered_devices:
             self.meta[i.name] = i.get_state()
 
+    def stop_plan(self):
+        self.sigPlanStopped.emit()
+
 
 @attr.s(auto_attribs=True, kw_only=True)
 class ScanPlan(Plan):
@@ -130,6 +137,7 @@ class ScanPlan(Plan):
     @make_step.default
     def _prime_gen(self):
         return self.make_step_generator().__next__
+
 
     def __attrs_post_init__(self):
         super(ScanPlan, self).__attrs_post_init__()

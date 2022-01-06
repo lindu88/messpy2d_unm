@@ -1,23 +1,27 @@
+from math import log
 from pathlib import Path
+from typing import List, Optional, Tuple, Dict
+
+import attr
 import numpy as np
-import wrapt
+from scipy.stats import trim_mean
+
+from Config import config
 from Instruments.interfaces import ICam
 from Instruments.signal_processing import Reading, Spectrum, first, fast_col_mean, Reading2D
-from Config import config
-import attr
-
 # from ir_cam import PT_MCT
 from .imaq_nicelib import Cam
 from .spec_sp2500i import SP2150i
 from typing import List, Optional, Tuple, Dict
 from scipy.stats import trim_mean
 from math import log
+from .spec_sp2500i import SP2150i
 
 LOG10 = log(10)
-PROBE_CENTER = 115
-PROBE_CENTER_2 = 70
-REF_CENTER = 26
-k = 5
+PROBE_CENTER = 85
+PROBE_CENTER_2 = 50
+REF_CENTER = 15
+k = 2
 PROBE_RANGE = (PROBE_CENTER - k, PROBE_CENTER + k + 1)
 PROBE2_RANGE = (PROBE_CENTER_2 - k, PROBE_CENTER_2 + k + 1)
 REF_RANGE = (REF_CENTER - k, REF_CENTER + k + 1)
@@ -98,7 +102,7 @@ class PhaseTecCam(ICam):
     def read_cam(self):
         return self._cam.read_cam()
 
-    def mark_valid_pixel(self,  min_val=3000, max_val=12000):
+    def mark_valid_pixel(self,  min_val=2000, max_val=9000):
         arr, ch = self._cam.read_cam()
 
         pr_range = self.probe_rows
@@ -206,11 +210,13 @@ class PhaseTecCam(ICam):
                               valid=True)            #
         return reading
 
-    def make_2D_reading(self, t2: np.ndarray, rot_frame: float) -> Dict[str, Reading2D]:
-        spectra, ch = self.get_spectra(frames=self.shots)
+    def make_2D_reading(self, t2: np.ndarray, rot_frame: float,
+                        repetitions: int = 1, save_frames: bool = False) -> \
+            Dict[str, Reading2D]:
+        spectra, ch = self.get_spectra(frames=self.shots // repetitions)
         two_d_data = {}
         for name in ('Probe1', 'Probe2'):
-            two_d_data[name] = Reading2D.from_spectrum(spectra[name], t2, rot_frame)
+            two_d_data[name] = Reading2D.from_spectrum(spectra[name], t2, rot_frame, save_frames)
         return two_d_data
 
     def calibrate_ref(self):
