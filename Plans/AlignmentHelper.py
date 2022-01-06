@@ -1,9 +1,6 @@
 import pyqtgraph as pg
 import time
-from qtpy.QtGui import QFont, QGuiApplication
-from qtpy.QtWidgets import (QMainWindow, QApplication, QWidget, QDockWidget,
-                            QPushButton, QLabel, QVBoxLayout, QSizePolicy,
-                            QToolBar, QCheckBox)
+from qtpy.QtWidgets import (QWidget,)
 import QtHelpers as qh
 from ControlClasses import Controller
 
@@ -38,7 +35,6 @@ class AlignmentHelper(QWidget):
         controller.loop_finished.connect(self.update_plots)
 
     def update_plots(self):
-
         t = time.time()
         self.times.append(t-self.t0)
 

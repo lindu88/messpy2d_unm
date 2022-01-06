@@ -4,7 +4,7 @@ import serial, attr,  logging, atexit
 from Instruments.interfaces import ISpectrograph
 
 @attr.s(auto_attribs=True)
-class SP2500i(ISpectrograph):
+class SP2150i(ISpectrograph):
     comport: str = 'COM4'
     pos_nm: float = 0
     port: serial.Serial = attr.ib()
@@ -87,7 +87,7 @@ class SP2500i(ISpectrograph):
 if __name__ == "__main__":
     log = logging.getLogger()
     log.setLevel(logging.DEBUG)
-    spec = SP2500i()
+    spec = SP2150i()
     wl = spec.get_wavelength()
     print(spec.get_installed_gratings())
     #print(f'Current wavelength {spec.get_wavelength()}')
