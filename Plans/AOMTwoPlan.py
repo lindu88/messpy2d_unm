@@ -44,8 +44,8 @@ class AOMTwoDPlan(ScanPlan):
     initial_state: dict = attr.Factory(dict)
 
     disp_arrays: dict = attr.Factory(dict)
-    last_data: Optional[np.ndarray] = None
-
+    last_ir: Optional[np.ndarray] = None
+    last_2d: Optional[np.ndarray] = None
     sigStepDone: ClassVar[Signal] = Signal()
 
     @probe_freqs.default

@@ -334,11 +334,11 @@ class CommandMenu(QWidget):
 
 
                 btn.clicked.connect(lambda x, idx=idx: spec.set_grating(idx))
-                #btn.clicked.connect(lambda: lbl.setText('G: %s' % name))
                 btn.setFixedWidth(70)
                 self.btns_.append(btn)
 
             l.append(hlay(self.btns_, add_stretch=1))
+        spec.sigGratingChanged.connect(lambda g: lbl.setText('G: %s' % gratings[g]))
         gb = make_groupbox(l, f"Spec: {cam.cam.name}")
         cb.clicked.connect(cam.set_disp_wavelengths)
         return gb
