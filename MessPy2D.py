@@ -2,6 +2,8 @@ from functools import partial
 
 import qtawesome as qta
 qta.set_defaults(color='white')
+from pyqtgraph import setConfigOptions
+setConfigOptions(enableExperimental=True, useNumba=True, antialias=False)
 from qtpy.QtCore import QTimer, Qt, QSettings
 from qtpy.QtGui import QIntValidator
 from qtpy.QtWidgets import (QMainWindow, QApplication, QWidget, QDockWidget, QPushButton, QLabel, QSizePolicy,
@@ -101,8 +103,8 @@ class MainWindow(QMainWindow):
             ('Scan Spectrum', 'ei.barcode', ScanSpectrumStarter),
         ]
         if self.controller.shaper is not None:
-            plans += [('GVD Scan', 'ei.graph', GVDScanStarter)]
-            plans += [('2D Measurement', 'ei.graph', AOMTwoDStarter)]
+            plans += [('GVD Scan', 'fa5s.stopwatch', GVDScanStarter)]
+            plans += [('2D Measurement', 'fa5s.dice-2', AOMTwoDStarter)]
 
         for text, icon, starter in plans:
             asl_icon = qta.icon(icon, color='white')
@@ -110,7 +112,7 @@ class MainWindow(QMainWindow):
             pp.clicked.connect(plan_starter(starter))
             tb.addWidget(pp)
 
-        asl_icon = qta.icon('mdi.chart-line', color='white')
+        asl_icon = qta.icon('fa5s.ruler', color='white')
         pp = QPushButton('Shaper Calibration', icon=asl_icon)
 
         def start_calib():
@@ -129,8 +131,8 @@ class MainWindow(QMainWindow):
         pp.clicked.connect(start_calib)
         tb.addWidget(pp)
 
-        alg_icon = qta.icon('mdi.chart-line')
-        pp = QPushButton('Show alignment helper', icon=asl_icon)
+        alg_icon = qta.icon('fa5s.crosshairs')
+        pp = QPushButton('Show alignment helper', icon=alg_icon)
         pp.clicked.connect(self.show_alignment_helper)
         tb.addWidget(pp)
 
@@ -200,17 +202,20 @@ class CommandMenu(QWidget):
     def add_plan_controls(self):
         c = self.parent().controller  # type: Controller
 
-        self.stop_plan_but = QPushButton(text='Stop Plan', icon=qta.icon('fa.stop'))
-        self.stop_plan_but.clicked.connect(c.stop_plan)
+        def ask_stop():
+            result = QMessageBox.question(self, "MessPy", "Stop Plan?")
+            if (result ==  QMessageBox.Yes): c.stop_plan()
 
+        stop_plan_but = QPushButton(qta.icon('fa.stop'), "Stop")
+        stop_plan_but.clicked.connect(ask_stop)
 
-        self.pause_plan_but = QPushButton(text="Pause plan", icon=qta.icon('fa.pause'))
-        self.pause_plan_but.clicked.connect(lambda: setattr(c, 'pause_plan', True))
+        pause_plan_but = QPushButton(text="Pause plan", icon=qta.icon('fa.pause'))
+        pause_plan_but.clicked.connect(lambda: setattr(c, 'pause_plan', True))
 
-        self.reopen_planview_but = QPushButton(qta.icon('fa5s.window-restore'), 'Reopen Planview')
-        self.reopen_planview_but.clicked.connect(self.parent().show_planview)
+        reopen_planview_but = QPushButton(qta.icon('fa5s.window-restore'), 'Reopen Planview')
+        reopen_planview_but.clicked.connect(self.parent().show_planview)
 
-        for but in self.stop_plan_but, self.pause_plan_but, self.reopen_planview_but:
+        for but in stop_plan_but, pause_plan_but, reopen_planview_but:
             c.starting_plan.connect(but.setEnabled)
             c.stopping_plan.connect(but.setDisabled)
             but.setDisabled(True)
@@ -219,7 +224,7 @@ class CommandMenu(QWidget):
         cb_running.setCheckable(True)
         cb_running.setChecked(True)
         cb_running.toggled.connect(self.parent().toggle_run)
-        for w in (self.reopen_planview_but, self.stop_plan_but, self.pause_plan_but, cb_running):
+        for w in (reopen_planview_but, stop_plan_but, pause_plan_but, cb_running):
             self._layout.addWidget(w)
 
     def add_ext_view(self):
