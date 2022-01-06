@@ -1,21 +1,7 @@
-from ControlClasses import Controller
-from Config import config
-from qtpy.QtCore import QTimer, Qt, QSettings
-from qtpy.QtGui import QIntValidator
-from qtpy.QtWidgets import (QMainWindow, QApplication, QWidget, QDockWidget, QPushButton, QLabel, QSizePolicy,
-                            QFormLayout, QMessageBox,
-                            QCheckBox)
-import qtawesome as qta
-from Instruments.interfaces import IAOMPulseShaper, ICam
-from Plans import *
-from Plans.ShaperCalibPlan import CalibScanView, CalibPlan
-from QtHelpers import ControlFactory, make_groupbox, \
-    ValueLabels, ObserverPlotWithControls, hlay
-from SampleMoveWidget import MoveWidget
-
 from functools import partial
 
 import qtawesome as qta
+qta.set_defaults(color='white')
 from qtpy.QtCore import QTimer, Qt, QSettings
 from qtpy.QtGui import QIntValidator
 from qtpy.QtWidgets import (QMainWindow, QApplication, QWidget, QDockWidget, QPushButton, QLabel, QSizePolicy,
@@ -101,16 +87,13 @@ class MainWindow(QMainWindow):
             def f():
                 plan, ok = PlanClass.start_plan(self.controller)
                 if ok:
-                    print('ok')
                     self.toggle_run(False)
-                    self.controller.plan = plan
                     self.plan_class = PlanClass
                     self.viewer = PlanClass.viewer(plan)
                     self.viewer.show()
                     self.cm.reopen_planview_but.setEnabled(True)
-                    self.controller.pause_plan = False
+                    self.controller.start_plan(plan)
                     self.toggle_run(True)
-
             return f
 
         plans = [
@@ -146,7 +129,7 @@ class MainWindow(QMainWindow):
         pp.clicked.connect(start_calib)
         tb.addWidget(pp)
 
-        alg_icon = qta.icon('mdi.chart-line', color='white')
+        alg_icon = qta.icon('mdi.chart-line')
         pp = QPushButton('Show alignment helper', icon=asl_icon)
         pp.clicked.connect(self.show_alignment_helper)
         tb.addWidget(pp)
@@ -161,10 +144,10 @@ class MainWindow(QMainWindow):
         self.xaxis[c][:] = 1e7 / self.xaxis[c][:]
 
     def show_planview(self):
-        if self.view is not None:
-            self.view.show()
+        if self.viewer is not None:
+            self.viewer.show()
         else:
-            self.view = self.plan_class.viewer(self.controller.plan)
+            self.viewer = self.plan_class.viewer(self.controller.plan)
 
     def show_alignment_helper(self):
         self._ah = AlignmentHelper(self.controller)
@@ -215,37 +198,37 @@ class CommandMenu(QWidget):
             self.add_shaper(c.shaper)
 
     def add_plan_controls(self):
-        # self.plan_label = QLabel('Default loop')
-        # self.plan_label.setAlignment(Qt.AlignHCenter)
-        self.pause_plan_but = QPushButton("Pause plan",
-                                          icon=qta.icon('fa.pause', color="white"))
-        self.pause_plan_but.setCheckable(True)
         c = self.parent().controller  # type: Controller
 
-        def switch_pause(ev):
-            c.pause_plan = self.pause_plan_but.isChecked()
+        self.stop_plan_but = QPushButton(text='Stop Plan', icon=qta.icon('fa.stop'))
+        self.stop_plan_but.clicked.connect(c.stop_plan)
 
-        self.pause_plan_but.clicked.connect(switch_pause)
 
-        self.reopen_planview_but = QPushButton('Reopen Planview')
-        self.reopen_planview_but.setEnabled(False)
+        self.pause_plan_but = QPushButton(text="Pause plan", icon=qta.icon('fa.pause'))
+        self.pause_plan_but.clicked.connect(lambda: setattr(c, 'pause_plan', True))
+
+        self.reopen_planview_but = QPushButton(qta.icon('fa5s.window-restore'), 'Reopen Planview')
         self.reopen_planview_but.clicked.connect(self.parent().show_planview)
-        cb_running = QPushButton('Running',
-                                 icon=qta.icon('fa.play', color='white'))
+
+        for but in self.stop_plan_but, self.pause_plan_but, self.reopen_planview_but:
+            c.starting_plan.connect(but.setEnabled)
+            c.stopping_plan.connect(but.setDisabled)
+            but.setDisabled(True)
+
+        cb_running = QPushButton(text='Running', icon=qta.icon('fa.play', color='white'))
         cb_running.setCheckable(True)
         cb_running.setChecked(True)
         cb_running.toggled.connect(self.parent().toggle_run)
-        for w in (self.reopen_planview_but, self.pause_plan_but, cb_running):
+        for w in (self.reopen_planview_but, self.stop_plan_but, self.pause_plan_but, cb_running):
             self._layout.addWidget(w)
 
     def add_ext_view(self):
         def get_ext(i):
-            lr = controller.last_read
+            lr = self.parent().controller.last_read
             return lr.ext[:, ]
 
         vl = ValueLabels([('Ext 1', partial(get_ext, 1))])
         self._layout.addWidget(make_groupbox([vl], 'Ext.'))
-        # self._layout.addStretch(10)
 
     def add_cam(self, c: Controller):
         bg_buttons = [('Record BG', c.cam.get_bg)]
@@ -340,15 +323,17 @@ class CommandMenu(QWidget):
             gratings = spec.gratings
             cur_grating = spec.get_grating()
             lbl = QLabel('G: %s' % gratings[cur_grating])
-            btns = [lbl]
+            self.btns_ = [lbl]
             for idx, name in gratings.items():
                 btn = QPushButton(name)
-                btn.clicked.connect(lambda: partial(spec.set_grating, idx))
-                btn.clicked.connect(lambda: lbl.setText('G: %s' % name))
-                btn.setFixedWidth(70)
-                btns.append(btn)
 
-            l.append(hlay(btns, add_stretch=1))
+
+                btn.clicked.connect(lambda x, idx=idx: spec.set_grating(idx))
+                #btn.clicked.connect(lambda: lbl.setText('G: %s' % name))
+                btn.setFixedWidth(70)
+                self.btns_.append(btn)
+
+            l.append(hlay(self.btns_, add_stretch=1))
         gb = make_groupbox(l, f"Spec: {cam.cam.name}")
         cb.clicked.connect(cam.set_disp_wavelengths)
         return gb
@@ -377,8 +362,6 @@ if __name__ == '__main__':
     app.setApplicationName("MessPy3")
 
     sys._excepthook = sys.excepthook
-
-
     def exception_hook(exctype, value, tb):
         emsg = QMessageBox()
         emsg.setWindowModality(Qt.WindowModal)
@@ -391,28 +374,12 @@ if __name__ == '__main__':
         print(result)
         if not result == QMessageBox.Ok:
             sys._excepthook(exctype, value, tb)
-            sys.exit(1)
         else:
             pass
 
-
     sys.excepthook = exception_hook
-
-    # font = QFont('Roboto')
-
-    # app.setStyle('Fusion')
-    # app.setAttribute(Qt.AA_EnableHighDpiScaling)
-    # app.setPalette(dark_palette)
-    ss = """
-        QMainWindow { font-size: 20pt;}
-        QToolTip { color: #ffffff; background-color: #2a82da;
-                       border: 1px solid white; }
-    """
     ss = qdarkstyle.load_stylesheet()
     app.setStyleSheet(ss)
-    # font.setPointSize(9)
-    # font.setStyleStrategy(QFont.PreferQuality)
-    # app.setFont(font)
 
     mw = MainWindow(Controller())
     mw.showMaximized()

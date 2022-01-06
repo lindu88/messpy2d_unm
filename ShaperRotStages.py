@@ -14,6 +14,7 @@ dispersion_params = [
     dict(name='center', type='float', value=2000)
 ]
 
+from Instruments.signal_processing import cm2THz, THz2cm
 
 @attr.s
 class ShaperControl(QtWidgets.QWidget):
@@ -69,6 +70,10 @@ class ShaperControl(QtWidgets.QWidget):
         self.disp_param = Parameter.create(name='Dispersion',
                                            type='group',
                                            children=dispersion_params)
+        self.disp_param['gvd'] = self.aom.gvd
+        self.disp_param['tod'] = self.aom.tod
+        self.disp_param['fod'] = self.aom.fod
+        self.disp_param['center'] = THz2cm(self.aom.nu0_THz)
 
         for c in self.disp_param.children():
             c.sigValueChanged.connect(self.update_disp)
@@ -83,7 +88,7 @@ class ShaperControl(QtWidgets.QWidget):
                             hlay((self.apply, self.cali))))
 
     def update_disp(self):
-        from Instruments.signal_processing import cm2THz
+
         for i in ['gvd', 'tod', 'fod']:
             setattr(self.aom, i, self.disp_param[i]*1000)
         self.aom.nu0_THz = cm2THz(self.disp_param['center'])
@@ -96,7 +101,7 @@ if __name__ == '__main__':
     # apply_stylesheet(app, 'light_blue.xml')
     aom = AOM()
     # from Instruments.RotationStage import RotationStage
-    from Instruments.signal_processing import cm2THz
+
 
     aom.set_wave_amp(0.4)
     aom.gvd = -50

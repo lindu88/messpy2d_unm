@@ -1,7 +1,6 @@
 import abc
 import asyncio
 import atexit
-import attr
 import contextlib
 import json
 import multiprocessing
@@ -11,6 +10,7 @@ import typing
 import warnings
 import xmlrpc.server as rpc
 
+import attr
 import numpy as np
 from qtpy.QtCore import Signal, QObject
 from scipy.constants import c
@@ -161,7 +161,8 @@ class ICam(IDevice):
     def get_spectra(self, frames: int) -> T.Dict[str, Spectrum]:
         pass
 
-    def make_2D_reading(self, t2: np.ndarray, rot_frame: float) -> T.Dict[str, Reading2D]:
+    def make_2D_reading(self, t2: np.ndarray, rot_frame: float, repetitions: int = 1,
+                        save_frames: bool = False) -> T.Dict[str, Reading2D]:
         pass
 
     @abc.abstractmethod

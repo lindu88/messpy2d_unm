@@ -28,9 +28,8 @@ class ScanSpectrumView(QWidget):
             signal=scan_plan.sigPointRead,
             x=nm,
         )
-
-        self.top_plot.plotItem.setLabel('bottom', 'Wavelength / nm')
-        self.bot_plot.plotItem.setLabel('bottom', 'Wavenumber / cm-1')
+        self.bot_plot.plotItem.setLabel('bottom', 'Wavelength / nm')
+        self.top_plot.plotItem.setLabel('bottom', 'Wavenumber / cm-1')
         self.setLayout(vlay([self.top_plot, self.bot_plot]))
 
 import pyqtgraph.parametertree.parameterTypes as pTypes
@@ -71,8 +70,7 @@ class ScanSpectrumStarter(PlanStartDialog):
                WavelengthParameter(name='Max.'),
                {'name': 'Steps', 'type': 'int', 'min': 2, 'value': 30},
                {'name': 'Linear Axis', 'type': 'list', 'values': ['cm-1', 'nm']},
-               {'name': 'timeout', 'type': 'float', 'value': 3}
-               ]
+               {'name': 'timeout', 'type': 'float', 'value': 3}]
 
         self.candidate_cams = {c.cam.name: c for c in self.controller.cam_list if c.changeable_wavelength}
 

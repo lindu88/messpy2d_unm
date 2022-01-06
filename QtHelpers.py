@@ -279,7 +279,8 @@ class PlanStartDialog(QDialog):
     def load_recent(self, new):
         settings = self.recent_settings[new][1].copy()
         settings.pop('date')
-        self.paras.restoreState(settings)
+
+        self.paras.restoreState(settings, removeChildren=False, addChildren=False)
 
     @classmethod
     def start_plan(cls, controller, parent=None):

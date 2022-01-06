@@ -18,6 +18,7 @@ import h5py
 
 from typing import Optional
 
+
 @attrs(auto_attribs=True, kw_only=True)
 class AOMTwoDPlan(ScanPlan):
     """Plan used for pump-probe experiments"""
@@ -31,12 +32,14 @@ class AOMTwoDPlan(ScanPlan):
     max_t2: float = 4
     step_t2: float = 0.05
     t2: np.ndarray = attrib()
+    rot_frame_freq: float = 0
+    repetitions: int = 1
+    phase_frames: Literal[1, 2, 4] = 4
+    save_frames_enabled: bool = False
 
     pump_freqs: np.ndarray = attrib()
     probe_freqs: np.ndarray = attrib()
 
-    phase_frames: Literal[1, 2, 4] = 4
-    rot_frame_freq: float = 0
     data_file: h5py.File = attrib()
     initial_state: dict = attr.Factory(dict)
 
@@ -63,14 +66,12 @@ class AOMTwoDPlan(ScanPlan):
     @data_file.default
     def _default_file(self):
         name = self.get_file_name()[0]
-        f = h5py.File(name, mode='w')
-        return f
-        f.create_dataset("t2", data=self.t2)
-        f.create_dataset("t3", data=self.t3)
-        f.create_group("data")
+        f = h5py.File(name, mode='a')
+        f['t2'] = self.t2
+        f['t3'] = self.t3
         f['t2'].attrs['rot_frame'] = self.rot_frame_freq
-        f.create_dataset("wn", data=self.controller.cam.wavenumbers)
-        f.create_dataset("wl", data=self.controller.cam.wavelengths)
+        f['wn'] = self.controller.cam.wavenumbers
+        f['wl'] = self.controller.cam.wavelengths
         return f
 
     def scan(self):
@@ -91,11 +92,29 @@ class AOMTwoDPlan(ScanPlan):
 
         amp, phase = self.shaper.double_pulse(self.t2, cm2THz(self.rot_frame_freq), self.phase_frames)
         self.shaper.set_amp_and_phase(amp, phase)
+        self.shaper.set_wave_amp(0.4)
         self.shaper.chopped = False
         self.shaper.phase_cycle = False
         self.shaper.do_dispersion_compensation = True
         self.shaper.generate_waveform()
-        self.controller.cam.set_shots(amp.shape[1])
+        self.controller.cam.set_shots(self.reptitions*amp.shape[1])
+        yield
+
+    def calculate_scan_means(self):
+        for line in self.data_file['ifr_data']:
+            for t3_idx in line:
+                data = []
+                specs = []
+                for scan in t3_idx:
+                    ifr = f'ifr_data/{line}/{t3_idx}/{scan}'
+                    data.append(self.data_file[ifr])
+                    spec = f'2d_data/{line}/{t3_idx}/{scan}'
+                    specs.append(self.data_file[spec])
+                self.data_file[f'ifr_data/{line}/{t3_idx}/mean'] = np.mean(data, 0)
+                self.data_file[f'2d_data/{line}/{t3_idx}/mean'] = np.mean(specs, 0)
+
+    def post_scan(self) -> Generator:
+        self.calculate_scan_means()
         yield
 
     def post_plan(self) -> Generator:
@@ -103,21 +122,25 @@ class AOMTwoDPlan(ScanPlan):
             setattr(self.shaper, k, self.initial_state[k])
         self.shaper.generate_waveform()
         self.controller.cam.set_shots(self.initial_state[k])
+        self.data_file.close()
+        yield
 
     def measure_point(self):
         import concurrent.futures
         with concurrent.futures.ThreadPoolExecutor() as executor:
-            future = executor.submit(self.controller.cam.cam.make_2D_reading, self.t2, self.rot_frame_freq)
+            future = executor.submit(self.controller.cam.cam.make_2D_reading, self.t2,
+                                     self.rot_frame_freq, self.repetitions, self.save_frames_enabled)
             while not future.done():
                 yield
             ret = future.result()
         for line, data in ret.items():
-            ds = self.data_file.create_dataset(f'if_data/{self.cur_scan}/{line}/{self.t3_idx}', data=data.interferogram)
+            ds = self.data_file.create_dataset(f'ifr_data/{line}/{self.t3_idx}/{self.cur_scan}', data=data.interferogram)
             ds.attrs['time'] = self.cur_t3
-            ds = self.data_file.create_dataset(f'2d_data/{self.cur_scan}/{line}/{self.t3_idx}', data=data.signal_2D)
+            ds = self.data_file.create_dataset(f'2d_data/{line}/{self.t3_idx}/{self.cur_scan}', data=data.signal_2D)
             ds.attrs['time'] = self.cur_t3
-
+            if self.save_frames_enabled:
+                ds = self.data_file.create_dataset(f'frames/{line}/{self.t3_idx}/{self.cur_scan}', data=data.frames)
         self.last_2d = data.signal_2D
         self.last_ir = data.interferogram
-        tmp = np.save(data.spectra.frame_data)
-        self.last_freq = data.freqs
+        tmp = np.save('frame_data', data.spectra.frame_data)
+
