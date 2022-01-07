@@ -4,7 +4,7 @@ import sys
 
 import attr
 
-sys.path.append('../')
+sys.path.append("../")
 from Instruments.interfaces import ICam
 
 from typing import List, Callable, Tuple
@@ -18,11 +18,13 @@ from Instruments.dac_px import AOM
 from .ShaperCalibView import CalibView
 from ControlClasses import Cam
 
-@attr.s(auto_attribs=True, cmp=False)
-class CalibPlan(QObject):
+from Plans.PlanBase import AsyncPlan
+
+
+@attr.s(auto_attribs=True, cmp=False, kw_only=True)
+class CalibPlan(AsyncPlan):
     cam: Cam
     dac: AOM
-    move_func: Callable
     points: List[float]
     amps: List[List[float]] = attr.Factory(list)
     single_spectra: np.ndarray = attr.ib(init=False)
@@ -37,132 +39,35 @@ class CalibPlan(QObject):
     sigPlanDone = Signal()
 
     def __attrs_post_init__(self):
-        super().__init__()
+        super(CalibPlan, self).__attrs_post_init__()
         self.single_spectra = np.zeros((self.cam.channels, len(self.points)))
 
-    async def step(self):
+    async def plan(self):
         self.cam.set_shots(self.num_shots)
         loop = asyncio.get_running_loop()
+        initial_wl = self.cam.get_wavelength()
+        initial_shots = self.cam.shots
         if self.check_zero_order:
-            await loop.run_in_executor(None, self.cam.cam.spectrograph.set_wavelength, 0, 10) #
+            await loop.run_in_executor(
+                None, self.cam.cam.spectrograph.set_wavelength, 0, 10
+            )
             reading = await loop.run_in_executor(None, self.cam.read_cam)
-            self.channel = np.argmax(reading.lines[: 1])
+            self.channel = np.argmax(reading.lines[:1])
 
-        await self.pre_scan()
+        self.single_spectra = np.zeros((self.cam.channels, len(self.points)))
+        self.dac.load_mask(self.dac.make_calib_mask())
         for i, p in enumerate(self.points):
             await self.read_point(i, p)
             self.sigStepDone.emit()
-
-        await self.post_scan()
-
-    async def pre_scan(self):
-        self.single_spectra = np.zeros((self.cam.channels, len(self.points)))
-        self.dac.load_mask(self.dac.make_calib_mask())
-
-    async def post_scan(self):
+        self.cam.set_wavelength(initial_wl)
+        self.cam.set_shots(initial_shots)
         self.sigPlanDone.emit()
 
     async def read_point(self, i, p):
         loop = asyncio.get_running_loop()
-        await loop.run_in_executor(None, self.cam.cam.spectrograph.set_wavelength, p, 10)
+        await loop.run_in_executor(
+            None, self.cam.cam.spectrograph.set_wavelength, p, 10
+        )
         spectra, ch = await loop.run_in_executor(None, self.cam.cam.get_spectra, 3)
-
-        #self.cam.sigReadCompleted.emit()
-        self.amps.append(spectra['Probe2'].frame_data[self.channel, :])
-        self.single_spectra[:, i] = spectra['Probe2'].frame_data[:, 1]
-
-class CalibScanView(QWidget):
-    def __init__(self, focus_scan: CalibPlan, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        self.focus_scan = focus_scan
-        self.focus_scan.sigStepDone.connect(self.update_view)
-
-        self.setLayout(QHBoxLayout())
-
-        self.children = [
-            dict(name='start_wl', type='int', value=5500, step=500),
-            dict(name='end_wl', type='int',  value=6500, step=500),
-            dict(name='step', type='float',  value=10, step=2),
-            dict(name='shots', type='int', value=90, step=10),
-            dict(name='start', type='action')
-        ]
-        param = Parameter.create(name='Calibration Scan',
-                                type='group',
-                                children=self.children)
-        for c in param.children():
-            c.setDefault(c.value())
-
-        self.children2 = [
-            dict(name='Height', type='float', value=100000),
-            dict(name='Distance', type='float', value=5),
-
-        ]
-        param2 = Parameter.create(name='Calibration Scan',
-                            type='group',
-                            children=self.children2)
-        self.params : Parameter = param
-        self.pt = ParameterTree()
-        self.pt.setParameters(self.params)
-        self.layout().addWidget(self.pt)
-        self.params.child('start').sigActivated.connect(self.start)
-        self.plot = pg.PlotWidget(self)
-        self.layout().addWidget(self.plot)
-        self.focus_scan.sigPlanDone.connect(self.analyse)
-        #self.focus_scan.sigPlanDone.connect(
-        #    lambda: self.start_button.setEnabled(True))
-
-    def start(self):
-        s = self.params.saveState()
-        start, stop, step = self.params['start_wl'], self.params['end_wl'], self.params['step']
-        self.focus_scan.points = np.arange(start, stop, step)
-        self.focus_scan.num_shots = self.params['shots']
-        self.focus_scan.amps = []
-        self.params.setReadonly(True)
-        #self.params.child('start').setOpts(enabled=False)
-        self.focus_scan.sigTaskReady.emit(aio.create_task(self.focus_scan.step()))
-
-    @asyncSlot()
-    async def update_view(self):
-
-        plan = self.focus_scan
-
-        self.plot.plotItem.clear()
-        n = len(plan.amps)
-        x = plan.points[:n]
-
-        y = np.array(plan.amps)
-
-        self.plot.plotItem.plot(x, y[:, 0], pen='r')
-        self.plot.plotItem.plot(x, y[:, 1], pen='g')
-        self.plot.plotItem.plot(x, y[:, 2], pen='y')
-
-    def analyse(self):
-        plan = self.focus_scan
-        x = np.array(plan.points)
-        y_train = np.array(plan.amps)[:, 0]
-        y_single = np.array(plan.amps)[:, 1]
-        y_full = np.array(plan.amps)[:, 2]
-        np.save('calib.npy', np.column_stack((x, y_train, y_single, y_full)))
-        print(x.shape, plan.single_spectra.shape)
-        single_arr = np.column_stack((x[:, None], plan.single_spectra.T))
-        np.save(f'wl_calib_{plan.channel}.npy', single_arr)
-        self._view = CalibView(x=x, y_train=y_train-y_train.min(), y_single=y_single-y_single.min(), y_full=y_full-y_full.min())
-        self._view.show()
-        self._view.sigCalibrationAccepted.connect(plan.dac.set_calib)
-        self._view.sigCalibrationAccepted.connect(lambda arg: plan.dac.generate_waveform())
-
-
-if __name__ == '__main__':
-    from Instruments.cam_phasetec import _ircam
-
-    app = QApplication([])
-    loop = QEventLoop(app)
-    aio.set_event_loop(loop)
-    cam = _ircam
-    cam.set_shots(60)
-    fs = CalibPlan(cam=cam,
-                   move_func=cam.set_wavelength,
-                   points=np.arange(5500, 6500, 5))
-    fv = CalibScanView(fs)
-    fv.show()
-    app.exec()
+        self.amps.append(spectra["Probe2"].frame_data[self.channel, :])
+        self.single_spectra[:, i] = spectra["Probe2"].frame_data[:, 1]

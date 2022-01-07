@@ -1,3 +1,5 @@
+import asyncio
+from asyncio import Task
 from datetime import datetime, timedelta
 from pathlib import Path
 from typing import ClassVar, Tuple, Optional, Callable, Generator
@@ -77,8 +79,6 @@ class TimeTracker(QObject):
         return s
 
 
-
-
 @attr.s(auto_attribs=True, kw_only=True)
 class Plan(QObject):
     plan_shorthand: ClassVar[str]
@@ -140,7 +140,6 @@ class ScanPlan(Plan):
     def _prime_gen(self):
         return self.make_step_generator().__next__
 
-
     def __attrs_post_init__(self):
         super(ScanPlan, self).__attrs_post_init__()
         self.sigScanStarted.connect(self.time_tracker.scan_starting)
@@ -173,3 +172,24 @@ class ScanPlan(Plan):
 
     def post_scan(self) -> Generator:
         yield True
+
+import asyncio
+
+@attr.define
+class AsyncPlan(Plan):
+    is_async: bool = True
+    task: Task = attr.ib()
+
+    sigTaskCreated: ClassVar[Signal] = Signal()
+
+    @task.default
+    def create_task(self):
+        loop = asyncio.get_event_loop()
+        return loop.create_task(self.plan, self.name)
+
+    async def plan(self):
+        pass
+
+    def stop_plan(self):
+        self.task.cancel()
+        return super().stop_plan()
