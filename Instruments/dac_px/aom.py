@@ -8,6 +8,7 @@ import numpy as np
 
 from .shaper_calculations import double_pulse_mask
 from typing import TYPE_CHECKING, Tuple
+
 if TYPE_CHECKING:
     from .pxdac import PXDAC
 import matplotlib.pyplot as plt
@@ -17,16 +18,20 @@ MAX_16_Bit = (1 << 13) - 1
 
 log = getLogger(__file__)
 
+
 def default_dac():
     from .pxdac import PXDAC
+
     return PXDAC.DAC(1)
+
 
 from Instruments.interfaces import IDevice
 from qtpy.QtCore import Signal
 
+
 @attr.s(auto_attribs=True)
 class AOM(IDevice):
-    dac: 'PXDAC.DAC' = attr.Factory(default_dac)
+    dac: "PXDAC.DAC" = attr.Factory(default_dac)
     name: str = "Phasetech AOM"
 
     amp_fac: float = 1.0
@@ -43,12 +48,13 @@ class AOM(IDevice):
     amp: np.ndarray = np.ones((PIXEL, 1))
     total_phase: Optional[np.ndarray] = np.zeros(PIXEL)
     mask: np.ndarray = np.zeros_like(PIXEL)
-    
+
     chopped: bool = True
     do_dispersion_compensation: bool = True
     phase_cycle: bool = True
-    mode: Literal['bragg', 'classic'] = 'bragg'
-    
+    mode: Literal["bragg", "classic"] = "bragg"
+
+    delay: float = 0
     gvd: float = 0
     tod: float = 0
     fod: float = 0
@@ -63,16 +69,17 @@ class AOM(IDevice):
 
     def get_state(self) -> dict:
         d = {
-            'calib': self.calib.tolist() if self.calib is not None else None,
-            'gvd': self.gvd,
-            'fod': self.fod,
-            'tod': self.tod,
-            'wave_amp': self.wave_amp,
-            'chopped': self.chopped,
-            'do_dispersion_compensation': self.do_dispersion_compensation,
-            'phase_cycle': self.phase_cycle,
-            'mode': self.mode,
-            'nu0_THz': self.nu0_THz,
+            "calib": self.calib.tolist() if self.calib is not None else None,
+            "delay": self.delay,
+            "gvd": self.gvd,
+            "fod": self.fod,
+            "tod": self.tod,
+            "wave_amp": self.wave_amp,
+            "chopped": self.chopped,
+            "do_dispersion_compensation": self.do_dispersion_compensation,
+            "phase_cycle": self.phase_cycle,
+            "mode": self.mode,
+            "nu0_THz": self.nu0_THz,
         }
         return d
 
@@ -104,12 +111,21 @@ class AOM(IDevice):
         Updates the dispersion correction phase from the class attributes.
         """
         x = self.nu - self.nu0_THz
-        x *= (2 * np.pi) / 1000 # PHz -> disp params in fs^-n (n=2,3,4)
-        coef = np.array([self.gvd, self.tod, self.fod]) / np.array([2, 6, 24])
-        phase = x ** 2 * coef[0] + x ** 3 * coef[1] + x ** 4 * coef[2]
+        x *= (2 * np.pi) / 1000  # PHz -> disp params in fs^-n (n=2,3,4)
+        coef = np.array([self.delay, self.gvd, self.tod, self.fod]) / np.array(
+            [1, 2, 6, 24]
+        )
+        phase = x * coef[0] + x ** 2 * coef[1] + x ** 3 * coef[2] + x ** 4 * coef[3]
         self.do_dispersion_compensation = True
         self.compensation_phase = -phase[:, None]
-        log.info('Updating dispersion compensation %1.f %.2f %.2e %.2e', self.nu0_THz, self.gvd, self.tod, self.fod)
+        log.info(
+            "Updating dispersion compensation %1.f %.2f %.2e %.2e %.2e",
+            self.nu0_THz,
+            self.delay,
+            self.gvd,
+            self.tod,
+            self.fod,
+        )
         self.sigDispersionChanged.emit((self.gvd, self.tod, self.fod))
         self.generate_waveform()
 
@@ -118,7 +134,7 @@ class AOM(IDevice):
         Sets a new calibration polynomial p.
         """
         self.calib = np.array(p)
-        np.save(Path(__file__).parent/'calib_coef.npy', self.calib)
+        np.save(Path(__file__).parent / "calib_coef.npy", self.calib)
         self.nu = np.polyval(p, self.pixel)
         self.sigCalibChanged.emit(self.calib)
         self.save_state()
@@ -126,33 +142,43 @@ class AOM(IDevice):
     def bragg_wf(self, amp, phase):
         """Calculates a Bragg-correct AOM waveform for given phase and shape"""
         F = np.poly1d(np.polyint(self.calib))
-        phase_term = 2 * np.pi * F(self.pixel) / self.nu0_THz * self.rf_freq_MHz / self.dac_freq_MHz
+        phase_term = (
+            2
+            * np.pi
+            * F(self.pixel)
+            / self.nu0_THz
+            * self.rf_freq_MHz
+            / self.dac_freq_MHz
+        )
         phase_term = phase + phase_term[:, None]
         return amp * np.cos(phase_term)
 
     def classic_wf(self, amp, phase):
         """Calculates a uncorrected AOM waveform for given amplitude and shape"""
-        f = self.dac_freq_MHz/self.rf_freq_MHz
+        f = self.dac_freq_MHz / self.rf_freq_MHz
         return amp * np.cos(self.pixel[:, None] / f * 2 * np.pi + phase)
 
-    def double_pulse(self, taus, rot_frame: float, phase_frames: Literal[1, 2, 4] = 4) -> Tuple[np.ndarray, np.ndarray]:
+    def double_pulse(
+        self, taus, rot_frame: float, phase_frames: Literal[1, 2, 4] = 4
+    ) -> Tuple[np.ndarray, np.ndarray]:
         """
         Calculates the masks for creating a series a double pulses with phase cycling.
         """
         if self.nu is None:
             raise ValueError("Spectral calibration is required to calculate the masks.")
-        phase = np.pi * np.array([(1, 1),
-                                  (1, 0),
-                                  (0, 1),
-                                  (0, 0)])
+        phase = np.pi * np.array([(1, 1), (1, 0), (0, 1), (0, 0)])
         phase = phase[:phase_frames, :]
         phase = np.tile(phase, (taus.shape[0], 1))
         phi1 = phase[:, 0]
         phi2 = phase[:, 1]
         taus = taus.repeat(phase_frames)
-        masks = double_pulse_mask(self.nu[:, None], rot_frame,
-                                  taus[None, :], phi1[None, :], phi2[None, :])
+        masks = double_pulse_mask(
+            self.nu[:, None], rot_frame, taus[None, :], phi1[None, :], phi2[None, :]
+        )
         return np.abs(masks), np.angle(masks)
+
+    def delay_scan(self, taus):
+        
 
     def set_amp_and_phase(self, amp=None, phase=None):
         """
@@ -178,13 +204,13 @@ class AOM(IDevice):
 
         self.total_phase = phase
 
-        if self.mode == 'bragg' and self.calib is not None:
+        if self.mode == "bragg" and self.calib is not None:
             masks = self.bragg_wf(self.amp, self.total_phase)
         else:
             masks = self.classic_wf(self.amp, self.total_phase)
 
         if self.chopped:
-            masks = np.concatenate((0*masks, masks), axis=1)
+            masks = np.concatenate((0 * masks, masks), axis=1)
         if self.phase_cycle:
             masks = np.concatenate((masks, -masks), axis=1)
         self.load_mask(masks)
@@ -201,7 +227,7 @@ class AOM(IDevice):
         the waveform, hence it requires a recalculation of the waveform which normally uses the full scale of the DAC.
         """
         if not (0 <= amp <= 1):
-            raise ValueError('Amplitude has to be between 0 and 1')
+            raise ValueError("Amplitude has to be between 0 and 1")
         self.wave_amp = amp
         V = 1.4 * amp
         if V > 0.4:
@@ -219,13 +245,13 @@ class AOM(IDevice):
             self.mask = mask
 
         if len(self.mask.shape) == 2:
-            assert(self.mask.shape[0] == PIXEL)
-            self.mask = self.mask.ravel(order='f')
+            assert self.mask.shape[0] == PIXEL
+            self.mask = self.mask.ravel(order="f")
 
-        mask = (self.amp_fac * MAX_16_Bit * self.mask).astype('int16')
+        mask = (self.amp_fac * MAX_16_Bit * self.mask).astype("int16")
 
-        assert (mask.dtype == np.int16)
-        assert ((mask.size % PIXEL) == 0)
+        assert mask.dtype == np.int16
+        assert (mask.size % PIXEL) == 0
         print(mask.size // PIXEL)
         self.end_playback()
         mask1 = np.zeros_like(mask)
@@ -253,9 +279,9 @@ class AOM(IDevice):
         single_mask = np.zeros_like(full_mask)
         total = width + separation
         for k, i in enumerate(range(0, full_mask.size, total)):
-            pulse_train_mask[i:i + width] = full_mask[i:i + width]
+            pulse_train_mask[i : i + width] = full_mask[i : i + width]
             if k == n_single:
-                single_mask[i:i + width] = pulse_train_mask[i:i + width]
+                single_mask[i : i + width] = pulse_train_mask[i : i + width]
 
         # Three frames: train, single and full
         mask = np.stack((pulse_train_mask, single_mask, full_mask), axis=1)
@@ -274,6 +300,6 @@ class AOM(IDevice):
         self.load_mask(full_mask)
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     A = AOM()
     A.load_mask(A.make_calib_mask())
