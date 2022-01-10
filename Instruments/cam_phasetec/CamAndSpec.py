@@ -1,11 +1,11 @@
 from math import log
 from pathlib import Path
-from typing import List, Optional, Tuple, Dict
+from typing import ClassVar, List, Optional, Tuple, Dict
 
 import attr
 import numpy as np
 from scipy.stats import trim_mean
-
+from qtpy.QtCore import Slot, Signal
 from Config import config
 from Instruments.interfaces import ICam
 from Instruments.signal_processing import Reading, Spectrum, first, fast_col_mean, Reading2D
@@ -57,6 +57,8 @@ class PhaseTecCam(ICam):
     can_validate_pixel: bool = True
     valid_pixel: Optional[List[np.ndarray]] = None
     _cam: Cam = attr.ib(factory=Cam)
+
+    sigRowsChanged: ClassVar[Signal] = Signal()
 
     @probe_rows.default
     def _probe_rows_default(self):

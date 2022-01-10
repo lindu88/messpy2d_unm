@@ -122,6 +122,7 @@ class Plan(QObject):
         for i in IDevice.registered_devices:
             self.meta[i.name] = i.get_state()
 
+    @Slot()
     def stop_plan(self):
         self.sigPlanStopped.emit()
 

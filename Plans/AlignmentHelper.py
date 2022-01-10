@@ -1,6 +1,7 @@
 import pyqtgraph as pg
 import time
 from qtpy.QtWidgets import (QWidget,)
+from qtpy.QtCore import Slot
 import QtHelpers as qh
 from ControlClasses import Controller
 
@@ -34,6 +35,7 @@ class AlignmentHelper(QWidget):
             self.graph_layouter.nextRow()
         controller.loop_finished.connect(self.update_plots)
 
+    @Slot()
     def update_plots(self):
         t = time.time()
         self.times.append(t-self.t0)

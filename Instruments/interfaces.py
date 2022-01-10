@@ -357,13 +357,13 @@ class ILissajousScanner(IDevice):
         pass
 
     def set_zpos_mm(self, mm: float):
-        pass
+        raise NotImplementedError
 
     def get_zpos_mm(self) -> float:
-        pass
+        raise NotImplementedError
 
     def is_zmoving(self) -> bool:
-        pass
+        raise NotImplementedError
 
 
 @attr.s

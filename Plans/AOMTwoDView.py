@@ -62,13 +62,15 @@ class AOMTwoDViewer(GraphicsLayoutWidget):
         self.spec_mean_line = self.spec_plot.plot()
         self.ci.nextRow()
         self.info_label = self.ci.addLabel("Hallo", colspan=4)
+        
         #self.update_plots()
         self.spec_line.sigPositionChanged.connect(self.update_spec_lines)
         self.plan.sigStepDone.connect(self.update_images)
         self.plan.sigStepDone.connect(self.update_plots)
         self.plan.sigStepDone.connect(self.update_label)
 
-    def update_images(self, al=False):
+    @Slot(bool)
+    def update_data(self, al=False):
         self.ifr_img.setImage(self.plan.last_ir, autoLevels=al)
         self.spec_img.setImage(self.plan.last_2d, autoLevels=al)
 
@@ -81,7 +83,7 @@ class AOMTwoDViewer(GraphicsLayoutWidget):
                                             bounds=(self.probe_freq.min(), self.probe_freq.max()),
                                             pen=mkPen(_int_color, width=1))
         line._int_color = _int_color
-        self.ifr_lines[line] = self.trans_plot.plot(self.plan.t2, self.plan.last_ir[round(x), :], pen=line.pen)
+        self.ifr_lines[line] = self.trans_plot.plot(self.plan.t2, self.plan.disp_arrays[[round(x), :], pen=line.pen)
 
         def update(line: InfiniteLine):
             idx = np.argmin(abs(self.probe_freq - line.pos()[0]))
@@ -116,8 +118,8 @@ class AOMTwoDViewer(GraphicsLayoutWidget):
             <h3>Current Experiment</h3>
             <big>
             <dl>
-            <dt>Name:<dd>{p.name}            
-            <dt>Scan:<dd>{p.cur_scan} / {p.max_scan}    
+            <dt>Name:<dd>{p.name}
+            <dt>Scan:<dd>{p.cur_scan} / {p.max_scan}
             <dt>Time-point: {p.t3_idx} / {p.t3.size}: {p.cur_t3}
             </dl>
             </big>
@@ -174,7 +176,7 @@ class AOMTwoDViewerA(QWidget):
             <dl>
             <dt>Name:<dd>{p.name}
             <dt>Shots:<dd>{p.t}
-            <dt>Scan:<dd>{p.cur_scan} / {p.max_scan}                     
+            <dt>Scan:<dd>{p.cur_scan} / {p.max_scan}
             </dl>
             </big>
             '''

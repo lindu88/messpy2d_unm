@@ -15,7 +15,7 @@ class AdaptiveTZViewer(QWidget):
 
     def __attrs_post_init__(self):
         super(AdaptiveTZViewer, self).__init__()
-        self.plan.sigStepDone.connect(self.update_view)
+        #self.plan.sigStepDone.connect(self.update_view)
         self.plot_widget = ObserverPlot([self.plan.get_data], self.plan.sigStepDone)
         self.setLayout(vlay(self.plot_widget, self.stop_button))
         self.stop_button.clicked.connect(lambda: setattr(self.plan, 'is_running', False))
@@ -39,6 +39,8 @@ class AdaptiveTZStarter(PlanStartDialog):
     def create_plan(self, controller: 'Controller'):
         p = self.paras.child('Exp. Settings')
         plan = AdaptiveTimeZeroPlan(
+            cam=controller.cam,
+            delay_line=controller.delay_line,
             max_diff=p["MaxDiff"],
             name=p["Filename"],
             meta={},
