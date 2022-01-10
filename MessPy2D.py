@@ -3,7 +3,7 @@ from functools import partial
 import qtawesome as qta
 qta.set_defaults(color='white')
 from pyqtgraph import setConfigOptions
-setConfigOptions(enableExperimental=True, useNumba=True, antialias=False)
+setConfigOptions(enableExperimental=True, useNumba=True, antialias=False, useOpenGL=False)
 from qtpy.QtCore import QTimer, Qt, QSettings
 from qtpy.QtGui import QIntValidator
 from qtpy.QtWidgets import (QMainWindow, QApplication, QWidget, QDockWidget, QPushButton, QLabel, QSizePolicy,

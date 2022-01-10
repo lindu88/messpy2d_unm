@@ -98,7 +98,7 @@ class AOMTwoDPlan(ScanPlan):
         self.shaper.phase_cycle = False
         self.shaper.do_dispersion_compensation = True
         self.shaper.generate_waveform()
-        self.controller.cam.set_shots(self.reptitions*amp.shape[1])
+        self.controller.cam.set_shots(self.repetitions*amp.shape[1])
         yield
 
     def calculate_scan_means(self):
@@ -122,7 +122,7 @@ class AOMTwoDPlan(ScanPlan):
         for k in 'amp', 'phase', 'chopped', 'phase_cycle', 'do_dispersion_compensation':
             setattr(self.shaper, k, self.initial_state[k])
         self.shaper.generate_waveform()
-        self.controller.cam.set_shots(self.initial_state[k])
+        self.controller.cam.set_shots(self.initial_state['shots'])
         self.data_file.close()
         yield
 
@@ -141,5 +141,8 @@ class AOMTwoDPlan(ScanPlan):
             ds.attrs['time'] = self.cur_t3
             if self.save_frames_enabled:
                 ds = self.data_file.create_dataset(f'frames/{line}/{self.t3_idx}/{self.cur_scan}', data=data.frames)
-        self.last_2d = self.data_file.get(f'2d_data/{line}/{self.t3_idx}/mean', data.signal_2D)
-        self.last_ir = self.data_file.get(f'ifr_data/{line}/{self.t3_idx}/mean', data.interferogram)
+            disp_2d = self.data_file.get(f'2d_data/{line}/{self.t3_idx}/mean', data.signal_2D)
+            disp_ifr = self.data_file.get(f'ifr_data/{line}/{self.t3_idx}/mean', data.interferogram)
+            self.disp_arrays[line] = disp_2d, disp_ifr
+        self.last_2d = disp_2d
+        self.last_ir = disp_ifr

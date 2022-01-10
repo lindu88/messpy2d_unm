@@ -41,7 +41,7 @@ class GermaniumPlan(Plan):
     controller: Controller
     name: str
     cam: Cam
-    t_list: Iterable[float]
+    t_list: np.ndarray
     t_idx: int = 0
     sigStepDone: ClassVar[Signal] = Signal()
     sigGerDone: ClassVar[Signal] = Signal()

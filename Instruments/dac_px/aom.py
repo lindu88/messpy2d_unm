@@ -18,12 +18,10 @@ MAX_16_Bit = (1 << 13) - 1
 
 log = getLogger(__file__)
 
-
 def default_dac():
     from .pxdac import PXDAC
 
     return PXDAC.DAC(1)
-
 
 from Instruments.interfaces import IDevice
 from qtpy.QtCore import Signal
@@ -110,6 +108,8 @@ class AOM(IDevice):
         """
         Updates the dispersion correction phase from the class attributes.
         """
+        if self.nu is None:
+            raise ValueError("No calibration avaiable")
         x = self.nu - self.nu0_THz
         x *= (2 * np.pi) / 1000  # PHz -> disp params in fs^-n (n=2,3,4)
         coef = np.array([self.delay, self.gvd, self.tod, self.fod]) / np.array(
@@ -178,7 +178,7 @@ class AOM(IDevice):
         return np.abs(masks), np.angle(masks)
 
     def delay_scan(self, taus):
-        
+
 
     def set_amp_and_phase(self, amp=None, phase=None):
         """
@@ -245,8 +245,8 @@ class AOM(IDevice):
             self.mask = mask
 
         if len(self.mask.shape) == 2:
-            assert self.mask.shape[0] == PIXEL
-            self.mask = self.mask.ravel(order="f")
+            assert(self.mask.shape[0] == PIXEL)
+            self.mask = self.mask.ravel(order='F')
 
         mask = (self.amp_fac * MAX_16_Bit * self.mask).astype("int16")
 

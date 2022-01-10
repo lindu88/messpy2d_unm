@@ -75,7 +75,7 @@ class NewPortStage:
             while self.get_status().startswith('HOMING'):
                 time.sleep(0.5)
 
-    def w(self, s: str):
+    def w(self, s: bytes):
         self.port.write(s + TERM)
 
     def rl(self):

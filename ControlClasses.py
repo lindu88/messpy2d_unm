@@ -253,6 +253,8 @@ class Controller(QObject):
             self.plan = None
             self.stopping_plan.emit(True)
 
+
+
 if __name__ == '__main__':
     c = Controller()
     print(c)
