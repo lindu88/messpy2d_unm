@@ -15,7 +15,6 @@ import pyqtgraph as pg
 from pyqtgraph.parametertree import Parameter, ParameterTree
 import numpy as np
 from Instruments.dac_px import AOM
-from .ShaperCalibView import CalibView
 from ControlClasses import Cam
 
 from Plans.PlanBase import AsyncPlan
@@ -28,21 +27,21 @@ class CalibPlan(AsyncPlan):
     points: List[float]
     amps: List[List[float]] = attr.Factory(list)
     single_spectra: np.ndarray = attr.ib(init=False)
-    num_shots = 100
+    num_shots: int = 100
     start_pos: Tuple[float, float] = 0
     check_zero_order: bool = True
     channel: int = 67
     is_async: bool = True
 
-    sigTaskReady = Signal(object)
     sigStepDone = Signal()
-    sigPlanDone = Signal()
 
     def __attrs_post_init__(self):
         super(CalibPlan, self).__attrs_post_init__()
         self.single_spectra = np.zeros((self.cam.channels, len(self.points)))
 
     async def plan(self):
+
+        self.sigPlanStarted.emit()
         self.cam.set_shots(self.num_shots)
         loop = asyncio.get_running_loop()
         initial_wl = self.cam.get_wavelength()
@@ -51,17 +50,17 @@ class CalibPlan(AsyncPlan):
             await loop.run_in_executor(
                 None, self.cam.cam.spectrograph.set_wavelength, 0, 10
             )
-            reading = await loop.run_in_executor(None, self.cam.read_cam)
-            self.channel = np.argmax(reading.lines[:1])
+            reading = await loop.run_in_executor(None, self.cam.cam.get_spectra, 3)
+            self.channel = np.argmax(reading['Probe2'].mean)  # typing: ignore
 
         self.single_spectra = np.zeros((self.cam.channels, len(self.points)))
-        self.dac.load_mask(self.dac.make_calib_mask())
+        #self.dac.load_mask(self.dac.make_calib_mask())
         for i, p in enumerate(self.points):
             await self.read_point(i, p)
             self.sigStepDone.emit()
         self.cam.set_wavelength(initial_wl)
         self.cam.set_shots(initial_shots)
-        self.sigPlanDone.emit()
+        self.sigPlanFinished.emit()
 
     async def read_point(self, i, p):
         loop = asyncio.get_running_loop()

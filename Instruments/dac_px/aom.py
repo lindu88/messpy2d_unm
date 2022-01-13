@@ -1,17 +1,15 @@
-from typing import Optional, Literal
 from logging import getLogger
 from pathlib import Path
+from typing import Optional, Literal
+from typing import TYPE_CHECKING, Tuple
 
 import attr
 import numpy as np
 
-
-from .shaper_calculations import double_pulse_mask
-from typing import TYPE_CHECKING, Tuple
+from .shaper_calculations import double_pulse_mask, delay_scan_mask
 
 if TYPE_CHECKING:
     from .pxdac import PXDAC
-import matplotlib.pyplot as plt
 
 PIXEL = 4096 * 3  # 12288
 MAX_16_Bit = (1 << 13) - 1
@@ -109,7 +107,7 @@ class AOM(IDevice):
         Updates the dispersion correction phase from the class attributes.
         """
         if self.nu is None:
-            raise ValueError("No calibration avaiable")
+            raise ValueError("No calibration available")
         x = self.nu - self.nu0_THz
         x *= (2 * np.pi) / 1000  # PHz -> disp params in fs^-n (n=2,3,4)
         coef = np.array([self.delay, self.gvd, self.tod, self.fod]) / np.array(
@@ -177,8 +175,19 @@ class AOM(IDevice):
         )
         return np.abs(masks), np.angle(masks)
 
-    def delay_scan(self, taus):
-
+    def delay_scan(self, taus: np.ndarray, phase_cycle: bool = True, chopped: bool = True):
+        if self.nu is None:
+            raise ValueError("Spectral calibration is required to calculate the masks.")
+        if phase_cycle:
+            phase = np.array([0, 1]) * np.pi
+            taus = taus.repeat(phase.size)
+        else:
+            phase = 0
+        mask = delay_scan_mask(self.nu[:, None], taus[None, :], phase)
+        if chopped:
+            mask = mask.repeat(2, axis=1)
+            mask[::2] *= 0
+        return abs(mask), np.angle(mask)
 
     def set_amp_and_phase(self, amp=None, phase=None):
         """

@@ -1,4 +1,4 @@
-from typing import TYPE_CHECKING, ClassVar, Callable, Literal, Generator
+from typing import TYPE_CHECKING, ClassVar, Callable, Literal, Generator, Tuple, Dict
 
 import attr
 import numpy as np
@@ -43,7 +43,7 @@ class AOMTwoDPlan(ScanPlan):
     data_file: h5py.File = attrib()
     initial_state: dict = attr.Factory(dict)
 
-    disp_arrays: dict = attr.Factory(dict)
+    disp_arrays: Dict[str, Tuple[np.ndarray, np.ndarray]] = attr.Factory(dict)
     last_ir: Optional[np.ndarray] = None
     last_2d: Optional[np.ndarray] = None
     sigStepDone: ClassVar[Signal] = Signal()

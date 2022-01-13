@@ -1,3 +1,6 @@
+import asyncio
+from asyncio import Task
+
 import numpy as np
 from attr import attrs, attrib, Factory, define
 import os
@@ -222,20 +225,18 @@ class Controller(QObject):
             t2.join()
 
     def loop(self):
-        if (t := aio.current_task()) is not None:
-            pass
-        elif self.async_tasks:
-            for t in self.async_tasks:
-                t: aio.Task
-                if t.done():
-                    if t.exception():
-                        self.async_tasks.remove(t)
-                        t.cancel()
-                        raise t.exception()
-
-                    self.async_tasks.remove(t)
-        elif self.plan is None or self.pause_plan:
+        if self.plan is None or self.pause_plan:
             self.standard_read()
+        elif getattr(self.plan, "is_async", False):
+            t = self.plan.task
+            t: aio.Task
+            print(t)
+            if t.done():
+                if t.exception():
+                    t.cancel()
+                    self.plan = None
+                    raise t.exception()
+
         else:
             try:
                 self.plan.make_step()
@@ -246,6 +247,9 @@ class Controller(QObject):
     def start_plan(self, plan):
         self.plan = plan
         self.starting_plan.emit(True)
+
+    def add_task(self, task: Task):
+        self.async_tasks.append(task)
 
     def stop_plan(self):
         if self.plan:

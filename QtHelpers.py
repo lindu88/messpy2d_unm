@@ -196,10 +196,23 @@ class ControlFactory(QWidget):
                 row_cnt = 0
 
 
-from abc import ABCMeta
+from abc import ABCMeta, abstractmethod, abstractproperty
+from typing import Protocol
 
 
-class QProtocolMetaMeta(type(QObject), ABCMeta):
+class PlanStarter(Protocol):
+    experiment_type: T.ClassVar[str]
+    title: T.ClassVar[str]
+    icon: T.ClassVar[str]
+
+    def setup_paras(self):
+        pass
+
+    def create_plan(self):
+        pass
+
+
+class QProtocolMetaMeta(type(QObject), PlanStarter):
     pass
 
 
@@ -207,10 +220,9 @@ class PlanStartDialog(QDialog, metaclass=QProtocolMetaMeta):
     experiment_type = ''
     title = ''
     icon = ''
-
     paras: pt.Parameter
 
-    def __init__(self, controller, *args, **kwargs):
+    def __init__(self, controller: 'Controller', *args, **kwargs):
         super(PlanStartDialog, self).__init__(*args, **kwargs)
         self.controller = controller
         self.setMinimumWidth(800)
@@ -244,9 +256,11 @@ class PlanStartDialog(QDialog, metaclass=QProtocolMetaMeta):
             if isinstance(i, pt.types.GroupParameterItem):
                 i.updateDepth(0)
 
+    @abstractmethod
     def setup_paras(self):
         raise NotImplemented
 
+    @abstractmethod
     def create_plan(self, controller: 'Controller'):
         raise NotImplemented
 
@@ -273,11 +287,6 @@ class PlanStartDialog(QDialog, metaclass=QProtocolMetaMeta):
         self.recent_settings = sorted(conf_dict.items(), key=lambda kv: kv[1]['date'])
 
         for (name, r) in self.recent_settings:
-            # tmp = pt.Parameter(name='tmp')
-            # s = r.copy()
-            # s.pop('date')
-            # tmp.restoreState(s)
-            # name = tmp.child('Exp. Settings')['Filename']
             self.recent_settings_list.addItem(name)
 
         self.recent_settings_list.setCurrentRow(len(self.recent_settings)-1)
@@ -286,7 +295,6 @@ class PlanStartDialog(QDialog, metaclass=QProtocolMetaMeta):
     def load_recent(self, new):
         settings = self.recent_settings[new][1].copy()
         settings.pop('date')
-
         self.paras.restoreState(settings, removeChildren=False, addChildren=False)
 
     @classmethod

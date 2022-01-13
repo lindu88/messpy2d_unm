@@ -4,7 +4,7 @@ import pyqtgraph.parametertree as pt
 from pyqtgraph import PlotWidget, ImageItem, PlotItem, colormap, GraphicsLayoutWidget, HistogramLUTItem, InfiniteLine, \
     mkPen, PlotDataItem
 from qtpy.QtWidgets import QWidget, QLabel
-
+from qtpy.QtCore import Slot
 from ControlClasses import Controller
 from QtHelpers import vlay, PlanStartDialog, hlay
 from .AOMTwoPlan import AOMTwoDPlan
@@ -83,7 +83,9 @@ class AOMTwoDViewer(GraphicsLayoutWidget):
                                             bounds=(self.probe_freq.min(), self.probe_freq.max()),
                                             pen=mkPen(_int_color, width=1))
         line._int_color = _int_color
-        self.ifr_lines[line] = self.trans_plot.plot(self.plan.t2, self.plan.disp_arrays[[round(x), :], pen=line.pen)
+        cur_line = 'Probe2'
+        self.ifr_lines[line] = self.trans_plot.plot(self.plan.t2, self.plan.disp_arrays[cur_line][0][round(x), :],
+                                                    pen=line.pen)
 
         def update(line: InfiniteLine):
             idx = np.argmin(abs(self.probe_freq - line.pos()[0]))

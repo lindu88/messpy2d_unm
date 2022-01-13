@@ -14,7 +14,7 @@ from Config import config
 from ControlClasses import Controller
 from Instruments.interfaces import IAOMPulseShaper, ICam
 from Plans import *
-from Plans.ShaperCalibPlan import CalibScanView, CalibPlan
+
 from QtHelpers import ControlFactory, make_groupbox, \
     ValueLabels, ObserverPlotWithControls, hlay
 from SampleMoveWidget import MoveWidget
@@ -113,19 +113,12 @@ class MainWindow(QMainWindow):
             tb.addWidget(pp)
 
         asl_icon = qta.icon('fa5s.ruler', color='white')
-        pp = QPushButton('Shaper Calibration', icon=asl_icon)
+        pp = QPushButton(text='Shaper Calibration', icon=asl_icon)
 
         def start_calib():
             c = self.controller
-            fs = CalibPlan(cam=c.cam,
-                           dac=c.shaper,
-                           move_func=c.cam.set_wavelength,
-                           points=range(5500, 6500, 5))
-            self.cal_viewer = CalibScanView(fs)
-            fs.sigTaskReady.connect(lambda x: c.async_tasks.append(x))
-            c.async_plan = True
-            # c.async_tasks = self.cal_viewer.task
-            fs.sigPlanDone.connect(lambda: setattr(c, 'async_plan', False))
+            self.cal_viewer = CalibScanView(c.cam_list[0], c.shaper)
+            self.cal_viewer.sigPlanCreated.connect(c.start_plan)
             self.cal_viewer.show()
 
         pp.clicked.connect(start_calib)
@@ -367,6 +360,7 @@ if __name__ == '__main__':
     app.setApplicationName("MessPy3")
 
     sys._excepthook = sys.excepthook
+
     def exception_hook(exctype, value, tb):
         emsg = QMessageBox()
         emsg.setWindowModality(Qt.WindowModal)
@@ -374,16 +368,18 @@ if __name__ == '__main__':
         tb = traceback.format_tb(tb)
         emsg.setText('Exception raised')
         emsg.setInformativeText(''.join(tb))
-        emsg.setStandardButtons(QMessageBox.Abort | QMessageBox.Ok)
+        emsg.setStandardButtons(QMessageBox.Abort | QMessageBox.Ignore)
         result = emsg.exec_()
-        print(result)
-        if not result == QMessageBox.Ok:
+        if not result == QMessageBox.Ignore:
             sys._excepthook(exctype, value, tb)
+            exit()
         else:
             pass
 
     sys.excepthook = exception_hook
-    ss = qdarkstyle.load_stylesheet()
+    import qtvscodestyle
+    ss = qtvscodestyle.load_stylesheet()
+    #ss = qdarkstyle.load_stylesheet()
     app.setStyleSheet(ss)
 
     mw = MainWindow(Controller())

@@ -277,7 +277,7 @@ class PumpProbeStarter(PlanStartDialog):
                dict(name='Angles in deg.', type='str', value='0, 45', enabled=has_rot, visible=has_rot)]
 
         for c in self.controller.cam_list:
-            if c.cam.changeable_wavelength:
+            if c.cam.spectrograph:
                 name = c.cam.name
                 tmp.append(dict(name=f'{name} center wls', type='str', value='0'))
 
@@ -310,7 +310,7 @@ class PumpProbeStarter(PlanStartDialog):
 
         cwls = []
         for c in self.controller.cam_list:
-            if c.cam.changeable_wavelength:
+            if c.cam.spectrograph:
                 name = c.name
                 l = p[f'{name} center wls'].split(',')
                 cam_cwls = []
@@ -322,7 +322,7 @@ class PumpProbeStarter(PlanStartDialog):
                 cwls.append(cam_cwls)
             else:
                 cwls.append([0.])
-        print(cwls)
+
         self.save_defaults()
         p = PumpProbePlan(
             name=p['Filename'],
