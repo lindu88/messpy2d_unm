@@ -11,6 +11,9 @@ import threading
 class MockState:
     wl: float = 0
     t: float = 0
+    t2: float = 0
+    shaper_amp: float = 0
+    shaper_running: bool = True
     shutter: bool = False
     rot_stage_angle: float = 45
 
@@ -81,7 +84,7 @@ class CamMock(ICam):
             valid=True,
         )
 
-    def get_spectra(self):
+    def get_spectra(self, frames):
         pass
 
     def set_background(self, shots):

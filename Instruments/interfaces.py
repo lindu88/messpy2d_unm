@@ -124,7 +124,7 @@ class ISpectrograph(IDevice):
 
 
 # Defining a minimal interface for each hardware
-@attr.s(auto_attribs=True, cmp=False)
+@attr.s(auto_attribs=True, cmp=False, kw_only=True)
 class ICam(IDevice):
     shots: int
     line_names: T.List[str]
@@ -163,7 +163,7 @@ class ICam(IDevice):
 
     def make_2D_reading(self, t2: np.ndarray, rot_frame: float, repetitions: int = 1,
                         save_frames: bool = False) -> T.Dict[str, Reading2D]:
-        pass
+        raise NotImplementedError
 
     @abc.abstractmethod
     def set_shots(self, shots):
@@ -445,7 +445,7 @@ class IAOMPulseShaper(PulseShaper):
         self.mask_wfn(m)
 
     def set_grating_angle(self, ang1=None, ang2=None):
-        if ang1:
-            self.grating_2.set_degrees(ang1)
-        if ang2:
+        if ang1 and self.grating_1:
+            self.grating_1.set_degrees(ang1)
+        if ang2 and self.grating_2:
             self.grating_2.set_degrees(ang2)

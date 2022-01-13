@@ -7,7 +7,7 @@ import logging
 
 TESTING = config.testing
 _cam = CamMock()
-_cam2 = CamMock(name="Mock2")
+_cam2 = None#CamMock(name="Mock2")
 _dl = DelayLineMock()
 _dl2 = None
 _rot_stage = None

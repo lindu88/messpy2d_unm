@@ -26,61 +26,76 @@ import numpy as np
 from scipy.constants import c
 from scipy.signal import find_peaks
 from scipy.ndimage import uniform_filter1d, gaussian_filter1d
-from typing import Optional
+from typing import Optional, ClassVar
 from qtawesome import icon
 from pyqtgraph.parametertree import Parameter, ParameterTree
 
+import Instruments.interfaces
 from Plans.ShaperCalibPlan import CalibPlan
 from Config import config
 
 rcParams["font.family"] = "Segoe UI"
 style.use("dark_background")
 
-
-@attr.define
+@attr.s(auto_attribs=True)
 class CalibScanView(QWidget):
-    plan: Optional[CalibPlan]
+    cam: Instruments.interfaces.ICam
+    dac: Instruments.dac_px.AOM
+    plan: Optional[CalibPlan] = None
 
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
+    sigPlanCreated: ClassVar[Signal] = Signal(object)
+
+    def __attrs_post_init__(self):
+        super().__init__()
         self.setLayout(QHBoxLayout())
 
         self.children = [
-            dict(name="start_wl", type="int", value=5500, step=500),
-            dict(name="end_wl", type="int", value=6500, step=500),
-            dict(name="step", type="float", value=10, step=2),
-            dict(name="shots", type="int", value=90, step=10),
-            dict(name="start", type="action"),
+            dict(name="Start Wavelength (nm)", type="int", value=5500, step=500),
+            dict(name="End Wavelength (nm)", type="int", value=6500, step=500),
+            dict(name="Step (nm)", type="float", value=10, step=2),
+            dict(name="Shots", type="int", value=90, step=10),
+            dict(name="Start Calibration", type="action"),
         ]
         param = Parameter.create(
             name="Calibration Scan", type="group", children=self.children
         )
         if (s := "CalibSettings") in config.exp_settings:
-            param.restoreState(config.exp_settings[s])
+            param.restoreState(config.exp_settings[s],
+                               addChildren=False, removeChildren=False)
 
         self.params: Parameter = param
         pt = ParameterTree()
         pt.setParameters(self.params)
-        self.layout().addWidget(self.pt)
-        self.params.child("start").sigActivated.connect(self.start)
+        pt.setMaximumSize(300, 1000)
+
+        self.layout().addWidget(pt)
+        self.params.child("Start Calibration").sigActivated.connect(self.start)
         self.plot = PlotWidget(self)
         self.layout().addWidget(self.plot)
+        self.info_label = QLabel()
+        self.layout().addWidget(self.info_label)
+        self.setMinimumSize(1200, 600)
 
     def start(self):
         s = self.params.saveState()
         config.exp_settings["CalibSettings"] = s
         start, stop, step = (
-            self.params["start_wl"],
-            self.params["end_wl"],
-            self.params["step"],
+            self.params["Start Wavelength (nm)"],
+            self.params["End Wavelength (nm)"],
+            self.params["Step (nm)"],
         )
-        self.plan = CalibPlan(
-            points=np.arange(start, stop, step), shots=self.params["shots"]
-        )
+        config.save()
 
+        self.plan = CalibPlan(
+            cam=self.cam,
+            dac=self.dac,
+            points=np.arange(start, stop, step).tolist(),
+            num_shots=self.params["Shots"],
+        )
+        self.sigPlanCreated.emit(self.plan)
         self.params.setReadonly(True)
 
-        self.plan.sigPlanDone.connect(self.analyse)
+        self.plan.sigPlanFinished.connect(self.analyse)
         self.plan.sigStepDone.connect(self.update_view)
 
     @asyncSlot()
@@ -95,6 +110,11 @@ class CalibScanView(QWidget):
         self.plot.plotItem.plot(x, y[:, 0], pen="r")
         self.plot.plotItem.plot(x, y[:, 1], pen="g")
         self.plot.plotItem.plot(x, y[:, 2], pen="y")
+
+        self.info_label.setText(f'''
+        Point {n}/{len(plan.points)}
+        Channel {plan.channel}
+        ''')
 
     def analyse(self):
         plan = self.plan
