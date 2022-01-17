@@ -413,7 +413,6 @@ class ObserverPlot(pg.PlotWidget):
         for o in self.observed:
             if callable(o):
                 y = o()
-                # print(x, y)
                 self.lines[o].setData(x=x, y=y)
             else:
                 y = getattr(*o)
