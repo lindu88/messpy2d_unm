@@ -7,7 +7,7 @@ from qtpy.QtCore import Signal
 
 from ControlClasses import Cam, DelayLine
 
-from Plans.PlanBase import Plan
+from Plans.PlanBase import AsyncPlan
 from scipy.special import erf
 import lmfit
 from lmfit.model import ModelResult
@@ -37,7 +37,7 @@ def fit_step_function(t, data) -> ModelResult:
 
 
 @attr.s(auto_attribs=True)
-class AdaptiveTimeZeroPlan(Plan):
+class AdaptiveTimeZeroPlan(AsyncPlan):
     cam: Cam
     delay_line: DelayLine
     mode: Literal['mean', 'max'] = 'mean'
@@ -91,5 +91,3 @@ class AdaptiveTimeZeroPlan(Plan):
         xa = xa[i]
         ya = ya[i]
         return xa, ya
-
-

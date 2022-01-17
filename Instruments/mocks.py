@@ -62,10 +62,16 @@ class CamMock(ICam):
         self.shots = shots
 
     def read_cam(self):
-        a = np.random.normal(loc=30, size=(self.channels, self.shots)).T
-        b = np.random.normal(loc=20, size=(self.channels, self.shots)).T
+        x = self.get_wavelength_array()
+        y = 300*np.exp(-(x-250)**2/100**2/2)
+        a = np.random.normal(loc=y[:, None], scale=10, size=(self.channels, self.shots)).T
+        b = np.random.normal(loc=y[:, None], scale=10, size=(self.channels, self.shots)).T
         ext = np.random.normal(size=(self.ext_channels, self.shots)).T
-        chop = np.array([True, False]).repeat(self.shots/2)
+        chop = np.zeros(self.shots, 'bool')
+        chop[::2] = True
+        signal = 0.1*np.exp(-state.t/3000) if state.t > 0 else 0.1*np.exp(state.t/100)
+        a[::2, :] *= 1 + signal
+
         time.sleep(self.shots/1000.)
         return a, b, chop, ext
 
@@ -76,7 +82,7 @@ class CamMock(ICam):
             b -= self.background[1, ...]
         tmp = np.stack((a, b))
         tm = tmp.mean(1)
-        signal = -np.log10(a[chopper, :].mean(0)/a[~chopper, :].mean(0))
+        signal = -1000*np.log10(a[chopper, :].mean(0)/a[~chopper, :].mean(0))
         return Reading(
             lines=tm,
             stds=100*tmp.std(1)/tm,
@@ -156,4 +162,3 @@ class ShutterMock(IShutter):
 @attr.s(auto_attribs=True)
 class AOMMock:
     pass
-

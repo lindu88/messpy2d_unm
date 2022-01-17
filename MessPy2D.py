@@ -378,7 +378,7 @@ if __name__ == '__main__':
 
     sys.excepthook = exception_hook
     import qtvscodestyle
-    ss = qtvscodestyle.load_stylesheet()
+    ss = qtvscodestyle.load_stylesheet(qtvscodestyle.Theme.TOMORROW_NIGHT_BLUE)
     #ss = qdarkstyle.load_stylesheet()
     app.setStyleSheet(ss)
 

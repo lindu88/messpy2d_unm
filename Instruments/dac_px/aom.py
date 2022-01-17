@@ -175,19 +175,12 @@ class AOM(IDevice):
         )
         return np.abs(masks), np.angle(masks)
 
-    def delay_scan(self, taus: np.ndarray, phase_cycle: bool = True, chopped: bool = True):
-        if self.nu is None:
-            raise ValueError("Spectral calibration is required to calculate the masks.")
-        if phase_cycle:
-            phase = np.array([0, 1]) * np.pi
-            taus = taus.repeat(phase.size)
-        else:
-            phase = 0
-        mask = delay_scan_mask(self.nu[:, None], taus[None, :], phase)
-        if chopped:
-            mask = mask.repeat(2, axis=1)
-            mask[::2] *= 0
-        return abs(mask), np.angle(mask)
+    def delay_scan(self, taus, phi=None):
+        taus = np.atleast_1d(taus)
+        if phi is None:
+            phi = np.zeros(PIXEL)
+        mask = delay_scan_mask(self.nu[:, None], taus[None, :], phi[None, :])
+        return np.ones(PIXEL), mask
 
     def set_amp_and_phase(self, amp=None, phase=None):
         """
