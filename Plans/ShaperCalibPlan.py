@@ -40,7 +40,6 @@ class CalibPlan(AsyncPlan):
         self.single_spectra = np.zeros((self.cam.channels, len(self.points)))
 
     async def plan(self):
-
         self.sigPlanStarted.emit()
         self.cam.set_shots(self.num_shots)
         loop = asyncio.get_running_loop()
