@@ -177,20 +177,20 @@ class ScanPlan(Plan):
 import asyncio
 
 
-@attr.define
+@attr.s(auto_attribs=True)
 class AsyncPlan(Plan):
     is_async: bool = True
-    task: Task = attr.ib()
+    task: Task = attr.ib(init=False)
 
     sigTaskCreated: ClassVar[Signal] = Signal()
 
     async def plan(self):
-        pass
+        raise NotImplementedError
 
-    @task.default
-    def create_task(self):
+    def __attrs_post_init__(self):
+        super(AsyncPlan, self).__attrs_post_init__()
         loop = asyncio.get_event_loop()
-        return loop.create_task(self.plan(), name=self.name)
+        self.task = loop.create_task(self.plan(), name=self.name)
 
     def stop_plan(self):
         self.task.cancel()

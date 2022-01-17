@@ -101,6 +101,7 @@ class MainWindow(QMainWindow):
         plans = [
             ('Pump Probe', 'ei.graph', PumpProbeStarter),
             ('Scan Spectrum', 'ei.barcode', ScanSpectrumStarter),
+            ('Adaptive TZ', 'ei.car', AdaptiveTZStarter)
         ]
         if self.controller.shaper is not None:
             plans += [('GVD Scan', 'fa5s.stopwatch', GVDScanStarter)]
@@ -131,7 +132,7 @@ class MainWindow(QMainWindow):
 
     def toggle_run(self, bool):
         if bool:
-            self.timer.start(5)
+            self.timer.start(1)
         else:
             self.timer.stop()
 

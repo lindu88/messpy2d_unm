@@ -230,7 +230,7 @@ class Controller(QObject):
         elif getattr(self.plan, "is_async", False):
             t = self.plan.task
             t: aio.Task
-            print(t)
+            #print(t)
             if t.done():
                 if t.exception():
                     t.cancel()
