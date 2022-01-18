@@ -70,9 +70,9 @@ class ShaperControl(QtWidgets.QWidget):
         self.disp_param = Parameter.create(name='Dispersion',
                                            type='group',
                                            children=dispersion_params)
-        self.disp_param['gvd'] = self.aom.gvd
-        self.disp_param['tod'] = self.aom.tod
-        self.disp_param['fod'] = self.aom.fod
+        self.disp_param['gvd'] = self.aom.gvd/1000
+        self.disp_param['tod'] = self.aom.tod/1000
+        self.disp_param['fod'] = self.aom.fod/1000
         self.disp_param['center'] = THz2cm(self.aom.nu0_THz)
 
         for c in self.disp_param.children():

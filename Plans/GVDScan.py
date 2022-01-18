@@ -123,3 +123,7 @@ class GVDScan(QObject):
             np.savez(name, **data)
             fig.savefig(name[:-4] + '.png')
             print('saved in local temp')
+
+
+    def stop_plan(self):
+        pass

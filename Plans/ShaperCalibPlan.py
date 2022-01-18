@@ -49,11 +49,12 @@ class CalibPlan(AsyncPlan):
             await loop.run_in_executor(
                 None, self.cam.cam.spectrograph.set_wavelength, 0, 10
             )
-            reading = await loop.run_in_executor(None, self.cam.cam.get_spectra, 3)
-            self.channel = np.argmax(reading['Probe2'].mean)  # typing: ignore
+            reading, ch = await loop.run_in_executor(None, self.cam.cam.get_spectra, 3)
+            pump_spec = reading['Probe2']
+            self.channel = np.argmax(pump_spec.mean)  # typing: ignore
 
         self.single_spectra = np.zeros((self.cam.channels, len(self.points)))
-        #self.dac.load_mask(self.dac.make_calib_mask())
+        self.dac.load_mask(self.dac.make_calib_mask())
         for i, p in enumerate(self.points):
             await self.read_point(i, p)
             self.sigStepDone.emit()

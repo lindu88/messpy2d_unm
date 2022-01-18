@@ -23,7 +23,7 @@ class AOMTwoDViewer(GraphicsLayoutWidget):
         pw.setLabels(bottom='Probe Freq', left='Time')
         cmap = colormap.get("CET-D1")
         self.ifr_img = ImageItem()
-        self.ifr_img.setImage(np.zeros((128, 128)), rect=(self.probe_freq.max(), 0, -self.probe_freq.ptp(), plan.max_t2))
+        self.ifr_img.setImage(np.zeros((128, plan.t2.size)), rect=(self.probe_freq.max(), 0, -self.probe_freq.ptp(), plan.max_t2))
         pw.addItem(self.ifr_img)
         self.spec_image_view = pw
         self.ifr_img.mouseClickEvent = self.ifr_clicked
@@ -39,9 +39,13 @@ class AOMTwoDViewer(GraphicsLayoutWidget):
         pw.setLabels(bottom='Probe Freq', left='Pump Freq')
         cmap = colormap.get("CET-D1")
         self.spec_img = ImageItem()
-        self.spec_img.setImage(np.zeros((128, 128)),
-                               rect=(self.probe_freq.max(), self.pump_freqs.max(), -self.probe_freq.ptp(),
-                                     -self.pump_freqs.ptp()))
+        print(self.pump_freqs)
+        self.spec_img.setImage(np.zeros((128, plan.pump_freqs.size)),
+                               rect=(self.probe_freq.max(), self.pump_freqs[0], -self.probe_freq.ptp(),
+                                     self.pump_freqs[-1]-self.pump_freqs[0])
+                               )
+        print((self.probe_freq.max(), self.pump_freqs[0], -self.probe_freq.ptp(),
+                                     self.pump_freqs[-1]-self.pump_freqs[0]))
         pw.addItem(self.spec_img)
         self.spec_line = InfiniteLine(pos=self.pump_freqs[self.pump_freqs.size//2], angle=0,
                                       bounds=(self.pump_freqs.min(), self.pump_freqs.max()),
@@ -65,14 +69,14 @@ class AOMTwoDViewer(GraphicsLayoutWidget):
         
         #self.update_plots()
         self.spec_line.sigPositionChanged.connect(self.update_spec_lines)
-        self.plan.sigStepDone.connect(self.update_images)
+        self.plan.sigStepDone.connect(self.update_data)
         self.plan.sigStepDone.connect(self.update_plots)
         self.plan.sigStepDone.connect(self.update_label)
 
-    @Slot(bool)
-    def update_data(self, al=False):
+    @Slot()
+    def update_data(self, al=True):
         self.ifr_img.setImage(self.plan.last_ir, autoLevels=al)
-        self.spec_img.setImage(self.plan.last_2d, autoLevels=al)
+        self.spec_img.setImage(self.plan.last_2d[:, ::-1], autoLevels=al)
 
     def ifr_clicked(self, ev):
         x, y = ev.pos()
@@ -109,7 +113,7 @@ class AOMTwoDViewer(GraphicsLayoutWidget):
             line.sigPositionChanged.emit(line) # Causes an update
 
     def update_spec_lines(self, line: InfiniteLine):
-        print("update", line.pos()[1])
+
         idx = np.argmin(abs(self.pump_freqs - line.pos()[1]))
         self.spec_cut_line.setData(self.probe_freq, self.plan.last_2d[:, idx])
         self.spec_mean_line.setData(self.probe_freq, self.plan.last_2d.mean(1))
@@ -122,7 +126,7 @@ class AOMTwoDViewer(GraphicsLayoutWidget):
             <dl>
             <dt>Name:<dd>{p.name}
             <dt>Scan:<dd>{p.cur_scan} / {p.max_scan}
-            <dt>Time-point: {p.t3_idx} / {p.t3.size}: {p.cur_t3}
+            <dt>Time-point: {p.t3_idx} / {p.t3.size}: {p.cur_t3: .2f}
             </dl>
             </big>
             '''
@@ -200,7 +204,7 @@ class AOMTwoDStarter(PlanStartDialog):
                {'name': 't2 (+)', 'suffix': 'ps', 'type': 'float', 'value': -4},
                {'name': 't2 (step)', 'suffix': 'ps', 'type': 'float', 'value': 0.1},
                {'name': 'Phase Cycles', 'type': 'list', 'values': [1, 2, 4]},
-               {'name': 'Rot. Frame', 'suffix': 'cm-1', 'type': 'float', 'value': 2000},
+               {'name': 'Rot. Frame', 'suffix': 'cm-1', 'type': 'int', 'value': 2000},
                {'name': 'Linear Range (-)', 'suffix': 'ps', 'type': 'float', 'value': 0},
                {'name': 'Linear Range (+)', 'suffix': 'ps', 'type': 'float', 'value': 1},
                {'name': 'Linear Range (step)', 'suffix': 'ps', 'type': 'float', 'min': 0.2},
