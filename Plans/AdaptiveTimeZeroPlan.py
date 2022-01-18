@@ -103,7 +103,7 @@ class AdaptiveTimeZeroPlan(AsyncPlan):
 
     async def read_point(self):
         loop = asyncio.get_running_loop()
-        reading = await loop.run_in_executor(None, self.cam.cam.make_reading)
+        reading = await loop.run_in_executor(None, self.cam.read_cam)
         return np.mean(reading.signals[0])
 
     async def check_pos(self, pos):

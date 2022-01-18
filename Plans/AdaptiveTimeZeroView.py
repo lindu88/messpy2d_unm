@@ -2,9 +2,10 @@ import numpy as np
 import pyqtgraph.parametertree as pt
 from pyqtgraph import PlotWidget, PlotItem, mkPen, TextItem
 from qtpy.QtWidgets import QWidget, QPushButton, QLabel
+from qtpy.QtCore import Qt
 import attr
 from ControlClasses import Controller
-from QtHelpers import vlay, PlanStartDialog, make_default_cycle, col
+from QtHelpers import vlay, PlanStartDialog, make_default_cycle, col, hlay
 from .AdaptiveTimeZeroPlan import AdaptiveTimeZeroPlan
 from scipy.special import erfc
 import lmfit
@@ -21,7 +22,7 @@ def folded_exp(t, t0, amp, tau, sigma):
 def fit_folded_exp(x, y):
     model = lmfit.Model(folded_exp, ['t'])
     model.set_param_hint('sigma', min=0.001)
-    model.set_param_hint('sigma', min=0.001)
+    model.set_param_hint('tau', min=0.001)
     i = np.argmax(abs(y))
     try:
         fit_res = model.fit(y, t=x, amp=y[i], tau=1, sigma=0.1, t0=0, nan_policy='raise')
@@ -42,7 +43,8 @@ class AdaptiveTZViewer(QWidget):
         color = make_default_cycle()
         self.line = self.plot_widget.plotItem.plot(pen=mkPen(color=next(color), width=2), symbol='t')
         self.fit_text = QLabel()
-        self.setLayout(vlay(self.plot_widget, self.fit_text, self.stop_button))
+        self.fit_text.setAlignment(Qt.AlignHCenter)
+        self.setLayout(vlay(self.plot_widget, hlay(self.fit_text, pre_stretch=1, post_stretch=1), self.stop_button))
 
         self.plan.sigStepDone.connect(lambda x: self.line.setData(*x))
         self.stop_button.clicked.connect(lambda: setattr(self.plan, 'is_running', False))
@@ -63,7 +65,8 @@ class AdaptiveTZViewer(QWidget):
             xn = np.linspace(x.min(), x.max(), 300)
             yn = fit_res.eval(t=xn)
             self.plot_widget.plotItem.plot(xn, yn, pen=mkPen(color=col[1]))
-            s = str(fit_res.params.pretty_repr())
+            s = str(fit_res.params._repr_html_())
+
             self.fit_text.setText(s)
             self.adjustSize()
 
@@ -105,6 +108,5 @@ class AdaptiveTZStarter(PlanStartDialog):
             mode=p['Mode'],
             shots=p['Shots']
         )
-        plan.sigStepDone.connect(controller.loop_finished)
+        plan.sigStepDone.connect(lambda x: controller.loop_finished.emit())
         return plan
-
