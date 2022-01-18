@@ -49,6 +49,10 @@ class SP2150i(ISpectrograph):
         self.port.timeout = old_timeout
         return resp[:-2]
 
+    def get_state(self) -> dict:
+        return {'Current Grating': self.gratings[self._last_grating],
+                'Current Set Wl': self.get_wavelength()}
+
     def get_wavelength(self) -> float:
         resp = self._write(b'?NM')
         return float(resp.strip(b' ').split(b' ')[0])
