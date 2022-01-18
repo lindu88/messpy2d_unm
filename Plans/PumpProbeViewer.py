@@ -21,24 +21,24 @@ os.environ['QT_API'] = 'pyqt5'
 from typing import List, TYPE_CHECKING
 #if TYPE_CHECKING:
 from Plans.PumpProbe import PumpProbeData, PumpProbePlan
-
 from .PlanBase import sample_parameters
 
 
 
 class LineLabel(QLabel):
-    def __init__(self, line, parent=None):
+    def __init__(self, line, index: int, parent=None):
         super(LineLabel, self).__init__(parent=parent)
         assert (isinstance(line, pg.InfiniteLine))
         line.sigPositionChanged.connect(self.update_label)
         self.line = line
+        self.wl_idx = index
         self.color = line.pen.color().name()
         self.setAlignment(Qt.AlignHCenter)
         self.update_label()
 
     def update_label(self, ev=None):
         x = self.line.pos().x()
-        self.setText('<font size=15 style="bold" color="%s">%.1f</font>' % (self.color, x))
+        self.setText('<font size=15 style="bold" color="%s">%d: %.1f</font>' % (self.color, self.wl_idx, x))
 
 
 @attr.s
@@ -59,8 +59,6 @@ class IndicatorLine:
     def update_pos(self):
         self.pos = self.line.pos().x()
         self.channel = np.argmin(abs(self.pos - self.wl[self.wl_idx, :]))
-
-
 
 
 class PumpProbeViewer(QTabWidget):
@@ -125,7 +123,7 @@ class PumpProbeDataViewer(QWidget):
         c = next(self.sig_plot.color_cycle)
         l = self.sig_plot.plotItem.addLine(x=x, pen=pg.mkPen(c, width=6))
         l.setMovable(True)
-        lbl = LineLabel(l, self)
+        lbl = LineLabel(l, self.pp_plan.wl_idx, self)
         self.line_area.addWidget(lbl)
 
         tl = self.trans_plot.plot(pen=pg.mkPen(c, width=2))
