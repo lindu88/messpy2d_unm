@@ -247,6 +247,7 @@ class Controller(QObject):
 
     def start_plan(self, plan):
         self.plan = plan
+        self.pause_plan = False
         self.starting_plan.emit(True)
 
     def add_task(self, task: Task):

@@ -74,13 +74,15 @@ class CamMock(ICam):
     def read_cam(self):
         x = self.get_wavelength_array()
         y = 300*np.exp(-(x-250)**2/50**2/2)
-        a = np.random.normal(loc=y[:, None], scale=10, size=(self.channels, self.shots)).T
-        b = np.random.normal(loc=y[:, None], scale=10, size=(self.channels, self.shots)).T
-        ext = np.random.normal(size=(self.ext_channels, self.shots)).T
+        a = np.random.normal(loc=y, scale=5, size=(self.shots, self.channels))
+        b = np.random.normal(loc=y, scale=5, size=(self.shots, self.channels))
+        ext = np.random.normal(size=(self.shots, self.ext_channels))
         chop = np.zeros(self.shots, 'bool')
         chop[::2] = True
         signal = 0.1*np.exp(-state.t/3000) if state.t > 0 else 0.1*np.exp(state.t/100)
-        a[::2, :] *= 1 + signal*y/300
+        y_sig = 300 * np.exp(-(x - 250) ** 2 / 30 ** 2 / 2)
+        y_sig -= 300 * np.exp(-(x - 310) ** 2 / 30 ** 2 / 2)
+        a[::2, :] *= 1 + signal * y_sig/300
 
         time.sleep(self.shots/1000.)
         return a, b, chop, ext

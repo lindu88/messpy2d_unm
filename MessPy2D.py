@@ -88,12 +88,12 @@ class MainWindow(QMainWindow):
         def plan_starter(PlanClass):
             def f():
                 plan, ok = PlanClass.start_plan(self.controller)
+                self.controller.stop_plan()
                 if ok:
                     self.toggle_run(False)
                     self.plan_class = PlanClass
                     self.viewer = PlanClass.viewer(plan)
                     self.viewer.show()
-
                     self.controller.start_plan(plan)
                     self.toggle_run(True)
             return f
@@ -355,8 +355,7 @@ if __name__ == '__main__':
 
     app = QApplication([])
 
-    import qdarkstyle
-
+    app.setAttribute(Qt.ApplicationAttribute.AA_UseHighDpiPixmaps)
     app.setOrganizationName("USD")
     app.setApplicationName("MessPy3")
 
