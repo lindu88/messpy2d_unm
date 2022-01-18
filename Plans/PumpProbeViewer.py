@@ -1,6 +1,7 @@
 from collections import defaultdict
 from Config import config
-from qtpy.QtWidgets import QWidget, QSizePolicy, QLabel, QVBoxLayout, QHBoxLayout, QCheckBox, QApplication, QTabWidget
+from qtpy.QtWidgets import (QWidget, QSizePolicy, QLabel, QVBoxLayout, QHBoxLayout,
+                            QCheckBox, QApplication, QTabWidget, QFrame)
 from qtpy.QtGui import QPalette, QFont
 from qtpy.QtCore import Qt, QTimer
 from ControlClasses import Controller, Cam
@@ -31,21 +32,13 @@ class LineLabel(QLabel):
         assert (isinstance(line, pg.InfiniteLine))
         line.sigPositionChanged.connect(self.update_label)
         self.line = line
-        p = QPalette()
-        p.setColor(QPalette.Foreground, line.pen.color())
-        self.setPalette(p)
-
-        f = QFont()
-        f.setPointSize(15)
-        f.bold()
-        self.setFont(f)
-        self.update_label()
-        self.setFrameStyle(3)
+        self.color = line.pen.color().name()
         self.setAlignment(Qt.AlignHCenter)
+        self.update_label()
 
     def update_label(self, ev=None):
         x = self.line.pos().x()
-        self.setText('%.1f' % x)
+        self.setText('<font size=15 style="bold" color="%s">%.1f</font>' % (self.color, x))
 
 
 @attr.s
@@ -67,14 +60,7 @@ class IndicatorLine:
         self.pos = self.line.pos().x()
         self.channel = np.argmin(abs(self.pos - self.wl[self.wl_idx, :]))
 
-    def hide_hist(self):
-        self.hist_trans_line.parentItem().removeItem(self.hist_trans_line)
 
-    def hide_trans(self):
-        self.hist_trans_line.parentItem().removeItem(self.trans_line)
-
-    def update_trans(self):
-        pass
 
 
 class PumpProbeViewer(QTabWidget):
@@ -105,9 +91,13 @@ class PumpProbeDataViewer(QWidget):
         self.do_show_mean = QCheckBox('Mean of all scans', self)
         self.do_show_mean.setChecked(True)
         self.do_show_mean.stateChanged.connect(self.hide_history_lines)
+        self.use_wavenumbers = QCheckBox('Use Wavenumbers', self)
+        self.use_wavenumbers.stateChanged.connect(self.update_indicator_line_pos)
+
         vlay.addWidget(self.info_label)
         vlay.addWidget(self.do_show_cur)
         vlay.addWidget(self.do_show_mean)
+        vlay.addWidget(self.use_wavenumbers)
 
         self.line_area = QVBoxLayout(self)
         vlay.addLayout(self.line_area)
@@ -115,7 +105,7 @@ class PumpProbeDataViewer(QWidget):
         self._layout.addLayout(vlay)
         self._layout.addLayout(lw)
 
-        self.sig_plot = ObserverPlot([], pp_plan.sigStepDone, x=pp_plan.cam.disp_axis)
+        self.sig_plot = ObserverPlot([], pp_plan.sigStepDone, x=self.get_x)
         self.sig_plot.add_observed((pp_plan, 'last_signal'))
         self.sig_plot.add_observed((pp_plan, 'mean_signal'))
         self.sig_plot.click_func = self.handle_sig_click
@@ -205,7 +195,6 @@ class PumpProbeDataViewer(QWidget):
         if not chk:
             for i in all_lines:
                 self.trans_plot.removeItem(i.hist_trans_line)
-
         else:
             for i in all_lines:
                 self.trans_plot.addItem(i.hist_trans_line)
@@ -244,10 +233,25 @@ class PumpProbeDataViewer(QWidget):
                     ym = np.nanmean(pp.completed_scans[:, i.wl_idx, :, 0, i.channel], 0)
                     i.hist_trans_line.setData(x=pp.t_list, y=ym)
 
+    def get_x(self):
+        wl = self.pp_plan.wavelengths[self.pp_plan.wl_idx]
+        if self.use_wavenumbers.isChecked():
+            return 1e7/wl
+        else:
+            return wl
+
+    def update_indicator_line_pos(self):
+        for lsts in self.inf_lines:
+            for l in lsts:
+                l.wl = 1e7/l.wl
+                l.pos = 1e7/l.pos
+                l.line.setPos(l.pos)
+                l.update_pos()
+
     def closeEvent(self, a0) -> None:
         self.pp_plan.sigWavelengthChanged.disconnect(self.handle_wl_change)
         super().closeEvent(a0)
-        
+
 
 class PumpProbeStarter(PlanStartDialog):
     title = "New Pump-probe Experiment"
@@ -326,7 +330,7 @@ class PumpProbeStarter(PlanStartDialog):
         self.save_defaults()
         p = PumpProbePlan(
             name=p['Filename'],
-            meta=self.paras.saveState(),
+            meta=self.paras.getValues(),
             t_list=np.asarray(t_list),
             shots=p['Shots'],
             controller=controller,

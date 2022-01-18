@@ -15,12 +15,10 @@ if TYPE_CHECKING:
 from qtpy.QtWidgets import QApplication
 
 @attrs(auto_attribs=True)
-class PumpProbePlan(QObject):
+class PumpProbePlan(Plan):
     """Plan used for pump-probe experiments"""
     controller: Controller
-    t_list: Iterable[float] 
-    name: str
-    meta: dict = {} 
+    t_list: Iterable[float]
     shots: int = 1000
     num_scans: int = 0
     t_idx: int = 0
@@ -32,9 +30,10 @@ class PumpProbePlan(QObject):
     use_rot_stage: bool = False
     rot_stage_angles: Optional[list] = None
     rot_at_scan: List[float] = Factory(list)
-    time_per_scan: float = 0
+    time_per_scan: str = ""
 
     sigStepDone = Signal()
+    plan_shorthand = "PumpProbe"
 
     @property
     def common_mulitple_cwls(self):
@@ -44,8 +43,7 @@ class PumpProbePlan(QObject):
             return np.lcm(*map(len, self.center_wl_list))
 
     def __attrs_post_init__(self):
-        QObject.__init__(self)
-        self._name = None
+        super(PumpProbePlan, self).__attrs_post_init__()
         gen = self.make_step_gen()
         self.make_step = lambda: next(gen)
         self.angle_cycle = []
@@ -53,45 +51,6 @@ class PumpProbePlan(QObject):
         for c, cwl in zip(self.controller.cam_list, self.center_wl_list):
             self.cam_data.append(PumpProbeData(cam=c, cwl=cwl, plan=self, t_list=self.t_list))
             c.set_shots(self.shots)
-
-    async def maybe_switch_pol(self):
-        rs = self.controller.rot_stage
-        do_switch = (self.num_scans % len(self.rot_stage_angles) == 0)
-        if do_switch and self.use_rot_stage:
-            self.rot_idx = (self.rot_idx+1) % len(self.rot_stage_angles)
-            next_pos = self.rot_stage_angles[self.rot_idx]
-            await rs.async_set_degrees(next_pos)
-
-    async def post_scan(self):
-        self.num_scans += 1
-        self.controller.delay_line.set_pos(self.t_list[0], do_wait=False)
-        for pp in self.cam_data:
-            pp.post_scan()
-
-    async def scan(self):
-        c = self.controller
-        loop = aio.get_event_loop()
-        await self.maybe_switch_pol()
-
-        await c.delay_line.async_set_pos(self.t_list[0]-2000.)
-        for self.t_idx, t in enumerate(self.t_list):
-            await c.delay_line.async_set_pos(t)
-            tasks = []
-            for cd in self.cam_data:
-                coro = loop.run_in_executor(None, cd.read_point, (self.t_idx,))
-                tasks.append(coro)
-            if self.use_shutter:
-                c.shutter.open()
-            await aio.gather(*tasks)
-            if self.use_shutter:
-                c.shutter.close()
-        self.num_scans += 1
-        self.controller.delay_line.set_pos(self.t_list[0], do_wait=False)
-        for pp in self.cam_data:
-            pp.post_scan()
-
-    async def step(self):
-        yield self.scan()
 
     def make_step_gen(self):
         c = self.controller
@@ -102,16 +61,15 @@ class PumpProbePlan(QObject):
                 rs.sigDegreesChanged.emit(rs.get_degrees())
                 yield
         while True:
+
             # --- Pre Scan
-
             if rs and self.use_rot_stage:
-
                 while rs.is_moving():
                     rs.sigDegreesChanged.emit(rs.get_degrees())
                     yield
                 self.rot_at_scan.append(rs.get_degrees())
             self.controller.delay_line.set_pos(self.t_list[0] - 2000., do_wait=False)
-            while self.controller.delay_line._dl.is_moving():
+            while self.controller.delay_line.moving:
                 yield
 
             start_t = time.time()
@@ -119,11 +77,10 @@ class PumpProbePlan(QObject):
             # -- scan
             for self.t_idx, t in enumerate(self.t_list):
                 c.delay_line.set_pos(t*1000., do_wait=False)
-                while self.controller.delay_line._dl.is_moving():
+                while self.controller.delay_line.moving:
                     yield
                 if self.use_shutter:
                     self.controller.shutter.open()
-
                 threads = []
                 for pp in self.cam_data:
                     t = threading.Thread(target=pp.read_point, args=(self.t_idx,))
@@ -133,10 +90,8 @@ class PumpProbePlan(QObject):
                     yield
                 for pp in self.cam_data:
                     pp.sigStepDone.emit()
-
                 if self.use_shutter:
                     self.controller.shutter.close()
-
                 self.sigStepDone.emit()
                 yield
 
@@ -153,20 +108,9 @@ class PumpProbePlan(QObject):
                 self.rot_idx = (self.rot_idx + 1) % len(self.rot_stage_angles)
                 self.controller.rot_stage.set_degrees(self.rot_stage_angles[self.rot_idx])
 
-    def get_name(self):
-        if self._name is None:
-            p = Path(config.data_directory)
-            dname = p / f"{self.name}_messpy1.npz"
-            i = 0
-            while dname.is_file():
-                dname = p / f"{self.name}{i}_messpy1.npz"
-                i = i + 1
-            self._name = dname
-        return self._name
-
     def save(self):
-        print('save')
-        name = self.get_name()
+        name = self.get_file_name()[0]
+        self.save_meta()
         data = {"data_" + ppd.cam.name: np.float32(ppd.completed_scans)
                 for ppd in self.cam_data}
         wls = {"wl_" + ppd.cam.name: ppd.wavelengths for ppd in self.cam_data}
@@ -238,7 +182,3 @@ class PumpProbeData(QObject):
         if self.mean_scans is not None:
             self.mean_signal = self.mean_scans[self.wl_idx, t_idx, 0, :]
         self.last_signal = lr.signals[0, :]
-
-
-
-

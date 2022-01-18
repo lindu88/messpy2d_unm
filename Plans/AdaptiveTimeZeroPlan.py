@@ -124,3 +124,15 @@ class AdaptiveTimeZeroPlan(AsyncPlan):
         xa = xa[i]
         ya = ya[i]
         return xa, ya
+
+    def set_zero_pos(self, pos):
+        self.delay_line.set_pos(pos * 1000)
+        self.delay_line.set_home()
+        x, y = self.get_data()
+        self.positions = (x-pos).tolist()
+
+    def save(self):
+        self.save_meta()
+        fpath = self.get_file_name()[0]
+        x, y = self.get_data()
+        np.savetxt(fpath.with_suffix('.txt'), np.column_stack((x, y)))

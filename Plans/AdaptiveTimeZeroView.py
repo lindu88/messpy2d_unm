@@ -1,7 +1,7 @@
 import numpy as np
 import pyqtgraph.parametertree as pt
 from pyqtgraph import PlotWidget, PlotItem, mkPen, TextItem
-from qtpy.QtWidgets import QWidget, QPushButton, QLabel
+from qtpy.QtWidgets import QWidget, QPushButton, QLabel, QMessageBox
 from qtpy.QtCore import Qt
 import attr
 from ControlClasses import Controller
@@ -25,7 +25,7 @@ def fit_folded_exp(x, y):
     model.set_param_hint('tau', min=0.001)
     i = np.argmax(abs(y))
     try:
-        fit_res = model.fit(y, t=x, amp=y[i], tau=1, sigma=0.1, t0=0, nan_policy='raise')
+        fit_res = model.fit(y, t=x, amp=y[i], tau=10, sigma=0.1, t0=0, nan_policy='raise')
         return fit_res
     except ValueError:
         return False
@@ -50,13 +50,16 @@ class AdaptiveTZViewer(QWidget):
         self.stop_button.clicked.connect(lambda: setattr(self.plan, 'is_running', False))
         self.plan.sigPlanFinished.connect(self.show_stop_options)
 
-
     def show_stop_options(self):
-        fit_button = QPushButton('Fit')
-        fit_button.clicked.connect(self.fit_data)
+        self.stop_button.setDisabled(True)
+        self.set_zero_btn = QPushButton('Set t0')
+        self.set_zero_btn.setDisabled(True)
         save_button = QPushButton('Save')
-        self.layout().addWidget(fit_button)
+        save_button.clicked.connect(lambda: QMessageBox.information(self, "Saved", "Saved data"))
+        save_button.clicked.connect(self.plan.save)
+        self.layout().addWidget(self.set_zero_btn)
         self.layout().addWidget(save_button)
+        self.fit_data()
 
     def fit_data(self):
         x, y = self.plan.get_data()
@@ -66,9 +69,14 @@ class AdaptiveTZViewer(QWidget):
             yn = fit_res.eval(t=xn)
             self.plot_widget.plotItem.plot(xn, yn, pen=mkPen(color=col[1]))
             s = str(fit_res.params._repr_html_())
-
             self.fit_text.setText(s)
             self.adjustSize()
+            self.set_zero_btn.setEnabled(True)
+            t0 = fit_res.params['t0'].value
+            self.set_zero_btn.clicked.connect(lambda: self.plan.set_zero_pos(t0))
+        else:
+            self.fit_text.setText("Fit failed")
+
 
 class AdaptiveTZStarter(PlanStartDialog):
     experiment_type = 'AdaptiveTZFinder'
@@ -100,7 +108,7 @@ class AdaptiveTZStarter(PlanStartDialog):
             max_diff=p["Max. Diff"],
             min_diff=p["Min. Diff"],
             name=p["Filename"],
-            meta={},
+            meta=self.paras.getValues(),
             start=p["Start"],
             stop=p["Stop"],
             current_step=p['Initial Step'],

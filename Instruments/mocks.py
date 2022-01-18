@@ -19,12 +19,19 @@ class MockState:
 
 state = MockState()
 
+
 @attr.s(auto_attribs=True)
 class MockSpectrograph(ISpectrograph):
     name: str = 'MockSpec'
     changeable_wavelength: bool = True
     center_wl: float = 300
     _cur_grating: int = 0
+
+    def get_state(self) -> dict:
+        return {
+            'grating': self.gratings[self._cur_grating],
+            'current wavelength': self.center_wl,
+        }
 
     def set_wavelength(self, wl: float, timeout=3):
         self.center_wl = wl
@@ -57,6 +64,9 @@ class CamMock(ICam):
     ext_channels: int = 3
     background: object = None
     spectrograph: Optional[ISpectrograph] = attr.Factory(MockSpectrograph)
+
+    def get_state(self) -> dict:
+        return {'shots': self.shots}
 
     def set_shots(self, shots):
         self.shots = shots

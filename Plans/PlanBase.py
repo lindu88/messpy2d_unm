@@ -115,10 +115,12 @@ class Plan(QObject):
         if self.meta is not None:
             _, meta_file = self.get_file_name()
             with meta_file.open('w') as f:
-                json.dump(self.meta, f)
+                json.dump(self.meta, f, indent=4)
 
     def get_app_state(self):
         """Collects all devices states."""
+        self.meta['Saved at'] = datetime.now().isoformat()
+        self.meta['Started at'] = self.creation_dt.isoformat()
         for i in IDevice.registered_devices:
             self.meta[i.name] = i.get_state()
 
@@ -193,5 +195,6 @@ class AsyncPlan(Plan):
         self.task = loop.create_task(self.plan(), name=self.name)
 
     def stop_plan(self):
-        self.task.cancel()
+        if self.task:
+            self.task.cancel()
         return super().stop_plan()
