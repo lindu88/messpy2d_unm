@@ -227,7 +227,7 @@ class Controller(QObject):
     def loop(self):
         if self.plan is None or self.pause_plan:
             self.standard_read()
-        elif getattr(self.plan, "is_async", False):
+        elif getattr(self.plan, "is_async", False) and self.plan.task:
             t = self.plan.task
             t: aio.Task
             #print(t)
@@ -236,8 +236,9 @@ class Controller(QObject):
                     t.cancel()
                     self.plan = None
                     raise t.exception()
-
-        else:
+                else:
+                    self.plan.task = None
+        elif hasattr(self.plan, 'make_step'):
             try:
                 self.plan.make_step()
             except StopIteration:

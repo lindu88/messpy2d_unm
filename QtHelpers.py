@@ -493,18 +493,21 @@ def make_groupbox(widgets, title=''):
     return gb
 
 
-def hlay(*widgets, add_stretch=False):
+def hlay(*widgets, post_stretch=False, pre_stretch=False):
     lay = QHBoxLayout()
     if len(widgets) == 1:
         if isinstance(widgets[0], (list, tuple)):
             widgets = widgets[0]
+
+    if pre_stretch:
+        lay.addStretch(1)
     for w in widgets:
         try:
             lay.addWidget(w)
         except TypeError:
             lay.addLayout(w)
 
-    if add_stretch:
+    if post_stretch:
         lay.addStretch(1)
     return lay
 
