@@ -6,10 +6,10 @@ from typing import TYPE_CHECKING, Tuple
 import attr
 import numpy as np
 
-from .shaper_calculations import double_pulse_mask, delay_scan_mask
+from Instruments.dac_px.shaper_calculations import double_pulse_mask, delay_scan_mask
 
 if TYPE_CHECKING:
-    from .pxdac import PXDAC
+    from Instruments.dac_px.pxdac import PXDAC
 
 PIXEL = 4096 * 3  # 12288
 MAX_16_Bit = (1 << 13) - 1
@@ -17,7 +17,7 @@ MAX_16_Bit = (1 << 13) - 1
 log = getLogger(__file__)
 
 def default_dac():
-    from .pxdac import PXDAC
+    from Instruments.dac_px.pxdac import PXDAC
 
     return PXDAC.DAC(1)
 
@@ -289,7 +289,7 @@ class AOM(IDevice):
         mask = np.stack((pulse_train_mask, single_mask, full_mask), axis=1)
         return mask
 
-    def load_calib_mask(self, width=150, seperation=350, n_single=15):
+    def load_calib_mask(self, width=50, seperation=350, n_single=15):
         """
         Sets a calibration mask onto the shaper.
         """

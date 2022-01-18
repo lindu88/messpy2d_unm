@@ -4,6 +4,7 @@ import qtawesome as qta
 qta.set_defaults(color='white')
 from pyqtgraph import setConfigOptions
 setConfigOptions(enableExperimental=True, useNumba=True, antialias=False, useOpenGL=False)
+
 from qtpy.QtCore import QTimer, Qt, QSettings
 from qtpy.QtGui import QIntValidator
 from qtpy.QtWidgets import (QMainWindow, QApplication, QWidget, QDockWidget, QPushButton, QLabel, QSizePolicy,
@@ -105,7 +106,7 @@ class MainWindow(QMainWindow):
         ]
         if self.controller.shaper is not None:
             plans += [('GVD Scan', 'fa5s.stopwatch', GVDScanStarter)]
-            plans += [('2D Measurement', 'fa5s.dice-2', AOMTwoDStarter)]
+            plans += [('2D Measurement', 'ei.graph', AOMTwoDStarter)]
 
         for text, icon, starter in plans:
             asl_icon = qta.icon(icon, color='white')
@@ -355,7 +356,7 @@ if __name__ == '__main__':
 
     app = QApplication([])
 
-    app.setAttribute(Qt.ApplicationAttribute.AA_UseHighDpiPixmaps)
+    #app.setAttribute(Qt.ApplicationAttribute.AA_UseHighDpiPixmaps)
     app.setOrganizationName("USD")
     app.setApplicationName("MessPy3")
 
@@ -387,7 +388,7 @@ if __name__ == '__main__':
     loop = qasync.QEventLoop()
 
     aio.set_event_loop(loop)
-    aio.get_event_loop().set_debug(True)
+    #aio.get_event_loop().set_debug(True)
     app.exec()
 
     # app.aboutToQuit = lambda x: controller.shutdown()

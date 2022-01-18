@@ -189,9 +189,9 @@ class Reading2D:
         if n == 1:
             sig = f
         elif n == 2:
-            sig = (f[:, 0::4] - f[:, 1::4])*1000/LOG10
+            sig = (f[:, 0::2] - f[:, 1::2])*(1000/LOG10)
         elif n == 4:
-            sig = (f[:, 0::4] - f[:, 1::4] - f[:, 2::4] + f[:, 3::4])*1000/LOG10
+            sig = (f[:, 0::4] - f[:, 1::4] - f[:, 2::4] + f[:, 3::4])*(1000/LOG10)
 
         assert (sig.shape[1] == len(t2_ps))
         if save_frame_enabled:

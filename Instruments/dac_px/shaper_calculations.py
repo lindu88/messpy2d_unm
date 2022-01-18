@@ -26,7 +26,7 @@ def double_pulse_mask(
     nu_rf : float
         rotating frame freq of the scanned pulse in THz
     tau : float
-        Interpulse distance in ps
+        Inter-pulse distance in ps
     phi1 : float
         Phase shift of the scanned pulse
     phi2 : float
