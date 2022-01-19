@@ -174,8 +174,8 @@ class Reading2D:
     spectra: Spectrum
     interferogram: np.ndarray
     t2_ps: np.ndarray
-    window: Optional[Callable] = np.hanning
-    upsample: int = 2
+    window: Optional[Callable] = None
+    upsample: int = 1
     rot_frame: float = 0
     freqs: np.ndarray = attr.ib()
     signal_2D: np.ndarray = attr.ib()

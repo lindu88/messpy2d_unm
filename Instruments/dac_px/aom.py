@@ -6,7 +6,7 @@ from typing import TYPE_CHECKING, Tuple
 import attr
 import numpy as np
 
-from Instruments.dac_px.shaper_calculations import double_pulse_mask, delay_scan_mask
+from Instruments.dac_px.shaper_calculations import double_pulse_mask, delay_scan_mask, cm2THz, THz2cm
 
 if TYPE_CHECKING:
     from Instruments.dac_px.pxdac import PXDAC
@@ -110,9 +110,8 @@ class AOM(IDevice):
             raise ValueError("No calibration available")
         x = self.nu - self.nu0_THz
         x *= (2 * np.pi) / 1000  # PHz -> disp params in fs^-n (n=2,3,4)
-        coef = np.array([self.delay, self.gvd, self.tod, self.fod]) / np.array(
-            [1, 2, 6, 24]
-        )
+        coef = np.array([self.delay, self.gvd, self.tod, self.fod])
+        coef = coef/np.array([1, 2, 6, 24])
         phase = x * coef[0] + x ** 2 * coef[1] + x ** 3 * coef[2] + x ** 4 * coef[3]
         self.do_dispersion_compensation = True
         self.compensation_phase = -phase[:, None]
@@ -272,28 +271,31 @@ class AOM(IDevice):
         """End playback of the current mask"""
         self.dac.EndRamPlaybackXD48()
 
-    def make_calib_mask(self, width=150, separation=350, n_single=15):
+    def make_calib_mask(self, width=40, separation=350, single=6000):
         """
         Calculates a calibration mask onto the shaper.
         """
         full_mask = np.cos(np.arange(PIXEL) / 16 * 2 * np.pi)
-        pulse_train_mask = np.zeros_like(full_mask)
-        single_mask = np.zeros_like(full_mask)
-        total = width + separation
-        for k, i in enumerate(range(0, full_mask.size, total)):
-            pulse_train_mask[i : i + width] = full_mask[i : i + width]
-            if k == n_single:
-                single_mask[i : i + width] = pulse_train_mask[i : i + width]
-
-        # Three frames: train, single and full
+        m = np.zeros_like(full_mask)
+        cur_pos = single
+        while cur_pos < PIXEL:
+            m += np.exp(-0.5 * (self.pixel - cur_pos) ** 2 / width ** 2)
+            cur_pos += separation
+        cur_pos = single - separation
+        while cur_pos > 0:
+            m += np.exp(-0.5 * (self.pixel - cur_pos) ** 2 / width ** 2)
+            cur_pos -= separation
+        pulse_train_mask = m*full_mask
+        m = np.exp(-0.5 * (self.pixel - single) ** 2 / width ** 2)
+        single_mask = m * full_mask
         mask = np.stack((pulse_train_mask, single_mask, full_mask), axis=1)
         return mask
 
-    def load_calib_mask(self, width=50, seperation=350, n_single=15):
+    def load_calib_mask(self, width=50, separation=350, n_single=15):
         """
         Sets a calibration mask onto the shaper.
         """
-        mask = self.make_calib_mask(width, seperation, n_single)
+        mask = self.make_calib_mask(width, separation, n_single)
         self.load_mask(mask)
 
     def load_full_mask(self):
@@ -304,4 +306,20 @@ class AOM(IDevice):
 
 if __name__ == "__main__":
     A = AOM()
-    A.load_mask(A.make_calib_mask())
+
+    width = 40
+    seperation=400
+    full_mask = np.cos(np.arange(PIXEL) / 16 * 2 * np.pi)
+    full_mask *= np.exp(-0.5*(THz2cm(A.nu)-1e7/4700)**2/10**2)
+    m = A.make_calib_mask(separation=300, width=40)
+    A.load_mask(m[:, 0])
+    A.load_mask(full_mask)
+    exit()
+    import pyqtgraph as pg
+
+    app = pg.mkQApp()
+    pg.plot(full_mask).show()
+    app.exec_()
+
+
+

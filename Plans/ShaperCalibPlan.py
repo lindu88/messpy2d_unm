@@ -28,6 +28,9 @@ class CalibPlan(AsyncPlan):
     amps: List[List[float]] = attr.Factory(list)
     single_spectra: np.ndarray = attr.ib(init=False)
     num_shots: int = 100
+    separation: int = 300
+    width: int = 20
+    single: int = 6000
     start_pos: Tuple[float, float] = 0
     check_zero_order: bool = True
     channel: int = 67
@@ -54,7 +57,7 @@ class CalibPlan(AsyncPlan):
             self.channel = np.argmax(pump_spec.mean)  # typing: ignore
 
         self.single_spectra = np.zeros((self.cam.channels, len(self.points)))
-        self.dac.load_mask(self.dac.make_calib_mask())
+        self.dac.load_mask(self.dac.make_calib_mask(width=self.width, separation=self.separation, single=self.single))
         for i, p in enumerate(self.points):
             await self.read_point(i, p)
             self.sigStepDone.emit()

@@ -27,7 +27,7 @@ class ScanSpectrum(Plan):
         self.wls = np.zeros((n_wl, n_lines))
         self.probe = np.zeros((n_wl, n_lines))
         self.ref = np.zeros((n_wl, n_lines))
-        self.signal = np.zeros((n_wl, n_lines))
+        self.signal = np.zeros((n_wl, self.cam.sig_lines, n_lines))
 
         gen = self.make_step_gen()
         self.make_step = lambda: next(gen)
@@ -54,7 +54,7 @@ class ScanSpectrum(Plan):
             self.wls[self.wl_idx, :] = wls
             self.probe[self.wl_idx, :] = probe
             self.ref[self.wl_idx, :] = ref
-            self.signal[self.wl_idx, :] = sig
+            self.signal[self.wl_idx, :, :] = sig
             self.sigPointRead.emit()
             yield False
 

@@ -23,7 +23,8 @@ class AOMTwoDViewer(GraphicsLayoutWidget):
         pw.setLabels(bottom='Probe Freq', left='Time')
         cmap = colormap.get("CET-D1")
         self.ifr_img = ImageItem()
-        self.ifr_img.setImage(np.zeros((128, plan.t2.size)), rect=(self.probe_freq.max(), 0, -self.probe_freq.ptp(), plan.max_t2))
+        rect = (self.probe_freq.max(), 0, -self.probe_freq.ptp(), plan.max_t2)
+        self.ifr_img.setImage(np.zeros((128, plan.t2.size)), rect=rect)
         pw.addItem(self.ifr_img)
         self.spec_image_view = pw
         self.ifr_img.mouseClickEvent = self.ifr_clicked
@@ -40,17 +41,16 @@ class AOMTwoDViewer(GraphicsLayoutWidget):
         cmap = colormap.get("CET-D1")
         self.spec_img = ImageItem()
         print(self.pump_freqs)
-        self.spec_img.setImage(np.zeros((128, plan.pump_freqs.size)),
-                               rect=(self.probe_freq.max(), self.pump_freqs[0], -self.probe_freq.ptp(),
-                                     self.pump_freqs[-1]-self.pump_freqs[0])
-                               )
-        print((self.probe_freq.max(), self.pump_freqs[0], -self.probe_freq.ptp(),
-                                     self.pump_freqs[-1]-self.pump_freqs[0]))
+        rect = (self.probe_freq.max(), self.pump_freqs[-1], -self.probe_freq.ptp(),
+                self.pump_freqs[0] - self.pump_freqs[-1])
+        self.spec_img.setImage(np.zeros((128, plan.pump_freqs.size)), rect=rect)
+
+
         pw.addItem(self.spec_img)
         self.spec_line = InfiniteLine(pos=self.pump_freqs[self.pump_freqs.size//2], angle=0,
                                       bounds=(self.pump_freqs.min(), self.pump_freqs.max()),
                                       movable=True)
-        pw.addItem(self.spec_line)
+        #pw.addItem(self.spec_line)
 
         hist = HistogramLUTItem()
         hist.setImageItem(self.spec_img)
@@ -205,6 +205,8 @@ class AOMTwoDStarter(PlanStartDialog):
                {'name': 't2 (step)', 'suffix': 'ps', 'type': 'float', 'value': 0.1},
                {'name': 'Phase Cycles', 'type': 'list', 'values': [1, 2, 4]},
                {'name': 'Rot. Frame', 'suffix': 'cm-1', 'type': 'int', 'value': 2000},
+               {'name': 'Mode', 'type': 'list', 'values': ['classic', 'bragg']},
+               {'name': 'Receptions', 'type': 'int', 'value': 1},
                {'name': 'Linear Range (-)', 'suffix': 'ps', 'type': 'float', 'value': 0},
                {'name': 'Linear Range (+)', 'suffix': 'ps', 'type': 'float', 'value': 1},
                {'name': 'Linear Range (step)', 'suffix': 'ps', 'type': 'float', 'min': 0.2},
@@ -246,6 +248,8 @@ class AOMTwoDStarter(PlanStartDialog):
             rot_frame_freq=p['Rot. Frame'],
             shaper=controller.shaper,
             phase_frames=p['Phase Cycles'],
+            mode=p['Mode'],
+            repetitions=p['Receptions']
         )
         return p
 

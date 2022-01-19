@@ -18,7 +18,7 @@ from qtpy.QtCore import Signal
 import h5py
 
 from typing import Optional
-
+import atexit
 
 @attrs(auto_attribs=True, kw_only=True)
 class AOMTwoDPlan(ScanPlan):
@@ -32,6 +32,7 @@ class AOMTwoDPlan(ScanPlan):
     do_stop: bool = False
     max_t2: float = 4
     step_t2: float = 0.05
+    mode: Literal['classic', 'bragg'] = 'classic'
     t2: np.ndarray = attrib()
     rot_frame_freq: float = 0
     repetitions: int = 1
@@ -62,7 +63,7 @@ class AOMTwoDPlan(ScanPlan):
 
     @pump_freqs.default
     def _calc_freqs(self):
-        THz = np.fft.rfftfreq(self.t2.size*2, d=self.step_t2)
+        THz = np.fft.rfftfreq(self.t2.size, d=self.step_t2)
         return THz2cm(THz) + self.rot_frame_freq
 
     @data_file.default
@@ -76,6 +77,7 @@ class AOMTwoDPlan(ScanPlan):
         f['t2'].attrs['rot_frame'] = self.rot_frame_freq
         f['wn'] = self.controller.cam.wavenumbers
         f['wl'] = self.controller.cam.wavelengths
+        atexit.register(f.close)
         return f
 
     def scan(self):
@@ -97,11 +99,11 @@ class AOMTwoDPlan(ScanPlan):
 
         self.shaper.chopped = False
         self.shaper.phase_cycle = False
-        self.shaper.do_dispersion_compensation = True
-        self.shaper.mode = 'bragg'
+        self.shaper.do_dispersion_compensation = False
+        self.shaper.mode = self.mode
         amp, phase = self.shaper.double_pulse(self.t2, cm2THz(self.rot_frame_freq), self.phase_frames)
         self.shaper.set_amp_and_phase(amp, phase)
-        self.shaper.set_wave_amp(0.4)
+        self.shaper.set_wave_amp(0.2)
 
         self.shaper.generate_waveform()
         self.controller.cam.set_shots(self.repetitions*amp.shape[1])
@@ -128,6 +130,7 @@ class AOMTwoDPlan(ScanPlan):
 
     def post_scan(self) -> Generator:
         self.calculate_scan_means()
+        self.save_meta()
         yield
 
     def post_plan(self) -> Generator:
@@ -159,3 +162,7 @@ class AOMTwoDPlan(ScanPlan):
             self.disp_arrays[line] = disp_2d, disp_ifr
         self.last_2d = np.array(disp_2d)
         self.last_ir = np.array(disp_ifr)
+
+    def stop_plan(self):
+        self.data_file.close()
+        self.post_plan()

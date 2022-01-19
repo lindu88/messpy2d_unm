@@ -264,7 +264,7 @@ class PhaseTecCam(ICam):
         if grating == 1:
             disp *= 30/75
 
-        center_ch = 63
+        center_ch = 67
         if center_wl < 1000:
             return np.arange(-64, 64, 1)
         else:
