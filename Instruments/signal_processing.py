@@ -13,14 +13,14 @@ def THz2cm(THz):
     """
     THz to cm-1
     """
-    return c*THz/1e7
+    return c*THz/1e10
 
 
 def cm2THz(cm):
     """
     cm-1 to THz
     """
-    return cm*1e7/c
+    return c*cm/1e10
 
 @jit
 def first(arr, val: float) -> int:
@@ -174,8 +174,8 @@ class Reading2D:
     spectra: Spectrum
     interferogram: np.ndarray
     t2_ps: np.ndarray
-    window: Optional[Callable] = None
-    upsample: int = 1
+    window: Optional[Callable] = np.hanning
+    upsample: int = 2
     rot_frame: float = 0
     freqs: np.ndarray = attr.ib()
     signal_2D: np.ndarray = attr.ib()
