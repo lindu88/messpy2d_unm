@@ -68,7 +68,7 @@ class IDevice(QObject, metaclass=QABCMeta):
         conf_path = Path(__file__).parent/'config'
         if d:
             with (conf_path / (self.name + '.cfg')).open('w') as f:
-                json.dump(d, f)
+                json.dump(d, f, indent=4)
 
     def load_state(self, exclude: T.Optional[T.List[str]] = None):
         """
