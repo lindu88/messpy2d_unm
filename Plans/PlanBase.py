@@ -25,9 +25,10 @@ sample_parameters = {'name': 'Sample', 'type': 'group', 'children': [
 @attr.s(auto_attribs=True)
 class TimeTracker(QObject):
     start_time: float = attr.Factory(time.time)
-    scan_start_time: float = attr.Factory(time.time)
+    scan_start_time: float = 0
     scan_end_time: Optional[float] = None
-    point_start_time: float = attr.Factory(time.time)
+    scan_duration: Optional[float] = None
+    point_start_time: float = 0
     point_end_time: Optional[float] = None
 
     sigTimesUpdated: ClassVar[Signal] = Signal(str)
@@ -39,10 +40,6 @@ class TimeTracker(QObject):
     def total_duration(self):
         return time.time() - self.start_time
 
-    @property
-    def scan_duration(self):
-        if self.scan_end_time is not None:
-            return self.scan_end_time - self.scan_start_time
 
     @property
     def point_duration(self):
@@ -52,11 +49,12 @@ class TimeTracker(QObject):
     @Slot()
     def scan_starting(self):
         self.scan_start_time = time.time()
+        self.scan_end_time = None
 
     @Slot()
     def scan_ending(self):
         self.scan_end_time = time.time()
-        self.sigTimesUpdated.emit(self.as_string())
+        self.scan_duration = self.scan_end_time-self.scan_start_time
 
     @Slot()
     def point_starting(self):
@@ -65,17 +63,19 @@ class TimeTracker(QObject):
     @Slot()
     def point_ending(self):
         self.point_end_time = time.time()
-        self.sigTimesUpdated.emit(self.as_string())
+        self.as_string()
 
     def as_string(self) -> str:
         s = f"""
         <h4>Time-Information</h4>
-        Total Time: {timedelta(seconds=self.total_duration)}
+        Total Time: {timedelta(seconds=self.total_duration)}<br>
         """
         if self.point_end_time:
-            s += f"Time per Point: {timedelta(seconds=self.point_duration)}\n"
-        if self.scan_end_time:
-            s += f"Time per Scan: {timedelta(seconds=self.scan_duration)}\n"
+            s += f"Time per Point: {timedelta(seconds=self.point_duration)}<br>"
+
+        if self.scan_duration:
+            s += f"Time per Scan: {timedelta(seconds=self.scan_duration)}<br>"
+        self.sigTimesUpdated.emit(s)
         return s
 
 
