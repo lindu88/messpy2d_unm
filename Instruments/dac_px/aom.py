@@ -172,7 +172,9 @@ class AOM(IDevice):
         masks = double_pulse_mask(
             self.nu[:, None], rot_frame, taus[None, :], phi1[None, :], phi2[None, :]
         )
-        return np.abs(masks), np.angle(masks)
+
+        self.set_amp_and_phase(np.abs(masks), np.angle(masks))
+        return masks
 
     def delay_scan(self, taus, phi=None):
         taus = np.atleast_1d(taus)
@@ -181,15 +183,20 @@ class AOM(IDevice):
         mask = delay_scan_mask(self.nu[:, None], taus[None, :], phi[None, :])
         return np.ones(PIXEL), mask
 
-    def set_amp_and_phase(self, amp=None, phase=None):
+    def set_amp_and_phase(self, amp: Optional[np.ndarray]=None, phase: Optional[np.ndarray]=None):
         """
         Sets the amplitude and/or the phase of the spectral map.
         Notice that the compensation dispersion phase will be added separately.
         """
         if phase is not None:
+            if len(phase.shape) == 1:
+                phase = phase[:, None]
             self.phase = phase
         if amp is not None:
+            if len(amp.shape) == 1:
+                amp = amp[:, None]
             self.amp = amp
+
 
     def generate_waveform(self):
         """"
@@ -214,6 +221,7 @@ class AOM(IDevice):
             masks = np.concatenate((0 * masks, masks), axis=1)
         if self.phase_cycle:
             masks = np.concatenate((masks, -masks), axis=1)
+
         self.load_mask(masks)
 
     def voltage(self, i: int):
@@ -250,10 +258,9 @@ class AOM(IDevice):
             self.mask = self.mask.ravel(order='F')
 
         mask = (self.amp_fac * MAX_16_Bit * self.mask).astype("int16")
-
+        self.scaled_mask = mask
         assert mask.dtype == np.int16
         assert (mask.size % PIXEL) == 0
-        print(mask.size // PIXEL)
         self.end_playback()
         mask1 = np.zeros_like(mask)
         mask1[:PIXEL] = MAX_16_Bit
@@ -300,6 +307,7 @@ class AOM(IDevice):
 
     def load_full_mask(self):
         """Loads a full mask using a frequency of 75 MHz"""
+        self.set_amp_and_phase(np.ones_like(PIXEL), np.zeros_like(PIXEL))
         full_mask = np.cos(np.arange(PIXEL) / 16 * 2 * np.pi)
         self.load_mask(full_mask)
 
@@ -309,11 +317,56 @@ if __name__ == "__main__":
 
     width = 40
     seperation=400
-    full_mask = np.cos(np.arange(PIXEL) / 16 * 2 * np.pi)
-    full_mask *= np.exp(-0.5*(THz2cm(A.nu)-1e7/4700)**2/10**2)
-    m = A.make_calib_mask(separation=300, width=40)
-    A.load_mask(m[:, 0])
-    A.load_mask(full_mask)
+    amp, phase = [], []
+    for i in Path('C:\PhaseTech\masks').glob('*'):
+        d = np.loadtxt(i)
+        amp.append(d[:, 0])
+        phase.append(d[:, 1])
+    amp = np.array(amp).T
+    phase = np.array(phase).T
+    np.save('pt_masks_amp_2000_50.npy', amp)
+    np.save('pt_masks_amp_2000_50.npy', phase)
+    A.do_dispersion_compensation = False
+    A.compensation_phase = None
+    A.chopped = False
+    A.phase_cycle = False
+    A.mode = 'classic'
+    A.nu0_THz = cm2THz(2010)
+    A.set_amp_and_phase(amp, phase)
+    A.generate_waveform()
+    exit()
+    for i in np.arange(1960, 2060, 10):
+        full_mask = np.cos(np.arange(PIXEL) / 16 * 2 * np.pi)
+        full_mask *= np.exp(-0.5*(THz2cm(A.nu)-i)**2/5**2)
+        #A.load_mask(full_mask)
+        #time.sleep(0.1)
+    #full_mask += np.exp(-0.5*(THz2cm(A.nu)-2000)**2/5**2) * np.cos(np.arange(PIXEL) / 16 * 2 * np.pi)
+    #m = A.make_calib_mask(separation=300, width=40)
+    #A.load_mask(m[:, 0])
+    om = 2 * np.pi * A.nu[:, None]
+    #masks = np.cos(om * taus / 2) * np.exp(1j * om * taus)
+    A.do_dispersion_compensation = False
+    A.compensation_phase = None
+    A.chopped = False
+    A.phase_cycle = False
+    A.mode = 'classic'
+    A.nu0_THz = cm2THz(2010)
+    A.double_pulse(np.arange(0, 2.03, 0.05), 2, 2)
+
+    print(A.amp.shape)
+
+    #amp = np.float64(abs(THz2cm(A.nu)-1940) < 10)[:, None]
+    #A.set_amp_and_phase(amp=amp, phase=np.zeros_like(amp))
+    A.generate_waveform()
+    #print(f"{amp.shape=}")
+
+
+
+
+
+
+
+    print(A.calib)
     exit()
     import pyqtgraph as pg
 
