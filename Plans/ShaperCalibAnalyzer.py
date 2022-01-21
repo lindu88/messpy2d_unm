@@ -12,8 +12,32 @@ from matplotlib.backends.backend_qt5agg import (
 import attr
 import numpy as np
 from scipy.constants import c
+from scipy.optimize import least_squares
 from scipy.signal import find_peaks
 from scipy.ndimage import uniform_filter1d, gaussian_filter1d
+
+def nm2THz(x):
+    return c / x / 1e3
+
+def THz2nm(x):
+    return c / x / 1e3
+
+def gauss(x, xc, A, sigma, sum_up=True):
+    peaks = A*np.exp(-0.5*((x[:, None]-xc)/sigma)**2)
+    if sum_up:
+        return peaks.sum(1)
+    else:
+        return peaks
+
+def gauss_trains(x, y, start_idx, start_width, dist=300):
+    n = len(start_idx)
+    pix_pos = np.arange(n)*dist
+    fit = np.polyfit(pix_pos, nm2THz(x[p1]), 2)
+    start = np.int16(np.polyval(fit, pix_pos))
+    return gauss(nm2THz(x), start,  y[start_idx], 10,)
+
+
+
 
 @attr.s(auto_attribs=True)
 class CalibView(QWidget):
@@ -80,7 +104,7 @@ class CalibView(QWidget):
         bb = QDialogButtonBox(QDialogButtonBox.Ok | QDialogButtonBox.Cancel)
         self.row.addWidget(bb)
         # bb.setFixedWidth(400)
-        bb.setSizePolicy(QSizePolicy.MinimumExpanding, QSizePolicy.MinimumExpanding)
+        bb.setSizePolicy(QSizePolicy.MinimumExpanding, QSizePolicy.Minimum)
         self.row.setContentsMargins(20, 20, 20, 20)
         self.row.setSpacing(10)
         bb.accepted.connect(lambda: self.sigCalibrationAccepted.emit(self.coeff))
@@ -177,15 +201,55 @@ class CalibView(QWidget):
 if __name__ == "__main__":
     from Instruments.dac_px import AOM
 
-    aom = AOM()
-    app = QApplication([])
+
     # from qt_material import apply_stylesheet
     # apply_stylesheet(app, 'light_blue.xml')
     x, y_train, y_single, y_full = np.load("../calib.npy").T
     y_single -= y_single.min()
     y_train -= y_train.min()
     y_full -= y_full.min()
-    view = CalibView(x=x, y_single=y_single, y_train=y_train, y_full=y_full)
-    view.sigCalibrationAccepted.connect(aom.set_calib)
-    view.show()
-    app.exec_()
+    y_norm = 100*y_train / (y_full + 50)
+    y_norm_s = 100 * y_single / (y_full + 50)
+    import matplotlib.pyplot as plt
+
+    p1, _ = find_peaks(y_norm, prominence=20, distance=3)
+    ps, _ = find_peaks(y_norm_s, prominence=20, distance=3)
+    pix_pos = (np.arange(len(p1)) - np.argmin(abs(p1-ps))) * 300 + 6000
+
+    fit = np.polyfit(pix_pos, nm2THz(x[p1]), 2)
+    #plt.plot(pix_pos, nm2THz(x[p1]), 's')
+    #plt.plot(pix_pos, np.polyval(fit, pix_pos))
+    start_idx = np.int16(np.polyval(fit, pix_pos))
+
+
+
+    def gauss_trains(x, y, single_idx, train_idx, start_width=0.1, dist=300, single=6000):
+        n = len(start_idx)
+        same = np.argmin(abs(single_idx-train_idx))
+        pix_pos = (np.arange(n)-same) * dist
+        fit = np.polyfit(pix_pos, nm2THz(x[p1]), 2)
+
+        starting_guess = np.hstack((fit, start_width, y[train_idx]))
+
+        def eval(p):
+            coefs = p[:len(fit)]
+            width = p[len(fit)]
+            #print(width)
+            amps = p[len(fit)+1:len(fit)+n+1]
+            x_pos = np.polyval(coefs, pix_pos)
+            return gauss(nm2THz(x), x_pos, amps, width)-y
+
+        fr = least_squares(eval, starting_guess)
+        return fr
+    fr =  gauss_trains(x, y_norm, p1, 0.1)
+    print(fr['x'][:3])
+    plt.plot(x, fr['fun']+y_norm)
+
+    plt.plot(x, y_norm)
+    plt.show()
+    #aom = AOM()
+    #app = QApplication([])
+    #view = CalibView(x=x, y_single=y_single, y_train=y_train, y_full=y_full)
+    #view.sigCalibrationAccepted.connect(aom.set_calib)
+    #view.show()
+    #app.exec_()
