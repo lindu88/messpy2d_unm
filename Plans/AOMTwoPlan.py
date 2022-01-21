@@ -1,3 +1,4 @@
+import threading
 from typing import TYPE_CHECKING, ClassVar, Callable, Literal, Generator, Tuple, Dict
 
 import attr
@@ -63,7 +64,7 @@ class AOMTwoDPlan(ScanPlan):
 
     @pump_freqs.default
     def _calc_freqs(self):
-        THz = np.fft.rfftfreq(self.t2.size, d=self.step_t2)
+        THz = np.fft.rfftfreq(self.t2.size*2, d=self.step_t2)
         return THz2cm(THz) + self.rot_frame_freq
 
     @data_file.default
@@ -99,14 +100,14 @@ class AOMTwoDPlan(ScanPlan):
 
         self.shaper.chopped = False
         self.shaper.phase_cycle = False
-        self.shaper.do_dispersion_compensation = False
+        self.shaper.do_dispersion_compensation = True
         self.shaper.mode = self.mode
-        amp, phase = self.shaper.double_pulse(self.t2, cm2THz(self.rot_frame_freq), self.phase_frames)
-        self.shaper.set_amp_and_phase(amp, phase)
+        self.shaper.double_pulse(self.t2, cm2THz(self.rot_frame_freq), self.phase_frames)
+
         self.shaper.set_wave_amp(0.2)
 
         self.shaper.generate_waveform()
-        self.controller.cam.set_shots(self.repetitions*amp.shape[1])
+        self.controller.cam.set_shots(self.repetitions*(self.t2.size*self.phase_frames))
         yield
 
     def calculate_scan_means(self):
@@ -129,7 +130,8 @@ class AOMTwoDPlan(ScanPlan):
                 self.data_file[f'2d_data/{line}/{t3_idx}/mean'] = np.mean(specs, 0)
 
     def post_scan(self) -> Generator:
-        self.calculate_scan_means()
+        thr = threading.Thread(target=self.calculate_scan_means)
+        thr.start()
         self.save_meta()
         yield
 
@@ -148,8 +150,8 @@ class AOMTwoDPlan(ScanPlan):
                                      self.rot_frame_freq, self.repetitions, self.save_frames_enabled)
             while not future.done():
                 yield
-            self.time_tracker.point_ending()
-            ret = future.result()
+        self.time_tracker.point_ending()
+        ret = future.result()
         for line, data in ret.items():
             ds = self.data_file.create_dataset(f'ifr_data/{line}/{self.t3_idx}/{self.cur_scan}', data=data.interferogram)
             ds.attrs['time'] = self.cur_t3
@@ -164,5 +166,4 @@ class AOMTwoDPlan(ScanPlan):
         self.last_ir = np.array(disp_ifr)
 
     def stop_plan(self):
-        self.data_file.close()
         self.post_plan()
