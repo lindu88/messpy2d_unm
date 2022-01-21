@@ -9,8 +9,8 @@ def THz2cm(nu: f) -> f:
     return (nu * 1e10) / c
 
 
-def cm2THz(nu: f) -> f:
-    return c / (nu * 1e10)
+def cm2THz(cm: f) -> f:
+    return c * cm / 1e10
 
 
 def double_pulse_mask(
@@ -32,8 +32,9 @@ def double_pulse_mask(
     phi2 : float
         Phase shift of the fixed pulse
     """
+
     double = 0.5 * (
-        np.exp(-1j * (nu - nu_rf) * 2 * np.pi * tau) * np.exp(+1j * phi1)
+        np.exp(-2j * np.pi * (nu - nu_rf) * tau + 1j * phi1)
         + np.exp(1j * phi2)
     )
     return double
