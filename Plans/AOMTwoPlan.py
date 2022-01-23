@@ -1,3 +1,4 @@
+import threading
 from typing import TYPE_CHECKING, ClassVar, Callable, Literal, Generator, Tuple, Dict
 
 import attr
@@ -18,7 +19,7 @@ from qtpy.QtCore import Signal
 import h5py
 
 from typing import Optional
-
+import atexit
 
 @attrs(auto_attribs=True, kw_only=True)
 class AOMTwoDPlan(ScanPlan):
@@ -32,6 +33,7 @@ class AOMTwoDPlan(ScanPlan):
     do_stop: bool = False
     max_t2: float = 4
     step_t2: float = 0.05
+    mode: Literal['classic', 'bragg'] = 'classic'
     t2: np.ndarray = attrib()
     rot_frame_freq: float = 0
     repetitions: int = 1
@@ -76,6 +78,7 @@ class AOMTwoDPlan(ScanPlan):
         f['t2'].attrs['rot_frame'] = self.rot_frame_freq
         f['wn'] = self.controller.cam.wavenumbers
         f['wl'] = self.controller.cam.wavelengths
+        atexit.register(f.close)
         return f
 
     def scan(self):
@@ -98,13 +101,13 @@ class AOMTwoDPlan(ScanPlan):
         self.shaper.chopped = False
         self.shaper.phase_cycle = False
         self.shaper.do_dispersion_compensation = True
-        self.shaper.mode = 'bragg'
-        amp, phase = self.shaper.double_pulse(self.t2, cm2THz(self.rot_frame_freq), self.phase_frames)
-        self.shaper.set_amp_and_phase(amp, phase)
-        self.shaper.set_wave_amp(0.4)
+        self.shaper.mode = self.mode
+        self.shaper.double_pulse(self.t2, cm2THz(self.rot_frame_freq), self.phase_frames)
+
+        self.shaper.set_wave_amp(0.2)
 
         self.shaper.generate_waveform()
-        self.controller.cam.set_shots(self.repetitions*amp.shape[1])
+        self.controller.cam.set_shots(self.repetitions*(self.t2.size*self.phase_frames))
         yield
 
     def calculate_scan_means(self):
@@ -127,7 +130,9 @@ class AOMTwoDPlan(ScanPlan):
                 self.data_file[f'2d_data/{line}/{t3_idx}/mean'] = np.mean(specs, 0)
 
     def post_scan(self) -> Generator:
-        self.calculate_scan_means()
+        thr = threading.Thread(target=self.calculate_scan_means)
+        thr.start()
+        self.save_meta()
         yield
 
     def post_plan(self) -> Generator:
@@ -145,8 +150,8 @@ class AOMTwoDPlan(ScanPlan):
                                      self.rot_frame_freq, self.repetitions, self.save_frames_enabled)
             while not future.done():
                 yield
-            self.time_tracker.point_ending()
-            ret = future.result()
+        self.time_tracker.point_ending()
+        ret = future.result()
         for line, data in ret.items():
             ds = self.data_file.create_dataset(f'ifr_data/{line}/{self.t3_idx}/{self.cur_scan}', data=data.interferogram)
             ds.attrs['time'] = self.cur_t3
@@ -159,3 +164,6 @@ class AOMTwoDPlan(ScanPlan):
             self.disp_arrays[line] = disp_2d, disp_ifr
         self.last_2d = np.array(disp_2d)
         self.last_ir = np.array(disp_ifr)
+
+    def stop_plan(self):
+        self.post_plan()

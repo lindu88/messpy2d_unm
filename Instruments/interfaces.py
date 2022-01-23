@@ -9,6 +9,7 @@ import time
 import typing
 import warnings
 import xmlrpc.server as rpc
+from pathlib import Path
 
 import attr
 import numpy as np
@@ -64,9 +65,10 @@ class IDevice(QObject, metaclass=QABCMeta):
 
     def save_state(self):
         d = self.get_state()
+        conf_path = Path(__file__).parent/'config'
         if d:
-            with open(self.name + '.cfg', 'w') as f:
-                json.dump(d, f)
+            with (conf_path / (self.name + '.cfg')).open('w') as f:
+                json.dump(d, f, indent=4)
 
     def load_state(self, exclude: T.Optional[T.List[str]] = None):
         """
@@ -76,7 +78,8 @@ class IDevice(QObject, metaclass=QABCMeta):
         if exclude is None:
             exclude = []
         try:
-            with open(self.name + '.cfg', 'r') as f:
+            conf_path = Path(__file__).parent / 'config'
+            with (conf_path / (self.name + '.cfg')).open('r') as f:
                 d = json.load(f)
             for key, val in d.items():
                 if not hasattr(self, key):

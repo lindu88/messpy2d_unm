@@ -23,7 +23,8 @@ class AOMTwoDViewer(GraphicsLayoutWidget):
         pw.setLabels(bottom='Probe Freq', left='Time')
         cmap = colormap.get("CET-D1")
         self.ifr_img = ImageItem()
-        self.ifr_img.setImage(np.zeros((128, plan.t2.size)), rect=(self.probe_freq.max(), 0, -self.probe_freq.ptp(), plan.max_t2))
+        rect = (self.probe_freq.max(), 0, -self.probe_freq.ptp(), plan.max_t2)
+        self.ifr_img.setImage(np.zeros((128, plan.t2.size)), rect=rect)
         pw.addItem(self.ifr_img)
         self.spec_image_view = pw
         self.ifr_img.mouseClickEvent = self.ifr_clicked
@@ -34,24 +35,21 @@ class AOMTwoDViewer(GraphicsLayoutWidget):
         self.ifr_lines: dict[InfiniteLine, PlotDataItem] = {}
         self.ifr_free_colors = list(range(9))
         self.addPlot: Callable[[], PlotItem]
-        pw = self.addPlot()
 
+        pw = self.addPlot()
         pw.setLabels(bottom='Probe Freq', left='Pump Freq')
         cmap = colormap.get("CET-D1")
+
         self.spec_img = ImageItem()
-        print(self.pump_freqs)
-        self.spec_img.setImage(np.zeros((128, plan.pump_freqs.size)),
-                               rect=(self.probe_freq.max(), self.pump_freqs[0], -self.probe_freq.ptp(),
-                                     self.pump_freqs[-1]-self.pump_freqs[0])
-                               )
-        print((self.probe_freq.max(), self.pump_freqs[0], -self.probe_freq.ptp(),
-                                     self.pump_freqs[-1]-self.pump_freqs[0]))
+        rect = (self.probe_freq.max(), self.pump_freqs[-1], -self.probe_freq.ptp(),
+                self.pump_freqs[0]-self.pump_freqs[-1])
+        self.spec_img.setImage(np.zeros((128, plan.pump_freqs.size)), rect=rect)
+
         pw.addItem(self.spec_img)
         self.spec_line = InfiniteLine(pos=self.pump_freqs[self.pump_freqs.size//2], angle=0,
                                       bounds=(self.pump_freqs.min(), self.pump_freqs.max()),
                                       movable=True)
         pw.addItem(self.spec_line)
-
         hist = HistogramLUTItem()
         hist.setImageItem(self.spec_img)
         hist.gradient.setColorMap(cmap)
@@ -67,16 +65,19 @@ class AOMTwoDViewer(GraphicsLayoutWidget):
         self.ci.nextRow()
         self.info_label = self.ci.addLabel("Hallo", colspan=4)
         
-        #self.update_plots()
+        self.update_plots()
         self.spec_line.sigPositionChanged.connect(self.update_spec_lines)
         self.plan.sigStepDone.connect(self.update_data)
         self.plan.sigStepDone.connect(self.update_plots)
         self.plan.sigStepDone.connect(self.update_label)
+        self.time_str = ''
+        self.plan.time_tracker.sigTimesUpdated.connect(self.set_time_str)
 
     @Slot()
     def update_data(self, al=True):
-        self.ifr_img.setImage(self.plan.last_ir, autoLevels=al)
-        self.spec_img.setImage(self.plan.last_2d[:, ::-1], autoLevels=al)
+        if self.plan.last_2d is not None:
+            self.ifr_img.setImage(self.plan.last_ir, autoLevels=al)
+            self.spec_img.setImage(self.plan.last_2d[:, ::], autoLevels=al)
 
     def ifr_clicked(self, ev):
         x, y = ev.pos()
@@ -88,7 +89,7 @@ class AOMTwoDViewer(GraphicsLayoutWidget):
                                             pen=mkPen(_int_color, width=1))
         line._int_color = _int_color
         cur_line = 'Probe2'
-        self.ifr_lines[line] = self.trans_plot.plot(self.plan.t2, self.plan.disp_arrays[cur_line][0][round(x), :],
+        self.ifr_lines[line] = self.trans_plot.plot(self.plan.t2, self.plan.disp_arrays[cur_line][1][round(x), :],
                                                     pen=line.pen)
 
         def update(line: InfiniteLine):
@@ -106,17 +107,17 @@ class AOMTwoDViewer(GraphicsLayoutWidget):
         line.sigPositionChanged.connect(update)
 
     def update_plots(self):
-        if not hasattr(self.plan, "last2d"):
-            return
-        self.spec_plot.plot(self.probe_freq, self.plan.last_2d.mean(1))
-        for line in self.ifr_lines.values():
-            line.sigPositionChanged.emit(line) # Causes an update
+        if self.plan.last_2d is not None:
+            self.spec_mean_line.setData(self.probe_freq, self.plan.last_2d.mean(1))
+            for line in self.ifr_lines.keys():
+                line.sigPositionChanged.emit(line)  # Causes an update
 
-    def update_spec_lines(self, line: InfiniteLine):
-
-        idx = np.argmin(abs(self.pump_freqs - line.pos()[1]))
+    def update_spec_lines(self, *args):
+        idx = np.argmin(abs(self.pump_freqs - self.spec_line.pos()[1]))
         self.spec_cut_line.setData(self.probe_freq, self.plan.last_2d[:, idx])
-        self.spec_mean_line.setData(self.probe_freq, self.plan.last_2d.mean(1))
+
+    def set_time_str(self, s):
+        self.time_str = s
 
     def update_label(self):
         p = self.plan
@@ -126,68 +127,14 @@ class AOMTwoDViewer(GraphicsLayoutWidget):
             <dl>
             <dt>Name:<dd>{p.name}
             <dt>Scan:<dd>{p.cur_scan} / {p.max_scan}
-            <dt>Time-point: {p.t3_idx} / {p.t3.size}: {p.cur_t3: .2f}
+            <dt>Time-point:<dd>{p.t3_idx} / {p.t3.size}: {p.cur_t3: .2f} ps
             </dl>
             </big>
             '''
-        s = s + p.time_tracker.as_string()
+        s = s + self.time_str
+
         self.info_label.setText(s)
 
-
-@attr.s(auto_attribs=True)
-class AOMTwoDViewerA(QWidget):
-    plan: AOMTwoDPlan
-    ifr_pw: PlotWidget = attr.ib(factory=PlotWidget)
-    ifr_plot: PlotWidget = attr.ib(factory=PlotWidget)
-    spec_pw: PlotWidget = attr.ib(factory=PlotWidget)
-    spec_img_pw: PlotWidget = attr.ib(factory=PlotWidget)
-    data_image: ImageItem = attr.ib(init=False)
-    spec_image: ImageItem = attr.ib(init=False)
-    label: QLabel = attr.Factory(QLabel)
-
-    def __attrs_post_init__(self):
-        super(AOMTwoDViewer, self).__init__()
-        self.plan.sigStepDone.connect(self.update_image)
-        self.data_image = ImageItem()
-        self.spec_image = ImageItem()
-        self.spec_img_pw.addItem(self.spec_image)
-        self.spec_img_pw.plotItem.setTitle("2D Spectrum")
-        self.ifr_pw.plotItem.addItem(self.data_image)
-        self.ifr_pw.plotItem.setTitle("Inferogram")
-        self.setLayout(vlay(hlay(self.ifr_pw, self.spec_img_pw),
-                            hlay(self.ifr_plot, self.plot4),
-                            self.label))
-        self.l1 = self.spec_plot.plotItem.plot([1, 2, 3])
-        self.l3 = self.plot4.plotItem.plot([1, 2, 3])
-
-    def update_image(self):
-        self.data_image.setImage(self.plan.last_ir)
-        self.spec_image.setImage(self.plan.last_2d[:, :])
-        # self.plot2.clear()
-        # self.plot2.plot(self.plan.last_ir[64, :])
-        # self.plot2.plot(self.plan.last_ir[0, :])
-        # self.plot2.plot(self.plan.last_ir[-1, :])
-        self.plot4.clear()
-        self.plot4.plot(self.plan.last_freq[:], self.plan.last_2d[64, :])
-        self.plot4.plot(self.plan.last_freq[:], self.plan.last_2d[0, :])
-        self.plot4.plot(self.plan.last_freq[:], self.plan.last_2d[-1, :])
-        self.plot4.plot(self.plan.last_freq[:], self.plan.last_2d.sum(0))
-        # self.l3.setData(self.plan.last_ir[:, 50])
-
-    def update_label(self):
-        p = self.plan
-        s = f'''
-            <h3>Current Experiment</h3>
-            <big>
-            <dl>
-            <dt>Name:<dd>{p.name}
-            <dt>Shots:<dd>{p.t}
-            <dt>Scan:<dd>{p.cur_scan} / {p.max_scan}
-            </dl>
-            </big>
-            '''
-        s = s + p.time_tracker.as_string()
-        self.label.setText(s)
 
 
 class AOMTwoDStarter(PlanStartDialog):
@@ -205,6 +152,8 @@ class AOMTwoDStarter(PlanStartDialog):
                {'name': 't2 (step)', 'suffix': 'ps', 'type': 'float', 'value': 0.1},
                {'name': 'Phase Cycles', 'type': 'list', 'values': [1, 2, 4]},
                {'name': 'Rot. Frame', 'suffix': 'cm-1', 'type': 'int', 'value': 2000},
+               {'name': 'Mode', 'type': 'list', 'values': ['classic', 'bragg']},
+               {'name': 'Receptions', 'type': 'int', 'value': 1},
                {'name': 'Linear Range (-)', 'suffix': 'ps', 'type': 'float', 'value': 0},
                {'name': 'Linear Range (+)', 'suffix': 'ps', 'type': 'float', 'value': 1},
                {'name': 'Linear Range (step)', 'suffix': 'ps', 'type': 'float', 'min': 0.2},
@@ -246,6 +195,8 @@ class AOMTwoDStarter(PlanStartDialog):
             rot_frame_freq=p['Rot. Frame'],
             shaper=controller.shaper,
             phase_frames=p['Phase Cycles'],
+            mode=p['Mode'],
+            repetitions=p['Receptions']
         )
         return p
 

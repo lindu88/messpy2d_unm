@@ -13,6 +13,7 @@ from qtpy.QtWidgets import (
     QDialogButtonBox,
     QSizePolicy,
     QSlider,
+    QMessageBox,
 )
 from qtpy.QtCore import Qt, Signal
 from matplotlib.figure import Figure
@@ -126,17 +127,21 @@ class CalibScanView(QWidget):
         single_arr = np.column_stack((x[:, None], plan.single_spectra.T))
         np.save(f"wl_calib_{plan.channel}.npy", single_arr)
         self._view = CalibView(
+            single=plan.single,
+            width=plan.width,
+            dist=plan.separation,
             x=x,
             y_train=y_train - y_train.min(),
             y_single=y_single - y_single.min(),
             y_full=y_full - y_full.min(),
         )
-        self._view.show()
+
         self._view.sigCalibrationAccepted.connect(plan.dac.set_calib)
         self._view.sigCalibrationAccepted.connect(
             lambda arg: plan.dac.generate_waveform()
         )
-
+        self._view.sigCalibrationAccepted.connect(lambda: QMessageBox.information(self, "Calib applied", str(plan.dac.calib)))
+        self._view.show()
 
 @attr.s(auto_attribs=True)
 class CalibView(QWidget):
@@ -145,7 +150,7 @@ class CalibView(QWidget):
     y_single: np.ndarray
     y_full: Optional[np.ndarray] = None
 
-    single: int = 15 * 500
+    single: int = 15
     width: int = 150
     dist: int = 350
 
@@ -250,9 +255,9 @@ class CalibView(QWidget):
         self.ax0.plot(self.x[p1], y_single[p1], "^", ms=7, c="r")
 
         if len(p0) > 1 and len(p1) == 1:
-            a = np.arange(0, 4096 * 3, self.width + self.dist)
+            a = np.arange(-100, 101) * self.dist
             align = np.argmin(abs(x[p0] - x[p1]))
-            pix0 = self.single + self.width / 2
+            pix0 = self.single
             pixel = a[: len(p0)] - a[align] + pix0
 
             freqs = c / x[p0] / 1e3
@@ -289,6 +294,7 @@ if __name__ == "__main__":
     y_full -= y_full.min()
     view = CalibView(x=x, y_single=y_single, y_train=y_train, y_full=y_full)
     view.show()
+    exit()
     view.sigCalibrationAccepted.connect(aom.set_calib)
     view.sigCalibrationAccepted.connect(
         lambda x: aom.generate_waveform(np.ones_like(aom.nu), np.ones_like(aom.nu))

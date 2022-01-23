@@ -73,7 +73,7 @@ class PumpProbePlan(Plan):
                 yield
 
             start_t = time.time()
-
+            self.time_tracker.scan_starting()
             # -- scan
             for self.t_idx, t in enumerate(self.t_list):
                 c.delay_line.set_pos(t*1000., do_wait=False)
@@ -82,6 +82,7 @@ class PumpProbePlan(Plan):
                 if self.use_shutter:
                     self.controller.shutter.open()
                 threads = []
+                self.time_tracker.point_starting()
                 for pp in self.cam_data:
                     t = threading.Thread(target=pp.read_point, args=(self.t_idx,))
                     t.start()
@@ -93,11 +94,12 @@ class PumpProbePlan(Plan):
                 if self.use_shutter:
                     self.controller.shutter.close()
                 self.sigStepDone.emit()
+                self.time_tracker.point_ending()
                 yield
 
             delta_t = time.time() - start_t
             self.time_per_scan = '%d:%02d'%(delta_t // 60, delta_t % 60)
-
+            self.time_tracker.scan_ending()
             # --- post scans
             self.num_scans += 1
             self.controller.delay_line.set_pos(self.t_list[0], do_wait=False)

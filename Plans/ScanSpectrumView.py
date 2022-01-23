@@ -97,7 +97,7 @@ class ScanSpectrumStarter(PlanStartDialog):
             name=p['Filename'],
             cam=self.candidate_cams[p['Cam']],
             meta=s.getValues(),
-            wl_list=wl_list,
+            wl_list=np.sort(wl_list),
             timeout=p['timeout']
         )
         self.save_defaults()

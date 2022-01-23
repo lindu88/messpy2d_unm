@@ -6,7 +6,7 @@ from typing import TYPE_CHECKING, Tuple
 import attr
 import numpy as np
 
-from Instruments.dac_px.shaper_calculations import double_pulse_mask, delay_scan_mask
+from Instruments.dac_px.shaper_calculations import double_pulse_mask, delay_scan_mask, cm2THz, THz2cm
 
 if TYPE_CHECKING:
     from Instruments.dac_px.pxdac import PXDAC
@@ -110,9 +110,8 @@ class AOM(IDevice):
             raise ValueError("No calibration available")
         x = self.nu - self.nu0_THz
         x *= (2 * np.pi) / 1000  # PHz -> disp params in fs^-n (n=2,3,4)
-        coef = np.array([self.delay, self.gvd, self.tod, self.fod]) / np.array(
-            [1, 2, 6, 24]
-        )
+        coef = np.array([self.delay, self.gvd, self.tod, self.fod])
+        coef = coef/np.array([1, 2, 6, 24])
         phase = x * coef[0] + x ** 2 * coef[1] + x ** 3 * coef[2] + x ** 4 * coef[3]
         self.do_dispersion_compensation = True
         self.compensation_phase = -phase[:, None]
@@ -173,7 +172,9 @@ class AOM(IDevice):
         masks = double_pulse_mask(
             self.nu[:, None], rot_frame, taus[None, :], phi1[None, :], phi2[None, :]
         )
-        return np.abs(masks), np.angle(masks)
+
+        self.set_amp_and_phase(np.abs(masks), np.angle(masks))
+        return masks
 
     def delay_scan(self, taus, phi=None):
         taus = np.atleast_1d(taus)
@@ -182,15 +183,20 @@ class AOM(IDevice):
         mask = delay_scan_mask(self.nu[:, None], taus[None, :], phi[None, :])
         return np.ones(PIXEL), mask
 
-    def set_amp_and_phase(self, amp=None, phase=None):
+    def set_amp_and_phase(self, amp: Optional[np.ndarray]=None, phase: Optional[np.ndarray]=None):
         """
         Sets the amplitude and/or the phase of the spectral map.
         Notice that the compensation dispersion phase will be added separately.
         """
         if phase is not None:
+            if len(phase.shape) == 1:
+                phase = phase[:, None]
             self.phase = phase
         if amp is not None:
+            if len(amp.shape) == 1:
+                amp = amp[:, None]
             self.amp = amp
+
 
     def generate_waveform(self):
         """"
@@ -215,6 +221,7 @@ class AOM(IDevice):
             masks = np.concatenate((0 * masks, masks), axis=1)
         if self.phase_cycle:
             masks = np.concatenate((masks, -masks), axis=1)
+
         self.load_mask(masks)
 
     def voltage(self, i: int):
@@ -251,10 +258,9 @@ class AOM(IDevice):
             self.mask = self.mask.ravel(order='F')
 
         mask = (self.amp_fac * MAX_16_Bit * self.mask).astype("int16")
-
+        self.scaled_mask = mask
         assert mask.dtype == np.int16
         assert (mask.size % PIXEL) == 0
-        print(mask.size // PIXEL)
         self.end_playback()
         mask1 = np.zeros_like(mask)
         mask1[:PIXEL] = MAX_16_Bit
@@ -272,36 +278,101 @@ class AOM(IDevice):
         """End playback of the current mask"""
         self.dac.EndRamPlaybackXD48()
 
-    def make_calib_mask(self, width=150, separation=350, n_single=15):
+    def make_calib_mask(self, width=40, separation=350, single=6000):
         """
         Calculates a calibration mask onto the shaper.
         """
         full_mask = np.cos(np.arange(PIXEL) / 16 * 2 * np.pi)
-        pulse_train_mask = np.zeros_like(full_mask)
-        single_mask = np.zeros_like(full_mask)
-        total = width + separation
-        for k, i in enumerate(range(0, full_mask.size, total)):
-            pulse_train_mask[i : i + width] = full_mask[i : i + width]
-            if k == n_single:
-                single_mask[i : i + width] = pulse_train_mask[i : i + width]
-
-        # Three frames: train, single and full
+        m = np.zeros_like(full_mask)
+        cur_pos = single
+        while cur_pos < PIXEL:
+            m += np.exp(-0.5 * (self.pixel - cur_pos) ** 2 / width ** 2)
+            cur_pos += separation
+        cur_pos = single - separation
+        while cur_pos > 0:
+            m += np.exp(-0.5 * (self.pixel - cur_pos) ** 2 / width ** 2)
+            cur_pos -= separation
+        pulse_train_mask = m*full_mask
+        m = np.exp(-0.5 * (self.pixel - single) ** 2 / width ** 2)
+        single_mask = m * full_mask
         mask = np.stack((pulse_train_mask, single_mask, full_mask), axis=1)
         return mask
 
-    def load_calib_mask(self, width=50, seperation=350, n_single=15):
+    def load_calib_mask(self, width=50, separation=350, n_single=15):
         """
         Sets a calibration mask onto the shaper.
         """
-        mask = self.make_calib_mask(width, seperation, n_single)
+        mask = self.make_calib_mask(width, separation, n_single)
         self.load_mask(mask)
 
     def load_full_mask(self):
         """Loads a full mask using a frequency of 75 MHz"""
+        self.set_amp_and_phase(np.ones_like(PIXEL), np.zeros_like(PIXEL))
         full_mask = np.cos(np.arange(PIXEL) / 16 * 2 * np.pi)
         self.load_mask(full_mask)
 
 
 if __name__ == "__main__":
     A = AOM()
-    A.load_mask(A.make_calib_mask())
+
+    width = 40
+    seperation=400
+    amp, phase = [], []
+    for i in Path('C:\PhaseTech\masks').glob('*'):
+        d = np.loadtxt(i)
+        amp.append(d[:, 0])
+        phase.append(d[:, 1])
+    amp = np.array(amp).T
+    phase = np.array(phase).T
+    np.save('pt_masks_amp_2000_50.npy', amp)
+    np.save('pt_masks_amp_2000_50.npy', phase)
+    A.do_dispersion_compensation = False
+    A.compensation_phase = None
+    A.chopped = False
+    A.phase_cycle = False
+    A.mode = 'classic'
+    A.nu0_THz = cm2THz(2010)
+    A.set_amp_and_phase(amp, phase)
+    A.generate_waveform()
+    exit()
+    for i in np.arange(1960, 2060, 10):
+        full_mask = np.cos(np.arange(PIXEL) / 16 * 2 * np.pi)
+        full_mask *= np.exp(-0.5*(THz2cm(A.nu)-i)**2/5**2)
+        #A.load_mask(full_mask)
+        #time.sleep(0.1)
+    #full_mask += np.exp(-0.5*(THz2cm(A.nu)-2000)**2/5**2) * np.cos(np.arange(PIXEL) / 16 * 2 * np.pi)
+    #m = A.make_calib_mask(separation=300, width=40)
+    #A.load_mask(m[:, 0])
+    om = 2 * np.pi * A.nu[:, None]
+    #masks = np.cos(om * taus / 2) * np.exp(1j * om * taus)
+    A.do_dispersion_compensation = False
+    A.compensation_phase = None
+    A.chopped = False
+    A.phase_cycle = False
+    A.mode = 'classic'
+    A.nu0_THz = cm2THz(2010)
+    A.double_pulse(np.arange(0, 2.03, 0.05), 2, 2)
+
+    print(A.amp.shape)
+
+    #amp = np.float64(abs(THz2cm(A.nu)-1940) < 10)[:, None]
+    #A.set_amp_and_phase(amp=amp, phase=np.zeros_like(amp))
+    A.generate_waveform()
+    #print(f"{amp.shape=}")
+
+
+
+
+
+
+
+    print(A.calib)
+    exit()
+    import pyqtgraph as pg
+
+    app = pg.mkQApp()
+    pg.plot(full_mask).show()
+    app.exec_()
+
+
+
