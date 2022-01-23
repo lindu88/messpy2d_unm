@@ -1,5 +1,5 @@
 import math
-from typing import Optional, Callable
+from typing import Optional, Callable, Union
 
 import attr
 import numpy as np
@@ -7,20 +7,15 @@ from scipy.constants import c
 from numba import jit, prange
 
 LOG10 = math.log(10)
+f = Union[float, np.ndarray]
+
+def THz2cm(nu: f) -> f:
+    return (nu * 1e10) / c
 
 
-def THz2cm(THz):
-    """
-    THz to cm-1
-    """
-    return c*THz/1e7
+def cm2THz(cm: f) -> f:
+    return c * cm / 1e10
 
-
-def cm2THz(cm):
-    """
-    cm-1 to THz
-    """
-    return cm*1e7/c
 
 @jit
 def first(arr, val: float) -> int:
@@ -189,9 +184,9 @@ class Reading2D:
         if n == 1:
             sig = f
         elif n == 2:
-            sig = (f[:, 0::2] - f[:, 1::2])*(1000/LOG10)
+            sig = (f[:, 0::2] - f[:, 1::2])*(-1000/LOG10)
         elif n == 4:
-            sig = (f[:, 0::4] - f[:, 1::4] - f[:, 2::4] + f[:, 3::4])*(1000/LOG10)
+            sig = (f[:, 0::4] - f[:, 1::4] - f[:, 2::4] + f[:, 3::4])*(-1000/LOG10)
 
         assert (sig.shape[1] == len(t2_ps))
         if save_frame_enabled:

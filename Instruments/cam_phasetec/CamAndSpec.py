@@ -1,3 +1,5 @@
+import concurrent
+import threading
 from math import log
 from pathlib import Path
 from typing import ClassVar, List, Optional, Tuple, Dict
@@ -217,8 +219,12 @@ class PhaseTecCam(ICam):
             Dict[str, Reading2D]:
         spectra, ch = self.get_spectra(frames=self.shots // repetitions)
         two_d_data = {}
-        for name in ('Probe1', 'Probe2'):
-            two_d_data[name] = Reading2D.from_spectrum(spectra[name], t2, rot_frame, save_frames)
+        with concurrent.futures.ThreadPoolExecutor() as executor:
+            for name in ('Probe1', 'Probe2'):
+                future = executor.submit(Reading2D.from_spectrum, spectra[name], t2, rot_frame, save_frames)
+                two_d_data[name] = future
+            for name in ('Probe1', 'Probe2'):
+                two_d_data[name] = two_d_data[name].result()
         return two_d_data
 
     def calibrate_ref(self):
@@ -264,7 +270,7 @@ class PhaseTecCam(ICam):
         if grating == 1:
             disp *= 30/75
 
-        center_ch = 66
+        center_ch = 67
         if center_wl < 1000:
             return np.arange(-64, 64, 1)
         else:
