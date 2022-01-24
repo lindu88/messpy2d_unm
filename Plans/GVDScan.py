@@ -11,11 +11,11 @@ from qtpy.QtCore import QObject, Signal
 from Config import config
 from ControlClasses import Cam
 from Instruments.dac_px import AOM
-
+from Plans.PlanBase import Plan
 
 
 @attr.s(auto_attribs=True, cmp=False)
-class GVDScan(QObject):
+class GVDScan(Plan):
     name: str
     cam: Cam
     aom: AOM
@@ -34,7 +34,7 @@ class GVDScan(QObject):
     sigPointRead = Signal()
 
     def __attrs_post_init__(self):
-        QObject.__init__(self)
+        super(GVDScan, self).__attrs_post_init__()
         n_disp = len(self.gvd_list)
         n_pix = self.cam.channels
         if self.aom.calib is None:

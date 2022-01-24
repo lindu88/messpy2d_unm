@@ -128,6 +128,7 @@ class Spectrum:
     frames: Optional[int] = None
     signal: Optional[np.ndarray] = None
 
+
     @classmethod
     def create(cls, data, data_max=None, name=None, frames=None, first_frame=None):
         mean, std, max = stats(data, data_max)

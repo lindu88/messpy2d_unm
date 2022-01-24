@@ -4,7 +4,7 @@ from qtpy.QtWidgets import QWidget, QLabel, QVBoxLayout
 from qtawesome import icon
 
 from ControlClasses import Controller
-from QtHelpers import ObserverPlot, PlanStartDialog, vlay
+from QtHelpers import ObserverPlot, PlanStartDialog, vlay, make_entry
 from .GVDScan import GVDScan
 
 
@@ -67,6 +67,7 @@ class GVDScanStarter(PlanStartDialog):
         gvd_list = np.arange(start, end, p['Step'])
         fs = GVDScan(
             aom = controller.shaper,
+            meta=make_entry(self.paras),
             gvd=p['GVD'],
             tod=p['TOD'],
             fod=p['FOD'],
