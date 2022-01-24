@@ -9,7 +9,7 @@ from Plans.PumpProbe import PumpProbePlan
 from pyqtgraph.parametertree import Parameter, ParameterTree
 
 import pyqtgraph as pg
-from QtHelpers import ObserverPlot, PlanStartDialog
+from QtHelpers import ObserverPlot, PlanStartDialog, make_entry
 import numpy as np
 
 np.seterr('ignore')
@@ -241,7 +241,7 @@ class PumpProbeDataViewer(QWidget):
     def update_indicator_line_pos(self):
         for lsts in self.inf_lines:
             for l in lsts:
-                l.wl = 1e7/l.wl
+                #l.wl = 1e7/l.wl
                 l.pos = 1e7/l.pos
                 l.line.setPos(l.pos)
                 l.update_pos()
@@ -328,7 +328,7 @@ class PumpProbeStarter(PlanStartDialog):
         self.save_defaults()
         p = PumpProbePlan(
             name=p['Filename'],
-            meta=self.paras.getValues(),
+            meta=make_entry(self.paras),
             t_list=np.asarray(t_list),
             shots=p['Shots'],
             controller=controller,

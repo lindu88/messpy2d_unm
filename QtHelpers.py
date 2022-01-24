@@ -536,3 +536,19 @@ def partial_formatter(val):
         return '%dk' % (val/1000)
     else:
         return str(val)
+
+
+def remove_nodes(a):
+    """This function removes empty children and values entry in the output of the pyqtgraph parametertrees"""
+    a = a.copy()
+    for s in a.keys():
+        if isinstance(a[s], list):
+            if a[s][0] is None:
+                a[s] = remove_nodes(a[s][1])
+            elif len(a[s][1]) == 0:
+                a[s] = a[s][0]
+    return a
+
+def make_entry(paras):
+    plan_settings = remove_nodes(paras.getValues())
+    return {'Plan Settings': plan_settings}

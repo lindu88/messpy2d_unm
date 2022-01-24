@@ -3,13 +3,14 @@ import numpy as np
 import pyqtgraph.parametertree as pt
 from pyqtgraph import PlotWidget, ImageItem, PlotItem, colormap, GraphicsLayoutWidget, HistogramLUTItem, InfiniteLine, \
     mkPen, PlotDataItem
-from qtpy.QtWidgets import QWidget, QLabel
+from qtpy.QtWidgets import QWidget, QLabel, QTabWidget
 from qtpy.QtCore import Slot
 from ControlClasses import Controller
-from QtHelpers import vlay, PlanStartDialog, hlay
+from QtHelpers import vlay, PlanStartDialog, hlay, remove_nodes, make_entry
 from .AOMTwoPlan import AOMTwoDPlan
 from .PlanBase import sample_parameters
 from typing import Callable
+import qasync
 
 class AOMTwoDViewer(GraphicsLayoutWidget):
     def __init__(self, plan: AOMTwoDPlan, parent=None):
@@ -73,8 +74,8 @@ class AOMTwoDViewer(GraphicsLayoutWidget):
         self.time_str = ''
         self.plan.time_tracker.sigTimesUpdated.connect(self.set_time_str)
 
-    @Slot()
-    def update_data(self, al=True):
+    @qasync.asyncSlot()
+    async def update_data(self, al=True):
         if self.plan.last_2d is not None:
             self.ifr_img.setImage(self.plan.last_ir, autoLevels=al)
             self.spec_img.setImage(self.plan.last_2d[:, ::], autoLevels=al)
@@ -185,9 +186,10 @@ class AOMTwoDStarter(PlanStartDialog):
             t_list = times + t_list
 
         self.save_defaults()
+
         p = AOMTwoDPlan(
             name=p['Filename'],
-            meta=self.paras.getValues(),
+            meta=make_entry(self.paras),
             t3=np.asarray(t_list),
             controller=controller,
             max_t2=p['t2 (+)'],
