@@ -55,11 +55,13 @@ class SP2150i(ISpectrograph):
 
     def get_wavelength(self) -> float:
         resp = self._write(b'?NM')
-        return float(resp.strip(b' ').split(b' ')[0])
+        self.center_wl = float(resp.strip(b' ').split(b' ')[0])
+        return self.center_wl
 
     def set_wavelength(self, nm: float, timeout: float = 4):
         self._write(b'%.3f GOTO' % nm, timeout=timeout)
         self.sigWavelengthChanged.emit(nm)
+        self.center_wl = nm
 
     def get_installed_gratings(self) -> str:
         self._write(b'?GRATINGS', False)
@@ -77,11 +79,9 @@ class SP2150i(ISpectrograph):
         return int(resp)
 
     def set_grating(self, grating: int):
-        print("set_grating", grating)
         self._write(b'%d GRATING' % grating, timeout=35)
         self.sigGratingChanged.emit(grating)
         self._last_grating = grating
-        print("set grating", grating)
 
     def reset(self):
         self._write(b'MONO-RESET')
@@ -95,7 +95,6 @@ if __name__ == "__main__":
     spec = SP2150i()
     wl = spec.get_wavelength()
     print(spec.get_installed_gratings())
-    #print(f'Current wavelength {spec.get_wavelength()}')
     print(f'Current grating {spec.get_grating()}')
     spec.set_wavelength(wl + 200)
     spec.set_grating(2)

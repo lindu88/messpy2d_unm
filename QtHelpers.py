@@ -12,7 +12,7 @@ from qtpy.QtWidgets import (QWidget, QLineEdit, QLabel, QPushButton, QHBoxLayout
                             QListWidget, QErrorMessage, QSizePolicy, QCheckBox)
 
 from Config import config
-
+from qtawesome import icon
 if T.TYPE_CHECKING:
     from ControlClasses import Controller
 
@@ -185,8 +185,13 @@ class ControlFactory(QWidget):
         row_cnt = 0
         hlay = QHBoxLayout()
         self._layout.addRow(hlay)
-        for (s, fn) in extra_buttons:
-            but = QPushButton(s)
+        for l in extra_buttons:
+            if len(l) == 2:
+                (s, fn) = l
+                but = QPushButton(s)
+            else:
+                (s, fn, ic) = l
+                but = QPushButton(text=s, icon=icon(ic))
             but.clicked.connect(fn)
             hlay.addWidget(but)
             row_cnt += 1
@@ -542,11 +547,13 @@ def remove_nodes(a):
     """This function removes empty children and values entry in the output of the pyqtgraph parametertrees"""
     a = a.copy()
     for s in a.keys():
-        if isinstance(a[s], list):
+        if isinstance(a[s], tuple):
             if a[s][0] is None:
                 a[s] = remove_nodes(a[s][1])
             elif len(a[s][1]) == 0:
                 a[s] = a[s][0]
+            else:
+                a[s] = (a[s][0], remove_nodes(a[s][1]))
     return a
 
 def make_entry(paras):
