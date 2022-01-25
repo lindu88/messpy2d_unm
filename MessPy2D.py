@@ -8,8 +8,7 @@ setConfigOptions(enableExperimental=True, useNumba=True, antialias=False, useOpe
 from qtpy.QtCore import QTimer, Qt, QSettings
 from qtpy.QtGui import QIntValidator
 from qtpy.QtWidgets import (QMainWindow, QApplication, QWidget, QDockWidget, QPushButton, QLabel, QSizePolicy,
-                            QFormLayout, QMessageBox,
-                            QCheckBox)
+                            QFormLayout, QMessageBox, QGroupBox, QCheckBox)
 
 from Config import config
 from ControlClasses import Controller
@@ -17,7 +16,7 @@ from Instruments.interfaces import IAOMPulseShaper, ICam
 from Plans import *
 
 from QtHelpers import ControlFactory, make_groupbox, \
-    ValueLabels, ObserverPlotWithControls, hlay
+    ValueLabels, ObserverPlotWithControls, hlay, vlay
 from SampleMoveWidget import MoveWidget
 
 
@@ -176,17 +175,22 @@ class CommandMenu(QWidget):
 
         self.add_plan_controls()
 
-        gb = self.add_cam(c)
+        gb = CamControls(c)
         self._layout.addWidget(gb)
+        c.starting_plan.connect(gb.setDisabled)
+        c.stopping_plan.connect(gb.setEnabled)
 
-        dls = self.add_delaystages(c)
-        gb = make_groupbox(dls, "Delay")
+        gb = DelayLineControl(c)
+        c.starting_plan.connect(gb.setDisabled)
+        c.stopping_plan.connect(gb.setEnabled)
         self._layout.addWidget(gb)
 
         for cam in c.cam_list:
             if cam.changeable_wavelength:
-                gb = self.add_spec(cam)
+                gb = SpectrometerControls(cam)
                 self._layout.addWidget(gb)
+                c.starting_plan.connect(gb.setDisabled)
+                c.stopping_plan.connect(gb.setEnabled)
 
         if c.rot_stage:
             self.add_rot_stage(c.rot_stage)
@@ -231,12 +235,37 @@ class CommandMenu(QWidget):
         vl = ValueLabels([('Ext 1', partial(get_ext, 1))])
         self._layout.addWidget(make_groupbox([vl], 'Ext.'))
 
-    def add_cam(self, c: Controller):
-        bg_buttons = [('Record BG', c.cam.get_bg)]
+
+    def add_rot_stage(self, rs):
+        rsi = ControlFactory('Angle', rs.set_degrees,
+                             format_str='%.1f deg', presets=[0, 45])
+        rsi.update_value(rs.get_degrees())
+        rs.sigDegreesChanged.connect(rsi.update_value)
+        gb = make_groupbox([rsi], "Rotation Stage")
+        self._layout.addWidget(gb)
+
+    def add_sample_holder(self, saho):
+        move_wid = MoveWidget(saho)
+        gb = make_groupbox([move_wid], "Sample Holder")
+        self._layout.addWidget(gb)
+
+    def add_shaper(self, sh: IAOMPulseShaper):
+        from ShaperRotStages import ShaperControl
+        self.shaper_controls = ShaperControl(sh.rot1, sh.rot2, sh)
+        but = QPushButton("Shaper Contorls")
+        but.clicked.connect(self.shaper_controls.show)
+        self._layout.addWidget(but)
+        return
+
+
+class CamControls(QGroupBox):
+    def __init__(self, c: Controller):
+        super(CamControls, self).__init__()
+        bg_buttons = [('BG', c.cam.get_bg, 'fa5.circle')]
         if hasattr(c.cam, 'calibrate_ref'):
-            bg_buttons.append(('Record Ref. Calib.', c.cam.calibrate_ref))
+            bg_buttons.append(('Refcalib.', c.cam.calibrate_ref, 'fa5.clone'))
         if c.cam2:
-            bg_buttons.append(('Record BG2', c.cam2.get_bg))
+            bg_buttons.append(('BG2', c.cam2.get_bg, 'fa5s.circle'))
         if c.cam.cam.can_validate_pixel:
             bg_buttons.append(("Mark valid pix", c.cam.cam.mark_valid_pixel))
             bg_buttons.append(("Delete valid pix", c.cam.cam.delete_valid_pixel))
@@ -245,52 +274,18 @@ class CommandMenu(QWidget):
         sc.edit_box.setValidator(QIntValidator(10, 50000))
         c.cam.sigShotsChanged.connect(sc.update_value)
         c.cam.set_shots(config.shots)
+        self.setTitle("ADC")
+        self.setLayout(vlay(sc))
 
-        gb = make_groupbox([sc], "ADC")
-        return gb
 
-    def add_delaystages(self, c):
-        dl = c.delay_line
-        dl1c = ControlFactory('Delay 1', lambda x: c.delay_line.set_pos(x, do_wait=False), format_str='%.1f fs',
-                              extra_buttons=[("Set Home", dl.set_home)],
-                              presets=[-50000, -10000, -1000.0001, -50,
-                                       50000, 10000, 1000.0001, 50],
-                              preset_func=lambda x: dl.set_pos(dl.get_pos() + x, do_wait=False),
-                              )
-        c.delay_line.sigPosChanged.connect(dl1c.update_value)
-        dl1c.update_value(c.delay_line.get_pos())
-        dls = [dl1c]
-        if c.delay_line_second:
-            dl2 = c.delay_line_second
-            dl2c = ControlFactory('Delay 2', dl2.set_pos, format_str='%.1f fs',
-                                  extra_buttons=[("Set Home", dl2.set_pos)],
-                                  )
-            dls.append(dl2c)
-            dl2.sigPosChanged.connect(dl2c.update_value)
-        return dls
-
-    def add_rot_stage(self, rs):
-        rsi = ControlFactory('Angle', rs.set_degrees,
-                             format_str='%.1f deg', presets=[0, 45])
-
-        rsi.update_value(rs.get_degrees())
-        rs.sigDegreesChanged.connect(rsi.update_value)
-        gb = make_groupbox([rsi], "Rotation Stage")
-
-        self._layout.addWidget(gb)
-
-    def add_sample_holder(self, saho):
-        move_wid = MoveWidget(saho)
-        gb = make_groupbox([move_wid], "Sample Holder")
-        self._layout.addWidget(gb)
-
-    def add_spec(self, cam: ICam):
-        if not cam.changeable_wavelength:
-            return ''
+class SpectrometerControls(QGroupBox):
+    def __init__(self, cam: ICam, *args):
+        super(SpectrometerControls, self).__init__()
         spec = cam.cam.spectrograph
-        pre_fcn = lambda x: spec.set_wavelength(spec.get_wavelength() + x)
 
         def calc_and_set_wl(s):
+            if len(s) == 0:
+                return
             s = s.strip()
             try:
                 if s[-1] == 'c':
@@ -304,13 +299,10 @@ class CommandMenu(QWidget):
         spec_control = ControlFactory('Wavelength', calc_and_set_wl,
                                       format_str='%.1f nm',
                                       presets=[-100, -50, 50, 100],
-                                      preset_func=pre_fcn, )
-
+                                      preset_func=lambda x: spec.set_wavelength(spec.get_wavelength() + x))
         spec.sigWavelengthChanged.connect(spec_control.update_value)
         spec.sigWavelengthChanged.emit(spec.get_wavelength())
-
         l = [spec_control]
-
         if spec.changeable_slit:
             pre_fcn = lambda x: spec.spectrograph.set_slit(spec.get_slit() + x)
             slit_control = ControlFactory('Slit (μm)', spec.set_slit, presets=[-10, 10], preset_func=pre_fcn)
@@ -328,26 +320,39 @@ class CommandMenu(QWidget):
             for idx, name in gratings.items():
                 btn = QPushButton(name)
 
-
                 btn.clicked.connect(lambda x, idx=idx: spec.set_grating(idx))
                 btn.setFixedWidth(70)
                 self.btns_.append(btn)
-
             l.append(hlay(self.btns_, post_stretch=1))
         spec.sigGratingChanged.connect(lambda g: lbl.setText('G: %s' % gratings[g]))
-        gb = make_groupbox(l, f"Spec: {cam.cam.name}")
+        self.setTitle(f"Spec: {cam.cam.name}")
+        self.setLayout(vlay(*l))
         cb.clicked.connect(cam.set_disp_wavelengths)
-        return gb
 
-    def add_shaper(self, sh: IAOMPulseShaper):
-        from ShaperRotStages import ShaperControl
 
-        self.shaper_controls = ShaperControl(sh.rot1, sh.rot2, sh)
-        but = QPushButton("Shaper Contorls")
-        but.clicked.connect(self.shaper_controls.show)
-        self._layout.addWidget(but)
-        return
-
+class DelayLineControl(QGroupBox):
+    def __init__(self, c: Controller):
+        super(DelayLineControl, self).__init__()
+        dl = c.delay_line
+        dl1c = ControlFactory('Delay 1', lambda x: c.delay_line.set_pos(x, do_wait=False),
+                              format_str='%.1f fs',
+                              extra_buttons=[("Set Home", dl.set_home)],
+                              presets=[-50000, -10000, -1000.0001, -50,
+                                       50000, 10000, 1000.0001, 50],
+                              preset_func=lambda x: dl.set_pos(dl.get_pos() + x, do_wait=False),
+                              )
+        c.delay_line.sigPosChanged.connect(dl1c.update_value)
+        dl1c.update_value(c.delay_line.get_pos())
+        dls = [dl1c]
+        if c.delay_line_second:
+            dl2 = c.delay_line_second
+            dl2c = ControlFactory('Delay 2', dl2.set_pos, format_str='%.1f fs',
+                                  extra_buttons=[("Set Home", dl2.set_pos)],
+                                  )
+            dls.append(dl2c)
+            dl2.sigPosChanged.connect(dl2c.update_value)
+        self.setTitle('Delay Lines')
+        self.setLayout(vlay(dls))
 
 if __name__ == '__main__':
     import sys

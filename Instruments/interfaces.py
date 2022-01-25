@@ -196,7 +196,6 @@ class ICam(IDevice):
         raise NotImplementedError("Should not be called")
 
 
-
 def mm_to_fs(pos_in_mm):
     "converts mm to femtoseconds"
     pos_in_meters = pos_in_mm / 1000.
