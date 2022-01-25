@@ -96,6 +96,7 @@ class MainWindow(QMainWindow):
                     self.viewer = PlanClass.viewer(plan)
                     self.viewer.show()
                     self.controller.start_plan(plan)
+                    plan.sigPlanFinished.connect(self.controller.stop_plan)
                     self.toggle_run(True)
             return f
 

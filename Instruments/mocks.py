@@ -94,7 +94,8 @@ class CamMock(ICam):
             b -= self.background[1, ...]
         tmp = np.stack((a, b))
         tm = tmp.mean(1)
-        signal = -1000*np.log10(a[chopper, :].mean(0)/a[~chopper, :].mean(0))
+        with np.errstate(all="ignore"):
+            signal = -1000*np.log10(np.nanmean(a[chopper, :], 0)/np.nanmean(a[~chopper, :], 0))
         return Reading(
             lines=tm,
             stds=100*tmp.std(1)/tm,

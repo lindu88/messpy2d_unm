@@ -55,7 +55,8 @@ class AdaptiveTZViewer(QWidget):
         self.set_zero_btn = QPushButton('Set t0')
         self.set_zero_btn.setDisabled(True)
         save_button = QPushButton('Save')
-        save_button.clicked.connect(lambda: QMessageBox.information(self, "Saved", "Saved data"))
+        fname = self.plan.get_file_name()
+        save_button.clicked.connect(lambda: QMessageBox.information(self, "Saved", "Saved data at %s"%str(fname)))
         save_button.clicked.connect(self.plan.save)
         self.layout().addWidget(self.set_zero_btn)
         self.layout().addWidget(save_button)
@@ -74,6 +75,10 @@ class AdaptiveTZViewer(QWidget):
             self.set_zero_btn.setEnabled(True)
             t0 = fit_res.params['t0'].value
             self.set_zero_btn.clicked.connect(lambda: self.plan.set_zero_pos(t0))
+            self.set_zero_btn.clicked.connect(
+                lambda: QMessageBox.information(self, "New t0", "Set Time-Zero to %.2f" % t0)
+            )
+            self.set_zero_btn.clicked.connect(self.set_zero_btn.setDisabled)
         else:
             self.fit_text.setText("Fit failed")
 
