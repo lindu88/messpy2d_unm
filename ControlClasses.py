@@ -72,10 +72,13 @@ class Cam(QObject):
 
     def set_shots(self, shots):
         """Sets the number of shots recorded"""
-        self.shots = int(shots)
-        self.cam.set_shots(self.shots)
-        config.shots = shots
-        self.sigShotsChanged.emit(self.shots)
+        try:
+            self.shots = int(shots)
+            self.cam.set_shots(self.shots)
+            config.shots = shots
+            self.sigShotsChanged.emit(self.shots)
+        except ValueError:
+            pass
 
     def read_cam(self, two_dim=False):
 
@@ -248,7 +251,9 @@ class Controller(QObject):
     def start_plan(self, plan):
         self.plan = plan
         self.pause_plan = False
+        self.plan.sigPlanFinished.connect(self.stop_plan)
         self.starting_plan.emit(True)
+
 
     def add_task(self, task: Task):
         self.async_tasks.append(task)

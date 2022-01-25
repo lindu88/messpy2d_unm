@@ -1,12 +1,11 @@
-import asyncio
+import json
+import time
 from asyncio import Task
 from datetime import datetime, timedelta
 from pathlib import Path
 from typing import ClassVar, Tuple, Optional, Callable, Generator
 
 import attr
-import json
-import time
 from qtpy.QtCore import QObject, Signal, Slot
 
 from Config import config
@@ -30,7 +29,7 @@ class TimeTracker(QObject):
     scan_duration: Optional[float] = None
     point_start_time: float = 0
     point_end_time: Optional[float] = None
-
+    point_duration: Optional[float] = None
     sigTimesUpdated: ClassVar[Signal] = Signal(str)
 
     def __attrs_post_init__(self):
@@ -40,12 +39,6 @@ class TimeTracker(QObject):
     def total_duration(self):
         return time.time() - self.start_time
 
-
-    @property
-    def point_duration(self):
-        if self.point_end_time is not None:
-            return self.point_end_time - self.point_start_time
-
     @Slot()
     def scan_starting(self):
         self.scan_start_time = time.time()
@@ -54,7 +47,7 @@ class TimeTracker(QObject):
     @Slot()
     def scan_ending(self):
         self.scan_end_time = time.time()
-        self.scan_duration = self.scan_end_time-self.scan_start_time
+        self.scan_duration = self.scan_end_time - self.scan_start_time
 
     @Slot()
     def point_starting(self):
@@ -63,6 +56,7 @@ class TimeTracker(QObject):
     @Slot()
     def point_ending(self):
         self.point_end_time = time.time()
+        self.point_duration = self.point_end_time - self.point_start_time
         self.as_string()
 
     def as_string(self) -> str:
@@ -70,9 +64,8 @@ class TimeTracker(QObject):
         <h4>Time-Information</h4>
         Total Time: {timedelta(seconds=self.total_duration)}<br>
         """
-        if self.point_end_time:
+        if self.point_duration:
             s += f"Time per Point: {timedelta(seconds=self.point_duration)}<br>"
-
         if self.scan_duration:
             s += f"Time per Scan: {timedelta(seconds=self.scan_duration)}<br>"
         self.sigTimesUpdated.emit(s)
@@ -92,7 +85,7 @@ class Plan(QObject):
 
     sigPlanFinished: ClassVar[Signal] = Signal()
     sigPlanStarted: ClassVar[Signal] = Signal()
-    sigPlanStopped:  ClassVar[Signal] = Signal()
+    sigPlanStopped: ClassVar[Signal] = Signal()
 
     def __attrs_post_init__(self):
         super(Plan, self).__init__()
@@ -175,6 +168,7 @@ class ScanPlan(Plan):
 
     def post_scan(self) -> Generator:
         yield True
+
 
 import asyncio
 
