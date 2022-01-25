@@ -1,26 +1,22 @@
-import serial, time, random
-
-import os.path
-from Config import config
-from pathlib import Path
-import attr
-import numpy as np
-from Plans.PlanBase import Plan
+import threading
 import typing as T
 from collections import namedtuple
-from ControlClasses import Cam, Controller
-import threading
-import scipy.special as spec
+
+import attr
+import numpy as np
 import scipy.optimize as opt
+import scipy.special as spec
+from qtpy.QtCore import Signal
+
+from ControlClasses import Cam
 from Instruments.interfaces import ILissajousScanner
-from qtpy.QtCore import QObject, Signal
+from Plans.PlanBase import Plan
 
-def gauss_int(x, x0, amp, back, sigma):
-    return 0.5 * (1 + amp * spec.erf((x - x0) / (sigma * 2))) - back
 
+def gauss_int(x, x0, amp, back, w):
+    return 0.5 * (1 + amp * spec.erf(np.sqrt(2)*(x - x0) / w)) - back
 
 FitResult = namedtuple('FitResult', ['success', 'params', 'model'])
-
 
 def fit_curve(pos, val):
     pos = np.array(pos)
@@ -38,154 +34,112 @@ def fit_curve(pos, val):
 
 
 def make_text(name, fr):
-    text = '%s\n4*sigma: %2.3f mm \nFWHM %2.3f mm\nPOS %2.2f' % (
-        name, 4 * fr.params[-1], 2.355 * fr.params[-1], fr.params[0])
+    text = '%s\nBeamwaist: %2.3f mm \n 1/e: %2.3f mm \nFWHM %2.3f mm\nPOS %2.2f' % (
+        name, fr.params[-1],  0.59*fr.params[-1], 0.64 * fr.params[-1], fr.params[0])
     return text
 
 
-@attr.s(auto_attribs=True, cmp=False)
-class FocusScan(QObject):
+@attr.define
+class Scan:
+    axis: str
+    start: float
+    end: float
+    step: float
+    pos: list[float] = attr.Factory(list)
+    probe: list[float] = attr.Factory(list)
+    ref: list[float] = attr.Factory(list)
+
+    def analyze(self):
+        fit_probe = fit_curve(self.pos, self.probe)
+        fit_probe_txt = make_text(f'{self.axis} probe', fit_probe)
+        fit_ref = fit_curve(self.pos, self.ref)
+        fit_reftxt = make_text(f'{self.axis} ref', fit_ref)
+        return fit_probe, fit_probe_txt, fit_ref, fit_reftxt
+
+    def scan(self, mover, reader):
+        sign = np.sign(self.end - self.end)
+        for x0 in np.arange(self.start, self.end, self.step):
+            yield from mover(x0)
+            for data in reader():
+                yield
+            self.pos.append(x0)
+            self.probe.append(data[0])
+            self.ref.append(data[1])
+
+@attr.s(auto_attribs=True, eq=False)
+class FocusScan(Plan):
     """
     x_parameters and y_parameters are List [start, end, step];
     if list empty it is not measured
     """
-    name: str
-    meta: dict
     cam: Cam
     fh: ILissajousScanner
-    x_parameters: list = attr.ib()
-    y_parameters: list = attr.ib()
-    sigStepDone: Signal = attr.Factory(Signal)
-    sigFitDone: Signal = attr.Factory(Signal)
+    x_parameters: T.Optional[list]
+    y_parameters: T.Optional[list]
+    shots: int = 100
+    sigStepDone: T.ClassVar[Signal] = Signal()
+    sigFitDone: T.ClassVar[Signal] = Signal()
 
-    scan_x: bool = False
-    scan_y: bool = False
-
-    # sigXStepDone = attr.ib(attr.Factory(Signal))
-    # sigYStepDone = attr.ib(attr.Factory(Signal))
+    scan_x: T.Optional[Scan] = None
+    scan_y: T.Optional[Scan] = None
 
     def __attrs_post_init__(self):
-        QObject.__init__(self)
-        if self.x_parameters != []:
-            self.scan_x = True
-            self.pos_x = []
-            self.probe_x = []
-            self.ref_x = []
-        if self.y_parameters != []:
-            self.scan_y = True
-            self.pos_y = []
-            self.probe_y = []
-            self.ref_y = []
-
+        super(FocusScan, self).__attrs_post_init__()
+        if self.x_parameters:
+            self.scan_x = Scan(axis='x',
+                               start=self.x_parameters[0],
+                               end=self.x_parameters[1],
+                               step=self.x_parameters[2],
+                               )
+        if self.y_parameters:
+            self.scan_y = Scan(axis='x',
+                               start=self.x_parameters[0],
+                               end=self.x_parameters[1],
+                               step=self.x_parameters[2],
+                               )
         self.start_pos = self.fh.pos_home
         gen = self.make_scan_gen()
         self.make_step = lambda: next(gen)
+        self.cam.set_shots(self.shots)
 
     def make_scan_gen(self):
-        print('start scan focus')
         if self.scan_x:
-            scan_axis = 'x'
-            self.fh.set_pos_mm(self.start_pos[0] + self.x_parameters[0], self.start_pos[1])
-            for pos, probe, ref in self.scanner(self.x_parameters, scan_axis):
-                if pos is None:
-                    yield
-                    continue
-                self.pos_x.append(pos)
-                self.probe_x.append(probe)
-                self.ref_x.append(ref)
+            for _ in self.scan_x.scan(lambda x: self.mover("x", x), self.reader):
                 self.sigStepDone.emit()
                 yield
-            self.fit_xprobe = fit_curve(self.pos_x, self.probe_x)
-            self.xtext_probe = make_text('x probe', self.fit_xprobe)
-            print(self.xtext_probe)
-            self.fit_xref = fit_curve(self.pos_x, self.ref_x)
-            self.xtext_ref = make_text('x ref', self.fit_xref)
-            print(self.xtext_ref)
-
+        self.fh.set_pos_mm(*self.start_pos)
         if self.scan_y:
-            scan_axis = 'y'
-            self.fh.set_pos_mm(self.start_pos[0], self.start_pos[1] + self.y_parameters[0])
-            for pos, probe, ref in self.scanner(self.y_parameters, scan_axis):
-                print(pos)
-                if pos is None:
-                    yield
-                    continue
-                self.pos_y.append(pos)
-                self.probe_y.append(probe)
-                self.ref_y.append(ref)
+            for _ in self.scan_y.scan(lambda x: self.mover("y", x), self.reader):
                 self.sigStepDone.emit()
                 yield
-            self.fit_yprobe = fit_curve(self.pos_y, self.probe_y)
-            self.ytext_probe = make_text('y probe', self.fit_yprobe)
-            print(self.ytext_probe)
-            self.fit_yref = fit_curve(self.pos_y, self.ref_y)
-            self.ytext_ref = make_text('y ref', self.fit_yref)
-            print(self.ytext_ref)
+
         self.save()
         self.fh.set_pos_mm(*self.start_pos)
         self.sigFitDone.emit()
+        self.sigPlanFinished.emit()
         yield
 
-    def scanner(self, parameters, axis):
-        start_pos = parameters[0]
-        end_pos = parameters[1]
-        step = parameters[2]
+    def mover(self, axis, pos):
+        if axis == 'x':
+            self.fh.set_pos_mm(self.start_pos[0] + pos, None)
+        if axis == 'y':
+            self.fh.set_pos_mm(None, self.start_pos[1] + pos)
+        yield
 
-        sign = np.sign(end_pos - start_pos)
-        steps = np.arange(start_pos, end_pos, sign * step)
-        for i in steps:
-            if axis == 'x':
-                self.fh.set_pos_mm(self.start_pos[0] + i, None)
-            if axis == 'y':
-                self.fh.set_pos_mm(None, self.start_pos[1] + i)
-
-            t = threading.Thread(target=self.cam.read_cam)
-            t.start()
-            while t.is_alive():
-                yield (None, None, None)
-            val_probe = np.mean(self.cam.last_read.lines[0, :])
-            val_ref = np.mean(self.cam.last_read.lines[1, :])
-            yield i, val_probe, val_ref
-
-    def get_name(self, data_path=False):
-        if data_path:
-            p = Path(config.data_directory)
-        else:
-            p = Path(r"C:\Users\2dir\messpy2d\data_temps")
-        dname = p /  f"{self.name}_focusScan.npz"
-        i = 0
-        while dname.is_file():
-            dname = p / f"{self.name}{i}_focusScan.npz"
-            i = i + 1
-        self._name = dname
-        # if os.path.exists(dname):
-        #    name_exists = True
-        #    i = 0
-        #    while name_exists == True:
-        #        dname = p + f"\{self.name}{i}_focusScan.npz"
-        #        i += 1
-        #        if os.path.exists(dname) == False:
-        #            name_exists = False
-        self._name = dname
-        return self._name
+    def reader(self):
+        t = threading.Thread(target=self.cam.read_cam)
+        t.start()
+        while t.is_alive():
+            yield False, None
+        yield self.cam.last_read.lines.mean(1)
 
     def save(self):
-
-        print('save')
-        name = self.get_name()
+        return
+        name = self.get_file_name()[0]
+        self.save_meta()
         data = {'cam': self.cam.name}
-        # data['meta'] = self.meta
         if self.scan_x:
             data['scan x'] = np.vstack((self.pos_x, self.probe_x, self.ref_x))
         if self.scan_y:
             data['scan y'] = np.vstack((self.pos_y, self.probe_y, self.ref_y))
-        try:
-            name = self.get_name(data_path=True)
-            np.savez(name, **data)
-            # fig.savefig(name[:-4] + '.png')
-            print('saved in results')
-        except:
-            name = self.get_name()
-            np.savez(name, **data)
-            # fig.savefig(name[:-4] + '.png')
-            print('saved in local temp')
+        np.savez(name, **data)

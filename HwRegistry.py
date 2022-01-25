@@ -2,7 +2,7 @@ import platform
 
 import Instruments.dac_px
 from Config import config
-from Instruments.mocks import CamMock, DelayLineMock
+from Instruments.mocks import CamMock, DelayLineMock, StageMock
 import logging
 
 TESTING = config.testing
@@ -84,4 +84,4 @@ elif pc_name == 'DESKTOP-BBLLUO7':
 else:
     _cam = CamMock()
     _dl = DelayLineMock()
-
+    _sh = StageMock()
