@@ -6,9 +6,9 @@ from Instruments.mocks import CamMock, DelayLineMock
 import logging
 
 TESTING = config.testing
-_cam = CamMock()
+_cam = None #CamMock()
 _cam2 = None#CamMock(name="Mock2")
-_dl = DelayLineMock()
+_dl = None
 _dl2 = None
 _rot_stage = None
 _shutter = None
@@ -81,4 +81,7 @@ elif pc_name == 'DESKTOP-BBLLUO7':
     _shaper.rot1 = r1
     _shaper.rot2 = r2
 
+else:
+    _cam = CamMock()
+    _dl = DelayLineMock()
 

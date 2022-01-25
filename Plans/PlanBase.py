@@ -114,8 +114,10 @@ class Plan(QObject):
         """Collects all devices states."""
         self.meta['Saved at'] = datetime.now().isoformat()
         self.meta['Started at'] = self.creation_dt.isoformat()
+        devices_state = {}
         for i in IDevice.registered_devices:
-            self.meta[i.name] = i.get_state()
+            devices_state[i.name] = i.get_state()
+        self.meta['Devices'] = devices_state
 
     @Slot()
     def stop_plan(self):

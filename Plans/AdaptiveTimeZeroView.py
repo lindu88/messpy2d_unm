@@ -5,7 +5,7 @@ from qtpy.QtWidgets import QWidget, QPushButton, QLabel, QMessageBox
 from qtpy.QtCore import Qt
 import attr
 from ControlClasses import Controller
-from QtHelpers import vlay, PlanStartDialog, make_default_cycle, col, hlay
+from QtHelpers import vlay, PlanStartDialog, make_default_cycle, col, hlay, make_entry
 from .AdaptiveTimeZeroPlan import AdaptiveTimeZeroPlan
 from scipy.special import erfc
 import lmfit
@@ -113,7 +113,7 @@ class AdaptiveTZStarter(PlanStartDialog):
             max_diff=p["Max. Diff"],
             min_diff=p["Min. Diff"],
             name=p["Filename"],
-            meta=self.paras.getValues(),
+            meta=make_entry(self.paras),
             start=p["Start"],
             stop=p["Stop"],
             current_step=p['Initial Step'],

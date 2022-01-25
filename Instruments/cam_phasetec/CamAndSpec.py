@@ -121,7 +121,7 @@ class PhaseTecCam(ICam):
     def delete_valid_pixel(self):
         self.valid_pixel = None
 
-    def get_spectra(self, frames=None) -> Tuple[Dict[str, Spectrum], object]:
+    def get_spectra(self, frames=None, **kwargs) -> Tuple[Dict[str, Spectrum], object]:
         arr, ch = self._cam.read_cam()
         if self.background is not None:
             arr = arr - self.background[:, :, None]
@@ -145,7 +145,11 @@ class PhaseTecCam(ICam):
             if TWO_PROBES:
                 probe2 = np.nanmean(arr[pr2_range[0]:pr2_range[1], :, :], 0)
 
-        probemax = np.nanmax(arr[:, :, :10], 0)
+        get_max = kwargs.get('get_max', None)
+        if get_max:
+            probemax = np.nanmax(arr[:, :, :10], 0)
+        else:
+            probemax = None
         probe = Spectrum.create(probe, probemax, name='Probe1', frames=frames, first_frame=first_frame)
         ref = Spectrum.create(ref, name='Ref', frames=frames, first_frame=first_frame)
 
@@ -154,7 +158,7 @@ class PhaseTecCam(ICam):
         return {i.name: i for i in (probe, probe2, ref)}, ch
 
     def make_reading(self, frame_data=None) -> Reading:
-        d, ch = self.get_spectra(frames=2)
+        d, ch = self.get_spectra(frames=2, get_max=True)
         probe = d['Probe1']
         ref = d['Ref']
 
@@ -217,7 +221,7 @@ class PhaseTecCam(ICam):
     def make_2D_reading(self, t2: np.ndarray, rot_frame: float,
                         repetitions: int = 1, save_frames: bool = False) -> \
             Dict[str, Reading2D]:
-        spectra, ch = self.get_spectra(frames=self.shots // repetitions)
+        spectra, ch = self.get_spectra(frames=self.shots // repetitions, get_max=False)
         two_d_data = {}
         with concurrent.futures.ThreadPoolExecutor() as executor:
             for name in ('Probe1', 'Probe2'):
