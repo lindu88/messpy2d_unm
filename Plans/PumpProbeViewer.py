@@ -9,7 +9,7 @@ from Plans.PumpProbe import PumpProbePlan
 from pyqtgraph.parametertree import Parameter, ParameterTree
 
 import pyqtgraph as pg
-from QtHelpers import ObserverPlot, PlanStartDialog
+from QtHelpers import ObserverPlot, PlanStartDialog, make_entry
 import numpy as np
 
 np.seterr('ignore')
@@ -19,7 +19,7 @@ import os
 os.environ['QT_API'] = 'pyqt5'
 
 from typing import List, TYPE_CHECKING
-# if TYPE_CHECKING:
+
 from Plans.PumpProbe import PumpProbeData, PumpProbePlan
 from .PlanBase import sample_parameters
 from .PlanParameters import DelayParameter
@@ -310,7 +310,7 @@ class PumpProbeStarter(PlanStartDialog):
         self.save_defaults()
         p = PumpProbePlan(
             name=p['Filename'],
-            meta=self.paras.getValues(),
+            meta=make_entry(self.paras),
             t_list=np.asarray(t_list),
             shots=p['Shots'],
             controller=controller,

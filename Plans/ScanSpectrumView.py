@@ -3,7 +3,7 @@ import pyqtgraph.parametertree as pt
 from qtpy.QtWidgets import QWidget
 
 from ControlClasses import Controller
-from QtHelpers import vlay, PlanStartDialog, ObserverPlot
+from QtHelpers import vlay, PlanStartDialog, ObserverPlot, make_entry
 from .ScanSpectrum import ScanSpectrum
 from .PlanBase import sample_parameters
 
@@ -96,7 +96,7 @@ class ScanSpectrumStarter(PlanStartDialog):
         scan = ScanSpectrum(
             name=p['Filename'],
             cam=self.candidate_cams[p['Cam']],
-            meta=s.getValues(),
+            meta=make_entry(self.paras),
             wl_list=np.sort(wl_list),
             timeout=p['timeout']
         )
