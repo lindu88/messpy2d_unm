@@ -135,9 +135,7 @@ class AOMTwoDViewer(GraphicsLayoutWidget):
             </big>
             '''
         s = s + self.time_str
-
         self.info_label.setText(s)
-
 
 
 class AOMTwoDStarter(PlanStartDialog):
@@ -172,7 +170,6 @@ class AOMTwoDStarter(PlanStartDialog):
 
         p = AOMTwoDPlan(
             name=p['Filename'],
-            meta=self.paras.getValues(),
             meta=make_entry(self.paras),
             t2=np.asarray(t_list),
             controller=controller,
