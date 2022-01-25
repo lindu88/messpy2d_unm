@@ -19,10 +19,10 @@ import os
 os.environ['QT_API'] = 'pyqt5'
 
 from typing import List, TYPE_CHECKING
-#if TYPE_CHECKING:
+# if TYPE_CHECKING:
 from Plans.PumpProbe import PumpProbeData, PumpProbePlan
 from .PlanBase import sample_parameters
-
+from .PlanParameters import DelayParameter
 
 
 class LineLabel(QLabel):
@@ -154,7 +154,7 @@ class PumpProbeDataViewer(QWidget):
         p = self.pp
         s = self.pp_plan
         if p.rot_stage_angles:
-            rot_stage_pos = f'<dt>t pos:<dd>{s.t_idx+1}/{len(s.t_list)}'
+            rot_stage_pos = f'<dt>t pos:<dd>{s.t_idx + 1}/{len(s.t_list)}'
         else:
             rot_stage_pos = ''
 
@@ -165,7 +165,7 @@ class PumpProbeDataViewer(QWidget):
         <dt>Name:<dd>{p.name}
         <dt>Shots:<dd>{p.shots}
         <dt>Scan:<dd>{s.scan}
-        <dt>Wl pos:<dd>{s.wl_idx+1}/{len(s.cwl)}        
+        <dt>Wl pos:<dd>{s.wl_idx + 1}/{len(s.cwl)}        
         {rot_stage_pos}
         <dt>T pos:<dd>{s.t_idx}/{len(s.t_list)}
         <dt>Time per scan<dd>{p.time_per_scan}
@@ -234,15 +234,15 @@ class PumpProbeDataViewer(QWidget):
     def get_x(self):
         wl = self.pp_plan.wavelengths[self.pp_plan.wl_idx]
         if self.use_wavenumbers.isChecked():
-            return 1e7/wl
+            return 1e7 / wl
         else:
             return wl
 
     def update_indicator_line_pos(self):
         for lsts in self.inf_lines:
             for l in lsts:
-                l.wl = 1e7/l.wl
-                l.pos = 1e7/l.pos
+                l.wl = 1e7 / l.wl
+                l.pos = 1e7 / l.pos
                 l.line.setPos(l.pos)
                 l.update_pos()
 
@@ -264,16 +264,7 @@ class PumpProbeStarter(PlanStartDialog):
                {'name': 'Operator', 'type': 'str', 'value': ''},
                {'name': 'Shots', 'type': 'int', 'max': 4000, 'decimals': 5,
                 'step': 500, 'value': 100},
-               {'name': 'Linear Range (-)', 'suffix': 'ps', 'type': 'float', 'value': -1},
-               {'name': 'Linear Range (+)', 'suffix': 'ps', 'type': 'float', 'value': 1},
-               {'name': 'Linear Range (step)', 'suffix': 'ps', 'type': 'float', 'min': 0.01},
-               {'name': 'Logarithmic Scan', 'type': 'bool'},
-               {'name': 'Logarithmic End', 'type': 'float', 'suffix': 'ps',
-                'min': 0.},
-               {'name': 'Logarithmic Points', 'type': 'int', 'min': 0},
-               dict(name="Add pre-zero times", type='bool', value=False),
-               dict(name="Num pre-zero points", type='int', value=10, min=0, max=20),
-               dict(name="Pre-Zero pos", type='float', value=-60., suffix='ps'),
+               DelayParameter(),
                dict(name='Use Shutter', type='bool', value=True, enabled=has_shutter, visible=has_shutter),
                dict(name='Use Rotation Stage', type='bool', value=has_rot, enabled=has_rot, visible=has_rot),
                dict(name='Angles in deg.', type='str', value='0, 45', enabled=has_rot, visible=has_rot)]
@@ -292,17 +283,8 @@ class PumpProbeStarter(PlanStartDialog):
     def create_plan(self, controller: Controller):
         p = self.paras.child('Exp. Settings')
         s = self.paras.child('Sample')
-        t_list = np.arange(p['Linear Range (-)'],
-                           p['Linear Range (+)'],
-                           p['Linear Range (step)']).tolist()
-        if p['Logarithmic Scan']:
-            t_list += (np.geomspace(p['Linear Range (+)'], p['Logarithmic End'], p['Logarithmic Points']).tolist())
 
-        if p['Add pre-zero times']:
-            n = p['Num pre-zero points']
-            pos = p['Pre-Zero pos']
-            times = np.linspace(pos - 1, pos, n).tolist()
-            t_list = times + t_list
+        t_list = p.child("Delay Times").generate_values()
 
         if p['Use Rotation Stage'] and self.controller.rot_stage:
             s = p['Angles in deg.'].split(',')
@@ -318,7 +300,7 @@ class PumpProbeStarter(PlanStartDialog):
                 cam_cwls = []
                 for s in l:
                     if s[-1] == 'c':
-                        cam_cwls.append(1e7/float(s[:-1]))
+                        cam_cwls.append(1e7 / float(s[:-1]))
                     else:
                         cam_cwls.append(float(s))
                 cwls.append(cam_cwls)

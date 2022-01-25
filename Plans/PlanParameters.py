@@ -6,15 +6,16 @@ class DelayParameter(GroupParameter):
     def __init__(self, **opts):
         opts['type'] = 'list'
         opts['value'] = True
-        opts['name'] = 'Delay Times'
+        if "name" not in opts:
+            opts['name'] = 'Delay Times'
         GroupParameter.__init__(self, **opts)
-        time_parameters = [{'name': 'Linear Range (-)', 'suffix': 'ps', 'type': 'float', 'value': -1},
-                           {'name': 'Linear Range (+)', 'suffix': 'ps', 'type': 'float', 'value': 1},
-                           {'name': 'Linear Range (step)', 'suffix': 'ps', 'type': 'float', 'min': 0.01},
+        time_parameters = [{'name': 'Linear Range (-)', 'suffix': 'ps', 'type': 'float', 'value': -1, 'step': 0.05},
+                           {'name': 'Linear Range (+)', 'suffix': 'ps', 'type': 'float', 'value': 1, 'step': 0.05},
+                           {'name': 'Linear Range (step)', 'suffix': 'ps', 'type': 'float', 'min': 0.01, 'step': 0.05},
                            {'name': 'Logarithmic Scan', 'type': 'bool'},
                            {'name': 'Logarithmic End', 'type': 'float', 'suffix': 'ps',
-                            'min': 0.},
-                           {'name': 'Logarithmic Points', 'type': 'int', 'min': 0.01},
+                            'min': 0.1, 'value':100},
+                           {'name': 'Logarithmic Points', 'type': 'int', 'min': 0},
                            dict(name="Add pre-zero times", type='bool', value=False),
                            dict(name="Num pre-zero points", type='int', value=10, min=0, max=20),
                            dict(name="Pre-Zero pos", type='float', value=-60., suffix='ps'),
@@ -42,9 +43,9 @@ class DelayParameter(GroupParameter):
 
     def format_values(self, *args) -> str:
         self.generate_values()
-        out_str = f"Time-points: {len(self.t_list)}\n"
-        for k, v in enumerate(self.t_list):
-            if (k % 5 == 0) and k > 0:
-                out_str += "\n"
-            out_str += "%-8.2f " % v
+        out_str = f"Time-points: {len(self.t_list)}"
+        #for k, v in enumerate(self.t_list):
+        #    if (k % 5 == 0) and k > 0:
+        #        out_str += "\n"
+        #    out_str += "%-8.2f " % v
         self.out_str.setValue(out_str)

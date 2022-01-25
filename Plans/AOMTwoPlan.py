@@ -27,14 +27,14 @@ class AOMTwoDPlan(ScanPlan):
     plan_shorthand: ClassVar[str] = "2D"
     controller: Controller
     shaper: AOM
-    t3: np.ndarray
-    t3_idx: int = 0
-    cur_t3: float = 0
+    t2: np.ndarray
+    t2_idx: int = 0
+    cur_t2: float = 0
     do_stop: bool = False
-    max_t2: float = 4
-    step_t2: float = 0.05
+    max_t1: float = 4
+    step_t1: float = 0.05
     mode: Literal['classic', 'bragg'] = 'classic'
-    t2: np.ndarray = attrib()
+    t1: np.ndarray = attrib()
     rot_frame_freq: float = 0
     repetitions: int = 1
     phase_frames: Literal[1, 2, 4] = 4
@@ -55,16 +55,16 @@ class AOMTwoDPlan(ScanPlan):
     def _read_freqs(self):
         return self.controller.cam.wavenumbers
 
-    @t2.default
+    @t1.default
     def _t2_default(self):
-        t2 = np.arange(0, abs(self.max_t2) + 1e-3, self.step_t2)
-        if self.max_t2 < 0:
+        t2 = np.arange(0, abs(self.max_t1) + 1e-3, self.step_t1)
+        if self.max_t1 < 0:
             t2 = -t2
         return t2
 
     @pump_freqs.default
     def _calc_freqs(self):
-        THz = np.fft.rfftfreq(self.t2.size*2, d=self.step_t2)
+        THz = np.fft.rfftfreq(self.t1.size * 2, d=self.step_t1)
         return THz2cm(THz) + self.rot_frame_freq
 
     @data_file.default
@@ -73,9 +73,9 @@ class AOMTwoDPlan(ScanPlan):
         if name.exists():
             name.unlink()
         f = h5py.File(name, mode='a')
+        f['t1'] = self.t1
         f['t2'] = self.t2
-        f['t3'] = self.t3
-        f['t2'].attrs['rot_frame'] = self.rot_frame_freq
+        f['t1'].attrs['rot_frame'] = self.rot_frame_freq
         f['wn'] = self.controller.cam.wavenumbers
         f['wl'] = self.controller.cam.wavelengths
         atexit.register(f.close)
@@ -83,9 +83,9 @@ class AOMTwoDPlan(ScanPlan):
 
     def scan(self):
         c = self.controller
-        for self.t3_idx, self.cur_t3 in enumerate(self.t3):
+        for self.t2_idx, self.cur_t2 in enumerate(self.t2):
 
-            c.delay_line.set_pos(self.cur_t3*1000, do_wait=False)
+            c.delay_line.set_pos(self.cur_t2 * 1000, do_wait=False)
             while c.delay_line.moving:
                 yield
 
@@ -102,12 +102,12 @@ class AOMTwoDPlan(ScanPlan):
         self.shaper.phase_cycle = False
         self.shaper.do_dispersion_compensation = True
         self.shaper.mode = self.mode
-        self.shaper.double_pulse(self.t2, cm2THz(self.rot_frame_freq), self.phase_frames)
+        self.shaper.double_pulse(self.t1, cm2THz(self.rot_frame_freq), self.phase_frames)
 
         self.shaper.set_wave_amp(0.2)
 
         self.shaper.generate_waveform()
-        self.controller.cam.set_shots(self.repetitions*(self.t2.size*self.phase_frames))
+        self.controller.cam.set_shots(self.repetitions * (self.t1.size * self.phase_frames))
         yield
 
     def calculate_scan_means(self):
@@ -146,21 +146,21 @@ class AOMTwoDPlan(ScanPlan):
     def measure_point(self):
         with concurrent.futures.ThreadPoolExecutor() as executor:
             self.time_tracker.point_starting()
-            future = executor.submit(self.controller.cam.cam.make_2D_reading, self.t2,
+            future = executor.submit(self.controller.cam.cam.make_2D_reading, self.t1,
                                      self.rot_frame_freq, self.repetitions, self.save_frames_enabled)
             while not future.done():
                 yield
         self.time_tracker.point_ending()
         ret = future.result()
         for line, data in ret.items():
-            ds = self.data_file.create_dataset(f'ifr_data/{line}/{self.t3_idx}/{self.cur_scan}', data=data.interferogram)
-            ds.attrs['time'] = self.cur_t3
-            ds = self.data_file.create_dataset(f'2d_data/{line}/{self.t3_idx}/{self.cur_scan}', data=data.signal_2D)
-            ds.attrs['time'] = self.cur_t3
+            ds = self.data_file.create_dataset(f'ifr_data/{line}/{self.t2_idx}/{self.cur_scan}', data=data.interferogram)
+            ds.attrs['time'] = self.cur_t2
+            ds = self.data_file.create_dataset(f'2d_data/{line}/{self.t2_idx}/{self.cur_scan}', data=data.signal_2D)
+            ds.attrs['time'] = self.cur_t2
             if self.save_frames_enabled:
-                ds = self.data_file.create_dataset(f'frames/{line}/{self.t3_idx}/{self.cur_scan}', data=data.frames)
-            disp_2d = self.data_file.get(f'2d_data/{line}/{self.t3_idx}/mean', data.signal_2D)
-            disp_ifr = self.data_file.get(f'ifr_data/{line}/{self.t3_idx}/mean', data.interferogram)
+                ds = self.data_file.create_dataset(f'frames/{line}/{self.t2_idx}/{self.cur_scan}', data=data.frames)
+            disp_2d = self.data_file.get(f'2d_data/{line}/{self.t2_idx}/mean', data.signal_2D)
+            disp_ifr = self.data_file.get(f'ifr_data/{line}/{self.t2_idx}/mean', data.interferogram)
             self.disp_arrays[line] = disp_2d, disp_ifr
         self.last_2d = np.array(disp_2d)
         self.last_ir = np.array(disp_ifr)

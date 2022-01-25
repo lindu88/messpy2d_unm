@@ -6,6 +6,7 @@ from pyqtgraph import PlotWidget, ImageItem, PlotItem, colormap, GraphicsLayoutW
 from qtpy.QtWidgets import QWidget, QLabel
 from qtpy.QtCore import Slot
 from ControlClasses import Controller
+from Plans.PlanParameters import DelayParameter
 from QtHelpers import vlay, PlanStartDialog, hlay
 from .AOMTwoPlan import AOMTwoDPlan
 from .PlanBase import sample_parameters
@@ -23,8 +24,8 @@ class AOMTwoDViewer(GraphicsLayoutWidget):
         pw.setLabels(bottom='Probe Freq', left='Time')
         cmap = colormap.get("CET-D1")
         self.ifr_img = ImageItem()
-        rect = (self.probe_freq.max(), 0, -self.probe_freq.ptp(), plan.max_t2)
-        self.ifr_img.setImage(np.zeros((128, plan.t2.size)), rect=rect)
+        rect = (self.probe_freq.max(), 0, -self.probe_freq.ptp(), plan.max_t1)
+        self.ifr_img.setImage(np.zeros((128, plan.t1.size)), rect=rect)
         pw.addItem(self.ifr_img)
         self.spec_image_view = pw
         self.ifr_img.mouseClickEvent = self.ifr_clicked
@@ -89,12 +90,12 @@ class AOMTwoDViewer(GraphicsLayoutWidget):
                                             pen=mkPen(_int_color, width=1))
         line._int_color = _int_color
         cur_line = 'Probe2'
-        self.ifr_lines[line] = self.trans_plot.plot(self.plan.t2, self.plan.disp_arrays[cur_line][1][round(x), :],
+        self.ifr_lines[line] = self.trans_plot.plot(self.plan.t1, self.plan.disp_arrays[cur_line][1][round(x), :],
                                                     pen=line.pen)
 
         def update(line: InfiniteLine):
             idx = np.argmin(abs(self.probe_freq - line.pos()[0]))
-            self.ifr_lines[line].setData(self.plan.t2, self.plan.last_ir[round(idx), :])
+            self.ifr_lines[line].setData(self.plan.t1, self.plan.last_ir[round(idx), :])
 
         def delete(line: InfiniteLine, ev):
             ev.accept()
@@ -127,7 +128,7 @@ class AOMTwoDViewer(GraphicsLayoutWidget):
             <dl>
             <dt>Name:<dd>{p.name}
             <dt>Scan:<dd>{p.cur_scan} / {p.max_scan}
-            <dt>Time-point:<dd>{p.t3_idx} / {p.t3.size}: {p.cur_t3: .2f} ps
+            <dt>Time-point:<dd>{p.t2_idx} / {p.t2.size}: {p.cur_t2: .2f} ps
             </dl>
             </big>
             '''
@@ -153,16 +154,8 @@ class AOMTwoDStarter(PlanStartDialog):
                {'name': 'Phase Cycles', 'type': 'list', 'values': [1, 2, 4]},
                {'name': 'Rot. Frame', 'suffix': 'cm-1', 'type': 'int', 'value': 2000},
                {'name': 'Mode', 'type': 'list', 'values': ['classic', 'bragg']},
-               {'name': 'Receptions', 'type': 'int', 'value': 1},
-               {'name': 'Linear Range (-)', 'suffix': 'ps', 'type': 'float', 'value': 0},
-               {'name': 'Linear Range (+)', 'suffix': 'ps', 'type': 'float', 'value': 1},
-               {'name': 'Linear Range (step)', 'suffix': 'ps', 'type': 'float', 'min': 0.2},
-               {'name': 'Logarithmic Scan', 'type': 'bool'},
-               {'name': 'Logarithmic End', 'type': 'float', 'suffix': 'ps', 'min': 0.},
-               {'name': 'Logarithmic Points', 'type': 'int', 'min': 0},
-               dict(name="Add pre-zero times", type='bool', value=False),
-               dict(name="Num pre-zero points", type='int', value=10, min=0, max=20),
-               dict(name="Pre-Zero pos", type='float', value=-60., suffix='ps'),
+               {'name': 'Repetitions', 'type': 'int', 'value': 1},
+               DelayParameter()
                ]
 
         two_d = {'name': 'Exp. Settings', 'type': 'group', 'children': tmp}
@@ -172,23 +165,13 @@ class AOMTwoDStarter(PlanStartDialog):
     def create_plan(self, controller: Controller):
         p = self.paras.child('Exp. Settings')
         s = self.paras.child('Sample')
-        t_list = np.arange(p['Linear Range (-)'],
-                           p['Linear Range (+)'],
-                           p['Linear Range (step)']).tolist()
-        if p['Logarithmic Scan']:
-            t_list += (np.geomspace(p['Linear Range (+)'], p['Logarithmic End'], p['Logarithmic Points']).tolist())
-
-        if p['Add pre-zero times']:
-            n = p['Num pre-zero points']
-            pos = p['Pre-Zero pos']
-            times = np.linspace(pos - 1, pos, n).tolist()
-            t_list = times + t_list
-
+        t_list = p.child("Delay Times").generate_values()
         self.save_defaults()
+
         p = AOMTwoDPlan(
             name=p['Filename'],
             meta=self.paras.getValues(),
-            t3=np.asarray(t_list),
+            t3=t_list,
             controller=controller,
             max_t2=p['t2 (+)'],
             step_t2=p['t2 (step)'],
@@ -196,7 +179,7 @@ class AOMTwoDStarter(PlanStartDialog):
             shaper=controller.shaper,
             phase_frames=p['Phase Cycles'],
             mode=p['Mode'],
-            repetitions=p['Receptions']
+            repetitions=p['Repetitions']
         )
         return p
 
