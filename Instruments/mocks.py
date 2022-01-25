@@ -1,9 +1,10 @@
+import typing
 from typing import Dict, Optional
 
 import numpy as np
 import attr
 from Instruments.interfaces import ICam, IDelayLine, IRotationStage, \
-    IShutter, Reading, Spectrum, ISpectrograph
+    IShutter, Reading, Spectrum, ISpectrograph, ILissajousScanner
 import time
 import threading
 
@@ -16,6 +17,7 @@ class MockState:
     shaper_running: bool = True
     shutter: bool = False
     rot_stage_angle: float = 45
+    stage_pos: list[float] = [0, 0, 0]
 
 state = MockState()
 
@@ -74,8 +76,12 @@ class CamMock(ICam):
     def read_cam(self):
         x = self.get_wavelength_array()
         y = 300*np.exp(-(x-250)**2/50**2/2)
-        a = np.random.normal(loc=y, scale=5, size=(self.shots, self.channels))
-        b = np.random.normal(loc=y, scale=5, size=(self.shots, self.channels))
+        from math import erfc, sqrt
+        knife_amp = 2-erfc(sqrt(2)*(-state.stage_pos[0]+0.5) / 0.25)
+        knife_amp *= 2 - erfc(sqrt(2) * (-state.stage_pos[1]+0.5) / 0.25)
+        y = y*(knife_amp/4)
+        a = np.random.normal(loc=y, scale=15, size=(self.shots, self.channels))
+        b = np.random.normal(loc=y, scale=15, size=(self.shots, self.channels))
         ext = np.random.normal(size=(self.shots, self.ext_channels))
         chop = np.zeros(self.shots, 'bool')
         chop[::2] = True
@@ -173,5 +179,35 @@ class ShutterMock(IShutter):
 
 
 @attr.s(auto_attribs=True)
-class AOMMock:
-    pass
+class StageMock(ILissajousScanner):
+    name: str = 'MockSampleStage'
+    has_zaxis: bool = True
+    _pos: list[float] = [0, 0, 0]
+    pos_home: tuple[float] = (0, 0)
+
+    def is_moving(self) -> typing.Tuple[bool, bool]:
+        return False, False
+
+    def set_home(self):
+        pass
+
+    def set_zpos_mm(self, mm: float):
+        state.stage_pos[2] = mm
+
+    def get_zpos_mm(self) -> float:
+        return state.stage_pos[2]
+
+    def is_zmoving(self) -> bool:
+        return False
+
+    def get_pos_mm(self) -> typing.Tuple[float, float]:
+        return tuple(state.stage_pos[:2])
+
+    def set_pos_mm(self, x=None, y=None):
+        print(f"{x=} {y=}")
+        if x is not None:
+            state.stage_pos[0] = x
+        if y is not None:
+            state.stage_pos[1] = y
+
+

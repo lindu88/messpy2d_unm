@@ -15,56 +15,32 @@ from .PlanBase import sample_parameters
 class FocusScanView(QWidget):
     def __init__(self, fsPlan: FocusScan, *args, **kwargs):
         super(FocusScanView, self).__init__(*args, **kwargs)
-
+        self.plan = fsPlan
+        fs = fsPlan
         if fsPlan.scan_x:
             self.x_probe_plot = ObserverPlot(
-                obs= (fsPlan, "probe_x"),
+                obs=[lambda: fs.scan_x.probe],
                 signal=fsPlan.sigStepDone,
-                x=fsPlan.pos_x
+                x=fsPlan.scan_x.pos
             )
 
             self.x_ref_plot = ObserverPlot(
-                obs=(fsPlan, "ref_x"),
+                obs=[lambda: fs.scan_x.ref],
                 signal=fsPlan.sigStepDone,
-                x=fsPlan.pos_x
+                x=fsPlan.scan_x.pos
             )
         if fsPlan.scan_y:
             self.y_probe_plot = ObserverPlot(
-                obs=(fsPlan, "probe_y"),
+                obs=[lambda: fs.scan_y.probe],
                 signal=fsPlan.sigStepDone,
-                x=fsPlan.pos_y
+                x=fsPlan.scan_y.pos
             )
 
             self.y_ref_plot = ObserverPlot(
-                obs=(fsPlan, "ref_y"),
+                obs=[lambda: fs.scan_y.ref],
                 signal=fsPlan.sigStepDone,
-                x=fsPlan.pos_y
+                x=fsPlan.scan_y.pos
             )
-
-        def plotFit():
-            pen = pg.mkPen(color='#e377c2', width=2)
-            if fsPlan.scan_x:
-                self.x_probe_plot.plotItem.plot(fsPlan.pos_x, fsPlan.fit_xprobe.model, pen = pen)
-                text= pg.TextItem(fsPlan.xtext_probe, anchor=(0, 1.0))
-                text.setPos(fsPlan.pos_x[int(len(fsPlan.pos_x) / 2)], (np.max(fsPlan.probe_x) + np.min(fsPlan.probe_x)) / 2.)
-                self.x_probe_plot.plotItem.addItem(text)
-                self.x_ref_plot.plotItem.plot(fsPlan.pos_x, fsPlan.fit_xref.model, pen = pen)
-                text = pg.TextItem(fsPlan.xtext_ref, anchor=(0, 1.0))
-                text.setPos(fsPlan.pos_x[int(len(fsPlan.pos_x) / 2)], (np.max(fsPlan.ref_x) + np.min(fsPlan.ref_x)) / 2.)
-                self.x_ref_plot.plotItem.addItem(text)
-
-            if fsPlan.scan_y:
-                self.y_probe_plot.plotItem.plot(fsPlan.pos_y, fsPlan.fit_yprobe.model, pen = pen)
-                text = pg.TextItem(fsPlan.ytext_probe, anchor=(0, 1.0))
-                text.setPos(fsPlan.pos_y[int(len(fsPlan.pos_y) / 2)], (np.max(fsPlan.probe_y) + np.min(fsPlan.probe_y)) / 2.)
-                self.y_probe_plot.plotItem.addItem(text)
-                self.y_ref_plot.plotItem.plot(fsPlan.pos_y, fsPlan.fit_yref.model, pen = pen)
-                text = pg.TextItem(fsPlan.ytext_ref, anchor=(0, 1.0))
-                text.setPos(fsPlan.pos_y[int(len(fsPlan.pos_y) / 2)], (np.max(fsPlan.ref_y) + np.min(fsPlan.ref_y)) / 2.)
-                self.y_ref_plot.plotItem.addItem(text)
-
-        fsPlan.sigFitDone.connect(lambda: plotFit())
-
 
         if fsPlan.scan_x and fsPlan.scan_y:
             self.plotlay =  vlay([hlay([self.x_probe_plot, self.x_ref_plot]),
@@ -75,6 +51,7 @@ class FocusScanView(QWidget):
             self.plotlay = hlay([self.y_probe_plot, self.y_ref_plot])
 
         fsPlan.sigFitDone.connect(lambda: self.button.setEnabled(True))
+        fsPlan.sigFitDone.connect(self.plot_fit)
         self.button = QPushButton('Redo Scan', self)
         self.button.setEnabled(False)
         self.button.clicked.connect(lambda: print('I wish that worked'))
@@ -83,6 +60,33 @@ class FocusScanView(QWidget):
         layout.addLayout(self.plotlay)
         layout.addWidget(self.button)
         self.setLayout(layout)
+
+    def plot_fit(self):
+        pen = pg.mkPen(color='#e377c2', width=2)
+        fsPlan  = self.plan
+        if sx := fsPlan.scan_x:
+            pr, pr_text, ref, ref_txt = sx.analyze()
+            self.x_probe_plot.plot(sx.pos, pr.model, pen=pen)
+            text = pg.TextItem(pr_text, anchor=(0, 1.0))
+            text.setPos(sx.pos[int(len(sx.pos) / 2)],
+                        (np.max(sx.probe) + np.min(sx.probe)) / 2.)
+            self.x_probe_plot.plotItem.addItem(text)
+            self.x_ref_plot.plotItem.plot(sx.pos, ref.model, pen=pen)
+            text = pg.TextItem(ref_txt, anchor=(0, 1.0))
+            text.setPos(sx.pos[int(len(sx.pos) / 2)], (np.max(sx.ref) + np.min(sx.ref)) / 2.)
+            self.x_ref_plot.plotItem.addItem(text)
+
+        if sx := fsPlan.scan_y:
+            pr, pr_text, ref, ref_txt = sx.analyze()
+            self.y_probe_plot.plot(sx.pos, pr.model, pen=pen)
+            text = pg.TextItem(pr_text, anchor=(0, 1.0))
+            text.setPos(sx.pos[int(len(sx.pos) / 2)],
+                        (np.max(sx.probe) + np.min(sx.probe)) / 2.)
+            self.y_probe_plot.plotItem.addItem(text)
+            self.y_ref_plot.plotItem.plot(sx.pos, ref.model, pen=pen)
+            text = pg.TextItem(ref_txt, anchor=(0, 1.0))
+            text.setPos(sx.pos[int(len(sx.pos) / 2)], (np.max(sx.ref) + np.min(sx.ref)) / 2.)
+            self.y_ref_plot.plotItem.addItem(text)
 
 
 class FocusScanStarter(PlanStartDialog):
@@ -126,6 +130,7 @@ class FocusScanStarter(PlanStartDialog):
             name=p['Filename'],
             cam=self.candidate_cams[p['Cam']],
             meta=s,
+            shots=p['Shots'],
             x_parameters=x_stepper,
             y_parameters=y_stepper,
             fh=controller.sample_holder,

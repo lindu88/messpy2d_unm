@@ -104,6 +104,10 @@ class MainWindow(QMainWindow):
             ('Scan Spectrum', 'ei.barcode', ScanSpectrumStarter),
             ('Adaptive TZ', 'ei.car', AdaptiveTZStarter)
         ]
+
+        if self.controller.sample_holder is not None:
+            plans.append(('Focus Scan', 'fa5s.ruler-combined', FocusScanStarter))
+
         if self.controller.shaper is not None:
             plans += [('GVD Scan', 'fa5s.stopwatch', GVDScanStarter)]
             plans += [('2D Measurement', 'ei.graph', AOMTwoDStarter)]
@@ -114,17 +118,17 @@ class MainWindow(QMainWindow):
             pp.clicked.connect(plan_starter(starter))
             tb.addWidget(pp)
 
-        asl_icon = qta.icon('fa5s.ruler', color='white')
-        pp = QPushButton(text='Shaper Calibration', icon=asl_icon)
+        if self.controller.shaper is not None:
+            def start_calib():
+                c = self.controller
+                self.cal_viewer = CalibScanView(c.cam_list[0], c.shaper)
+                self.cal_viewer.sigPlanCreated.connect(c.start_plan)
+                self.cal_viewer.show()
 
-        def start_calib():
-            c = self.controller
-            self.cal_viewer = CalibScanView(c.cam_list[0], c.shaper)
-            self.cal_viewer.sigPlanCreated.connect(c.start_plan)
-            self.cal_viewer.show()
-
-        pp.clicked.connect(start_calib)
-        tb.addWidget(pp)
+            asl_icon = qta.icon('fa5s.ruler', color='white')
+            pp = QPushButton(text='Shaper Calibration', icon=asl_icon)
+            pp.clicked.connect(start_calib)
+            tb.addWidget(pp)
 
         alg_icon = qta.icon('fa5s.crosshairs')
         pp = QPushButton('Show alignment helper', icon=alg_icon)
