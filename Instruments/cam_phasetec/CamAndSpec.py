@@ -11,13 +11,13 @@ from qtpy.QtCore import Slot, Signal
 from Config import config
 from Instruments.interfaces import ICam
 from Instruments.signal_processing import Reading, Spectrum, first, fast_col_mean, Reading2D
-# from ir_cam import PT_MCT
-from .imaq_nicelib import Cam
-from .spec_sp2500i import SP2150i
+
+from Instruments.cam_phasetec.imaq_nicelib import Cam
+from Instruments.cam_phasetec.spec_sp2500i import SP2150i
 from typing import List, Optional, Tuple, Dict
 from scipy.stats import trim_mean
 from math import log
-from .spec_sp2500i import SP2150i
+
 
 LOG10 = log(10)
 PROBE_CENTER = 85
@@ -76,7 +76,7 @@ class PhaseTecCam(ICam):
 
     @spectrograph.default
     def _default_spec(self):
-        return SP2150i(comport='COM4', name='spec')
+        return SP2150i()
 
     @background.default
     def _back_default(self):
@@ -281,4 +281,4 @@ class PhaseTecCam(ICam):
             return (np.arange(128) - center_ch) * disp + center_wl
 
 
-_ircam = PhaseTecCam()
+
