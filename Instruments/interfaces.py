@@ -344,7 +344,7 @@ class ILissajousScanner(IDevice):
         pass
 
     @abc.abstractmethod
-    def set_pos_mm(self, x=None, y=None):
+    def set_pos_mm(self, x: typing.Optional[float]=None, y:typing.Optional[float]=None):
         pass
 
     def set_vel_mm(self, xvel=None, yvel=None):
