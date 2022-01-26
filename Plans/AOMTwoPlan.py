@@ -153,21 +153,21 @@ class AOMTwoDPlan(ScanPlan):
 
         self.time_tracker.point_ending()
         ret = future.result()
-        thr = threading.Thread(target=self.save_data, args=(ret, self.t3_idx, self.cur_t3,))
+        thr = threading.Thread(target=self.save_data, args=(ret, self.t2_idx, self.cur_t2,))
         thr.start()
 
         #self.save_data(ret, self.t3_idx, self.cur_t3)
 
-    def save_data(self, ret, t3_idx, cur_scan):
+    def save_data(self, ret, t2_idx, cur_scan):
         for line, data in ret.items():
-            ds = self.data_file.create_dataset(f'ifr_data/{line}/{t3_idx}/{cur_scan}', data=data.interferogram)
+            ds = self.data_file.create_dataset(f'ifr_data/{line}/{t2_idx}/{cur_scan}', data=data.interferogram)
             ds.attrs['time'] = self.cur_t2
-            ds = self.data_file.create_dataset(f'2d_data/{line}/{t3_idx}/{cur_scan}', data=data.signal_2D)
+            ds = self.data_file.create_dataset(f'2d_data/{line}/{t2_idx}/{cur_scan}', data=data.signal_2D)
             ds.attrs['time'] = self.cur_t2
             if self.save_frames_enabled:
-                ds = self.data_file.create_dataset(f'frames/{line}/{t3_idx}/{cur_scan}', data=data.frames)
-            disp_2d = self.data_file.get(f'2d_data/{line}/{t3_idx}/mean', data.signal_2D)
-            disp_ifr = self.data_file.get(f'ifr_data/{line}/{t3_idx}/mean', data.interferogram)
+                ds = self.data_file.create_dataset(f'frames/{line}/{t2_idx}/{cur_scan}', data=data.frames)
+            disp_2d = self.data_file.get(f'2d_data/{line}/{t2_idx}/mean', data.signal_2D)
+            disp_ifr = self.data_file.get(f'ifr_data/{line}/{t2_idx}/mean', data.interferogram)
             self.disp_arrays[line] = disp_2d, disp_ifr
         self.last_2d = np.array(disp_2d)
         self.last_ir = np.array(disp_ifr)
