@@ -134,12 +134,12 @@ class FocusScan(Plan):
         yield self.cam.last_read.lines.mean(1)
 
     def save(self):
-        return
         name = self.get_file_name()[0]
         self.save_meta()
         data = {'cam': self.cam.name}
-        if self.scan_x:
-            data['scan x'] = np.vstack((self.pos_x, self.probe_x, self.ref_x))
-        if self.scan_y:
-            data['scan y'] = np.vstack((self.pos_y, self.probe_y, self.ref_y))
+
+        if (sx := self.scan_x):
+            data['scan x'] = np.vstack((sx.pos, sx.probe, sx.ref))
+        if (sx := self.scan_y):
+            data['scan y'] = np.vstack((sx.pos, sx.probe, sx.ref))
         np.savez(name, **data)

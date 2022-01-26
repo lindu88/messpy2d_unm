@@ -80,8 +80,8 @@ class CamMock(ICam):
         knife_amp = 2-erfc(sqrt(2)*(-state.stage_pos[0]+0.5) / 0.25)
         knife_amp *= 2 - erfc(sqrt(2) * (-state.stage_pos[1]+0.5) / 0.25)
         y = y*(knife_amp/4)
-        a = np.random.normal(loc=y, scale=15, size=(self.shots, self.channels))
-        b = np.random.normal(loc=y, scale=15, size=(self.shots, self.channels))
+        a = np.random.normal(loc=y, scale=5, size=(self.shots, self.channels))
+        b = np.random.normal(loc=y, scale=5, size=(self.shots, self.channels))
         ext = np.random.normal(size=(self.shots, self.ext_channels))
         chop = np.zeros(self.shots, 'bool')
         chop[::2] = True
