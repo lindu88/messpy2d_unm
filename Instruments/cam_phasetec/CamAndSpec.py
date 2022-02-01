@@ -122,9 +122,9 @@ class PhaseTecCam(ICam):
         self.valid_pixel = None
 
     def get_spectra(self, frames=None, **kwargs) -> Tuple[Dict[str, Spectrum], object]:
-        arr, ch = self._cam.read_cam()
-        if self.background is not None:
-            arr = arr - self.background[:, :, None]
+        arr, ch = self._cam.read_cam(back=self.background)
+        #if self.background is not None:
+        #    arr = arr - self.background[:, :, None]
         if frames is not None:
             first_frame = first(np.array(ch[0]), 1)
         else:
@@ -155,6 +155,7 @@ class PhaseTecCam(ICam):
 
         if TWO_PROBES:
             probe2 = Spectrum.create(probe2, name='Probe2', frames=frames, first_frame=first_frame)
+
         return {i.name: i for i in (probe, probe2, ref)}, ch
 
     def make_reading(self, frame_data=None) -> Reading:
@@ -279,6 +280,3 @@ class PhaseTecCam(ICam):
             return np.arange(-64, 64, 1)
         else:
             return (np.arange(128) - center_ch) * disp + center_wl
-
-
-
