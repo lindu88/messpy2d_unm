@@ -5,6 +5,7 @@ from itertools import cycle
 
 import pyqtgraph as pg
 import pyqtgraph.parametertree as pt
+from pyqtgraph import PlotItem
 from qtpy.QtCore import Qt, Slot, QTimer, QObject
 from qtpy.QtGui import QPalette, QColor
 from qtpy.QtWidgets import (QWidget, QLineEdit, QLabel, QPushButton, QHBoxLayout,
@@ -322,7 +323,7 @@ import pyqtgraph.functions as fn
 class MonkeyCurveItem(pg.PlotCurveItem):
     def __init__(self, *args, **kwds):
         super().__init__(*args, **kwds)
-        self.monkey_mode = 'drawLines'
+        self.monkey_mode = 'PolyLine'
 
     def setMethod(self, param, value):
         self.monkey_mode = value
@@ -336,22 +337,10 @@ class MonkeyCurveItem(pg.PlotCurveItem):
 
         if self.monkey_mode == 'drawPolyline':
             painter.drawPolyline(fn.arrayToQPolygonF(self.xData, self.yData))
-        elif self.monkey_mode == 'drawLines':
-            lines = self._lineInstances
-            npts = len(self.xData)
-            even_slice = slice(0, 0+(npts-0)//2*2)
-            odd_slice = slice(1, 1+(npts-1)//2*2)
-            for sl in [even_slice, odd_slice]:
-                npairs = (sl.stop - sl.start) // 2
-                memory = lines.array(npairs).reshape((-1, 2))
-                memory[:, 0] = self.xData[sl]
-                memory[:, 1] = self.yData[sl]
-                painter.drawLines(lines.instances(npairs))
-
 
 
 class ObserverPlot(pg.PlotWidget):
-    def __init__(self, obs, signal, x=None, parent=None, **kwargs):
+    def __init__(self, obs, signal, x=None, parent=None, aa=False, **kwargs):
         """Plot windows which can observe an array
 
         Parameters
@@ -365,13 +354,17 @@ class ObserverPlot(pg.PlotWidget):
             The data the observed data is plotted against.
         parent : QWidget
             The QtParent
+        aa: bool
+            Antialaising of the curve
 
         All other kwargs are passed to PlotWidget.
         """
         super(ObserverPlot, self).__init__(parent=parent, **kwargs)
         signal.connect(self.request_update)
         self.signal = signal
+        self.antialias = aa
         self.color_cycle = make_default_cycle()
+        self.plotItem: PlotItem
         self.plotItem.showGrid(x=True, y=True, alpha=1)
         self.lines = {}
         self.observed = []
@@ -395,7 +388,7 @@ class ObserverPlot(pg.PlotWidget):
     def add_observed(self, single_obs):
         self.observed.append(single_obs)
         pen = pg.mkPen(color=next(self.color_cycle), width=2)
-        curve = MonkeyCurveItem(pen=pen)
+        curve = MonkeyCurveItem(pen=pen, antialias=self.antialias)
         self.lines[single_obs] = curve
         self.plotItem.addItem(curve)
 
@@ -403,9 +396,11 @@ class ObserverPlot(pg.PlotWidget):
     def request_update(self):
         self.do_update = True
         if not self.timer.isActive():
-            self.timer.start(0)
+            self.timer.start(1000 // 60)
 
     def update_data(self):
+        if not self.do_update:
+            return
         self.use_inverse = False
         if self.x is not None and self.use_inverse:
             x = 1e7 / self.x

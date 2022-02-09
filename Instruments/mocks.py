@@ -59,9 +59,9 @@ class MockSpectrograph(ISpectrograph):
 class CamMock(ICam):
     name: str = 'MockCam'
     shots: int = 20
-    line_names: list = ['Test1', 'Test2']
-    sig_names: list = ['Test1']
-    std_names: list = ['Test1', 'Test2']
+    line_names: list = ['Probe', 'Ref']
+    sig_names: list = ['Probe Normed', 'Probe' ]
+    std_names: list = ['Probe', 'Ref', 'Normed']
     channels: int = 200
     ext_channels: int = 3
     background: object = None
@@ -74,14 +74,20 @@ class CamMock(ICam):
         self.shots = shots
 
     def read_cam(self):
+        t0 = time.time()
         x = self.get_wavelength_array()
         y = 300*np.exp(-(x-250)**2/50**2/2)
         from math import erfc, sqrt
         knife_amp = 2-erfc(sqrt(2)*(-state.stage_pos[0]+0.5) / 0.25)
         knife_amp *= 2 - erfc(sqrt(2) * (-state.stage_pos[1]+0.5) / 0.25)
         y = y*(knife_amp/4)
-        a = np.random.normal(loc=y, scale=5, size=(self.shots, self.channels))
-        b = np.random.normal(loc=y, scale=5, size=(self.shots, self.channels))
+
+        a = np.random.normal(loc=y, scale=3, size=(self.shots, self.channels))
+        b = np.random.normal(loc=y/2, scale=3, size=(self.shots, self.channels))
+        common_noise = np.random.normal(loc=1, scale=0.15, size=(self.shots, 1))
+
+        a *= common_noise
+        b *= common_noise
         ext = np.random.normal(size=(self.shots, self.ext_channels))
         chop = np.zeros(self.shots, 'bool')
         chop[::2] = True
@@ -89,8 +95,8 @@ class CamMock(ICam):
         y_sig = 300 * np.exp(-(x - 250) ** 2 / 30 ** 2 / 2)
         y_sig -= 300 * np.exp(-(x - 310) ** 2 / 30 ** 2 / 2)
         a[::2, :] *= 1 + signal * y_sig/300
-
-        time.sleep(self.shots/1000.)
+        dt = time.time() - t0
+        time.sleep(self.shots/1000.-dt)
         return a, b, chop, ext
 
     def make_reading(self) -> Reading:
@@ -98,14 +104,17 @@ class CamMock(ICam):
         if self.background is not None:
             a -= self.background[0, ...]
             b -= self.background[1, ...]
-        tmp = np.stack((a, b))
+        tmp = np.stack((a, b, a/b))
         tm = tmp.mean(1)
+        ts = 100 * tmp.std(1)/tm
+
         with np.errstate(all="ignore"):
             signal = -1000*np.log10(np.nanmean(a[chopper, :], 0)/np.nanmean(a[~chopper, :], 0))
+            signal2 = -1000 * np.log10(np.nanmean((a/b)[chopper, :], 0) / np.nanmean((a/b)[~chopper, :], 0))
         return Reading(
-            lines=tm,
-            stds=100*tmp.std(1)/tm,
-            signals=signal[None, :],
+            lines=tm[:2, :],
+            stds=ts,
+            signals=np.stack((signal2, signal)),
             valid=True,
         )
 

@@ -24,7 +24,6 @@ def fit_curve(pos, val):
     a = val[np.argmax(pos)]
     b = val[np.argmin(pos)]
     x0 = [pos[np.argmin(np.abs(val - (a - b) / 2))], a - b, b, 0.1]
-
     def helper(p):
         return np.array(val) - gauss_int(pos, *p)
 
@@ -48,6 +47,7 @@ class Scan:
     pos: list[float] = attr.Factory(list)
     probe: list[float] = attr.Factory(list)
     ref: list[float] = attr.Factory(list)
+    full: list[np.ndarray] = attr.Factory(list)
 
     def analyze(self):
         fit_probe = fit_curve(self.pos, self.probe)
@@ -60,11 +60,13 @@ class Scan:
         sign = np.sign(self.end - self.end)
         for x0 in np.arange(self.start, self.end, self.step):
             yield from mover(x0)
-            for data in reader():
+            for data, lines in reader():
                 yield
             self.pos.append(x0)
             self.probe.append(data[0])
             self.ref.append(data[1])
+            self.full.append(lines)
+
 
 @attr.s(auto_attribs=True, eq=False)
 class FocusScan(Plan):
@@ -74,6 +76,7 @@ class FocusScan(Plan):
     """
     cam: Cam
     fh: ILissajousScanner
+    plan_shorthand: T.ClassVar[str] = "FocusScan"
     x_parameters: T.Optional[list]
     y_parameters: T.Optional[list]
     shots: int = 100
@@ -113,7 +116,6 @@ class FocusScan(Plan):
                 self.sigStepDone.emit()
                 yield
 
-        self.save()
         self.fh.set_pos_mm(*self.start_pos)
         self.sigFitDone.emit()
         self.sigPlanFinished.emit()
@@ -131,15 +133,17 @@ class FocusScan(Plan):
         t.start()
         while t.is_alive():
             yield False, None
-        yield self.cam.last_read.lines.mean(1)
+        yield self.cam.last_read.lines.mean(1), self.cam.last_read.lines
 
     def save(self):
         name = self.get_file_name()[0]
         self.save_meta()
         data = {'cam': self.cam.name}
 
-        if (sx := self.scan_x):
+        if sx := self.scan_x:
             data['scan x'] = np.vstack((sx.pos, sx.probe, sx.ref))
-        if (sx := self.scan_y):
+            data['full x'] = np.array(sx.full)
+        if sx := self.scan_y:
             data['scan y'] = np.vstack((sx.pos, sx.probe, sx.ref))
+            data['full y'] = np.array(sx.full)
         np.savez(name, **data)
