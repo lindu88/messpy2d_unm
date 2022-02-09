@@ -197,13 +197,14 @@ class AOM(IDevice):
                 amp = amp[:, None]
             self.amp = amp
 
-
-    def generate_waveform(self):
+    def generate_waveform(self) -> int:
         """"
         Actually generates the waveform from set phase and amp. If turned on,
         it will also add the dispersion compensation phase in addition.
         Depending on the `mode` attribute, it will either use a bragg corrected
         waveform or the classic waveform.
+
+        Returns the number of frames
         """
         if self.compensation_phase is not None and self.do_dispersion_compensation:
             phase = self.phase - self.compensation_phase
@@ -221,8 +222,7 @@ class AOM(IDevice):
             masks = np.concatenate((0 * masks, masks), axis=1)
         if self.phase_cycle:
             masks = np.concatenate((masks, -masks), axis=1)
-
-        self.load_mask(masks)
+        return self.load_mask(masks)
 
     def voltage(self, i: int):
         if not (0 <= i < 1023):
@@ -261,6 +261,7 @@ class AOM(IDevice):
         self.scaled_mask = mask
         assert mask.dtype == np.int16
         assert (mask.size % PIXEL) == 0
+        frames = mask.size // PIXEL
         self.end_playback()
         mask1 = np.zeros_like(mask)
         mask1[:PIXEL] = MAX_16_Bit
@@ -269,6 +270,7 @@ class AOM(IDevice):
         full_mask[1::2] = mask1
         self.dac.LoadRamBufXD48(0, full_mask.size * 2, full_mask.ctypes.data, 0)
         self.dac.BeginRamPlaybackXD48(0, full_mask.size * 2, PIXEL * 2 * 2)
+        return frames
 
     def start_playback(self):
         """Start playback of the current mask"""
@@ -373,6 +375,3 @@ if __name__ == "__main__":
     app = pg.mkQApp()
     pg.plot(full_mask).show()
     app.exec_()
-
-
-
