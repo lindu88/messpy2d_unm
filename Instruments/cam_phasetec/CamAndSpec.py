@@ -11,13 +11,13 @@ from qtpy.QtCore import Slot, Signal
 from Config import config
 from Instruments.interfaces import ICam
 from Instruments.signal_processing import Reading, Spectrum, first, fast_col_mean, Reading2D
-# from ir_cam import PT_MCT
-from .imaq_nicelib import Cam
-from .spec_sp2500i import SP2150i
+
+from Instruments.cam_phasetec.imaq_nicelib import Cam
+from Instruments.cam_phasetec.spec_sp2500i import SP2150i
 from typing import List, Optional, Tuple, Dict
 from scipy.stats import trim_mean
 from math import log
-from .spec_sp2500i import SP2150i
+
 
 LOG10 = log(10)
 PROBE_CENTER = 85
@@ -76,7 +76,7 @@ class PhaseTecCam(ICam):
 
     @spectrograph.default
     def _default_spec(self):
-        return SP2150i(comport='COM4', name='spec')
+        return SP2150i()
 
     @background.default
     def _back_default(self):
@@ -122,9 +122,9 @@ class PhaseTecCam(ICam):
         self.valid_pixel = None
 
     def get_spectra(self, frames=None, **kwargs) -> Tuple[Dict[str, Spectrum], object]:
-        arr, ch = self._cam.read_cam()
-        if self.background is not None:
-            arr = arr - self.background[:, :, None]
+        arr, ch = self._cam.read_cam(back=self.background)
+        #if self.background is not None:
+        #    arr = arr - self.background[:, :, None]
         if frames is not None:
             first_frame = first(np.array(ch[0]), 1)
         else:
@@ -155,6 +155,7 @@ class PhaseTecCam(ICam):
 
         if TWO_PROBES:
             probe2 = Spectrum.create(probe2, name='Probe2', frames=frames, first_frame=first_frame)
+
         return {i.name: i for i in (probe, probe2, ref)}, ch
 
     def make_reading(self, frame_data=None) -> Reading:
@@ -279,6 +280,3 @@ class PhaseTecCam(ICam):
             return np.arange(-64, 64, 1)
         else:
             return (np.arange(128) - center_ch) * disp + center_wl
-
-
-_ircam = PhaseTecCam()

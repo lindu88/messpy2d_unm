@@ -126,8 +126,8 @@ class Spectrum:
     name: Optional[str] = None
     frame_data: Optional[np.ndarray] = None
     frames: Optional[int] = None
+    first_frame: Optional[int] = None
     signal: Optional[np.ndarray] = None
-
 
     @classmethod
     def create(cls, data, data_max=None, name=None, frames=None, first_frame=None):
@@ -152,7 +152,8 @@ class Spectrum:
                    max=max,
                    signal=signal,
                    frames=frames,
-                   frame_data=frame_data)
+                   frame_data=frame_data,
+                   first_frame=first_frame)
 
 
 @attr.s(auto_attribs=True, cmp=False)
@@ -186,10 +187,10 @@ class Reading2D:
             sig = f
         elif n == 2:
             sig = (f[:, 0::2] - f[:, 1::2])*(-1000/LOG10)
-            sig /= sig.mean(1)
+            sig /= 0.5*(f[:, 0::2]+f[:, 1::2])
         elif n == 4:
             sig = (f[:, 0::4] - f[:, 1::4] + f[:, 2::4] - f[:, 3::4])*(-1000/LOG10)
-            sig /= sig.mean(1)
+            sig /= f.mean(1)
         assert (sig.shape[1] == len(t2_ps))
         if save_frame_enabled:
             kwargs['frames'] = f
@@ -208,4 +209,3 @@ class Reading2D:
             win = self.window(a.shape[1] * 2)
             a = a * win[None, a.shape[1]:]
         return np.fft.rfft(a, a.shape[1] * self.upsample, 1).real
-

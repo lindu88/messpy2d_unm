@@ -161,7 +161,7 @@ class ICam(IDevice):
         pass
 
     @abc.abstractmethod
-    def get_spectra(self, frames: int) -> T.Dict[str, Spectrum]:
+    def get_spectra(self, frames: int) -> T.Tuple[T.Dict[str, Spectrum], T.Any]:
         pass
 
     def make_2D_reading(self, t2: np.ndarray, rot_frame: float, repetitions: int = 1,
@@ -344,7 +344,7 @@ class ILissajousScanner(IDevice):
         pass
 
     @abc.abstractmethod
-    def set_pos_mm(self, x=None, y=None):
+    def set_pos_mm(self, x: typing.Optional[float]=None, y:typing.Optional[float]=None):
         pass
 
     def set_vel_mm(self, xvel=None, yvel=None):

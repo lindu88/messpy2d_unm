@@ -66,7 +66,8 @@ elif pc_name == 'helmholm' and not TESTING:
     _shutter = Shutter()
 
 elif pc_name == 'DESKTOP-BBLLUO7':
-    from Instruments.cam_phasetec import _ircam as _cam
+    from Instruments.cam_phasetec import PhaseTecCam
+    _cam = PhaseTecCam()
     _cam2 = None
     #from Instruments.delay_line_apt import DelayLine
     #_dl = DelayLine(name="VisDelay")

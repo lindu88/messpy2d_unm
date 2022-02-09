@@ -1,1 +1,1 @@
-from .CamAndSpec import _ircam
+from .CamAndSpec import PhaseTecCam
