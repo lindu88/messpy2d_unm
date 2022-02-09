@@ -89,6 +89,8 @@ class AvantesSpec:
     shots: int = 300
     count: int = 0
     _cb: object = None
+    is_reading: bool = False
+
     @classmethod
     def take_nth(cls, i=0):
         Avaspec.Init(0)
@@ -121,15 +123,18 @@ class AvantesSpec:
         Avaspec.AVS_MeasureCallback(hdl, callback, -2)
         self.data = np.empty((2048, shots))
         self.count = 0
+        self.is_reading = True
 
 
-    def callback_factory(self, fin_cb):
+    def callback_factory(self, fin_cb=None):
         @Avaspec._ffi.callback("void(long*, int*)")
         def callback(handle, intp):
             self.data[:, self.count] = self.device.GetScopeData()[1]
             self.count += 1
-            if self.count == self.shots and fin_cb:
-                fin_cb()
+            if self.count == self.shots:
+                self.is_reading = False
+                if fin_cb:
+                    fin_cb()
         self._cb = callback
         return callback
 
