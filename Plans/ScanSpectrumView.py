@@ -63,17 +63,15 @@ class ScanSpectrumStarter(PlanStartDialog):
 
     def setup_paras(self):
         tmp = [{'name': 'Filename', 'type': 'str', 'value': 'temp'},
-               {'name': 'Operator', 'type': 'str', 'value': ''},
                {'name': 'Shots', 'type': 'int', 'max': 4000, 'decimals': 5,
                 'step': 100, 'value': 100},
                WavelengthParameter(name='Min.'),
                WavelengthParameter(name='Max.'),
-               {'name': 'Steps', 'type': 'int', 'min': 2, 'value': 30},
+               {'name': 'Resolution', 'type': 'float', 'min': 1., 'value': 100.},
                {'name': 'Linear Axis', 'type': 'list', 'values': ['cm-1', 'nm']},
                {'name': 'timeout', 'type': 'float', 'value': 3}]
 
         self.candidate_cams = {c.cam.name: c for c in self.controller.cam_list if c.changeable_wavelength}
-
         tmp.append(dict(name='Cam', type='list', values=self.candidate_cams.keys()))
         p = pt.Parameter(name='Exp. Settings', type='group',
                          children=tmp)
@@ -84,13 +82,12 @@ class ScanSpectrumStarter(PlanStartDialog):
 
     def create_plan(self, controller: Controller):
         p = self.paras.child('Exp. Settings')
-
         s = self.paras.child('Sample')
         mapper = {'nm': 'Wavelength (nm)', 'cm-1': 'Wavenumber (cm-1)'}
         unit = mapper[p['Linear Axis']]
-        wl_list = np.linspace(p.child('Min.')[unit],
-                              p.child('Max.')[unit],
-                              p['Steps'])
+        wl_list = np.arange(p.child('Min.')[unit],
+                            p.child('Max.')[unit],
+                            p['Resolution'])
         if p['Linear Axis'] == 'cm-1':
             wl_list = 1e7 / wl_list
         scan = ScanSpectrum(

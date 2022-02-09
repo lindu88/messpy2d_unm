@@ -16,7 +16,7 @@ class SP2150i(ISpectrograph):
     @port.default
     def serial_connect(self):
         logging.info(f'SP2500i: Connecting to {self.comport}')
-        port = serial.Serial(self.comport, baudrate=9600*12)
+        port = serial.Serial(self.comport, baudrate=576000)
         port.timeout = 2
         atexit.register(self.disconnect)
         return port
