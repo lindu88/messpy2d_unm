@@ -5,10 +5,10 @@ from qtpy.QtWidgets import QWidget, QPushButton
 
 from .FocusScan import FocusScan
 
-from qtpy.QtWidgets import  QVBoxLayout, QMessageBox QApplication
+from qtpy.QtWidgets import  QVBoxLayout, QMessageBox
 from qtpy.QtCore import QTimer
 from ControlClasses import Controller
-from QtHelpers import vlay, hlay, PlanStartDialog, ObserverPlot
+from QtHelpers import vlay, hlay, PlanStartDialog, ObserverPlot, make_entry
 from .PlanBase import sample_parameters
 
 
@@ -131,7 +131,7 @@ class FocusScanStarter(PlanStartDialog):
         fs = FocusScan(
             name=p['Filename'],
             cam=self.candidate_cams[p['Cam']],
-            meta=s,
+            meta=make_entry(p),
             shots=p['Shots'],
             x_parameters=x_stepper,
             y_parameters=y_stepper,

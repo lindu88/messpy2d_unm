@@ -93,14 +93,13 @@ class Plan(QObject):
     def get_file_name(self) -> Tuple[Path, Path]:
         """Builds the filename and the metafilename"""
         date_str = self.creation_dt.strftime("%y-%m-%d %H_%M")
-        name = f"{date_str} {self.name}.{self.plan_shorthand}"
-        meta_name = f"{date_str} {self.name}.{self.plan_shorthand}"
+        name = f"{date_str} {self.plan_shorthand} {self.name}"
         p = Path(config.data_directory)
         if not p.exists():
             raise IOError("Data path in config not existing")
         if (p / name).with_suffix('.json').exists():
             name = name + "_0"
-        return (p / name).with_suffix('.messpy'), (p / meta_name).with_suffix('.json')
+        return (p / name).with_suffix('.messpy'), (p / name).with_suffix('.json')
 
     def save_meta(self):
         """Saves the metadata in the metafile"""
