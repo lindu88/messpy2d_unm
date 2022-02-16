@@ -11,7 +11,7 @@ from Instruments.interfaces import ILissajousScanner
 class SmarActXYZ(ILissajousScanner):
     name: str = 'SmarAct XYZ'
     handle: int = attr.ib(init=False)
-    channels: dict[str, int] = {"x": 0, "y": 1, "z": 2}
+    channels: dict[str, int] = {"x": 1, "y": 2, "z": 0}
 
     def __attrs_post_init__(self):
         super(SmarActXYZ, self).__attrs_post_init__()
@@ -36,9 +36,9 @@ class SmarActXYZ(ILissajousScanner):
 
     def set_pos_mm(self, x=None, y=None):
         if x is not None:
-            ctl.Move(self.handle, self.channel['x'], round(x/1e-9), 0)
+            ctl.Move(self.handle, self.channels['x'], round(x/1e-9), 0)
         if y is not None:
-            ctl.Move(self.handle, self.channel['z'], round(y/1e-9), 0)
+            ctl.Move(self.handle, self.channels['y'], round(y/1e-9), 0)
 
     def is_moving(self) -> typing.Tuple[bool, bool]:
         state = ctl.GetProperty_i32(self.handle, self.channels['x'], ctl.Property.CHANNEL_STATE)
@@ -72,6 +72,13 @@ if __name__ == '__main__':
     stage = SmarActXYZ(name='SmartAct', pos_home=(0, 0, 0))
     print(stage.get_pos_mm())
     print(stage.is_moving())
-    #stage.set_zpos_mm(-15)
+    #stage.set_zpos_mm(0)
+    stage.set_pos_mm(None, 10)
+    for i in range(20):
+        pos = 5
+        while any(stage.is_moving()):
+            stage.set_pos_mm(None, pos-10)
+            pos = -pos
+
     print(stage.is_zmoving())
     print(stage.get_zpos_mm())
