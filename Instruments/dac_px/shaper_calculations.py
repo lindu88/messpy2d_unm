@@ -5,6 +5,7 @@ import numpy as np
 
 f = Union[float, np.ndarray]
 
+
 def THz2cm(nu: f) -> f:
     return (nu * 1e10) / c
 
@@ -34,8 +35,7 @@ def double_pulse_mask(
     """
 
     double = 0.5 * (
-        np.exp(-2j * np.pi * (nu - nu_rf) * tau + 1j * phi1)
-        + np.exp(1j * phi2)
+        np.exp(-2j * np.pi * (nu - nu_rf) * tau + 1j * phi1) + np.exp(1j * phi2)
     )
     return double
 
