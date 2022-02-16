@@ -163,7 +163,10 @@ class AOM(IDevice):
         """
         if self.nu is None:
             raise ValueError("Spectral calibration is required to calculate the masks.")
-        phase = np.pi * np.array([(1, 1), (1, 0), (0, 1), (0, 0)])
+        phase = np.pi * np.array([(1, 1),
+                                  (1, 0),
+                                  (0, 0),
+                                  (0, 1)])
         phase = phase[:phase_frames, :]
         phase = np.tile(phase, (taus.shape[0], 1))
         phi1 = phase[:, 0]
