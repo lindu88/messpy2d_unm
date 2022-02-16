@@ -122,9 +122,9 @@ class PhaseTecCam(ICam):
         self.valid_pixel = None
 
     def get_spectra(self, frames=None, **kwargs) -> Tuple[Dict[str, Spectrum], object]:
-        arr, ch = self._cam.read_cam(back=self.background)
-        #if self.background is not None:
-        #    arr = arr - self.background[:, :, None]
+        arr, ch = self._cam.read_cam(back=None)
+        if self.background is not None:
+            arr = arr - self.background[:, :, None]
         if frames is not None:
             first_frame = first(np.array(ch[0]), 1)
         else:
