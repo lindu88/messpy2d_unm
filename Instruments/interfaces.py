@@ -161,7 +161,7 @@ class ICam(IDevice):
         pass
 
     @abc.abstractmethod
-    def get_spectra(self, frames: int) -> T.Dict[str, Spectrum]:
+    def get_spectra(self, frames: int) -> T.Tuple[T.Dict[str, Spectrum], T.Any]:
         pass
 
     def make_2D_reading(self, t2: np.ndarray, rot_frame: float, repetitions: int = 1,

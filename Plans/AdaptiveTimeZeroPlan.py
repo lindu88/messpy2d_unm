@@ -76,7 +76,7 @@ class AdaptiveTimeZeroPlan(AsyncPlan):
             cur_signal = new_signal
             if sig_diff > self.max_diff and self.current_step != self.min_step:
                 self.current_step = max(0.5*self.current_step, self.min_step)
-                next_pos = cur_pos - self.current_step
+                next_pos = cur_pos - self.current_step-self.current_step/2
             elif sig_diff < self.min_diff:
                 self.current_step = min(2 * self.current_step, 10)
                 next_pos = cur_pos + self.current_step

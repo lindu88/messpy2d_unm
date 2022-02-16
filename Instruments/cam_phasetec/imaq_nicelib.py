@@ -1,5 +1,6 @@
 import pathlib
 from threading import Lock
+from typing import Optional
 
 import nidaqmx
 import nidaqmx.constants as c
@@ -98,7 +99,7 @@ class Cam:
         IMAQ.imgGetAttribute(self.s, 0x0076 + 0x3FF60000, fcount)
         return fcount[0]
 
-    def read_cam(self):
+    def read_cam(self, lines=Optional[list[tuple]], back=Optional[np.ndarray]):
         self.reading_lock.acquire()
         IMAQ.imgSessionStartAcquisition(self.s)
         self.task.start()
@@ -107,11 +108,20 @@ class Cam:
         bi = np.frombuffer(ba).view('u2')
         chop = []
         status, buf = IMAQ.imgSessionStatus(self.s)
+        MAX_14_BIT = (1 << 14)
+
+        if lines is not None:
+            self.lines = np.empty((len(lines), 128, self.shots))
 
         for i in range(self.shots):
             IMAQ.imgSessionCopyBufferByNumber(self.s, i + self.frames, bap, IMAQ.IMG_OVERWRITE_FAIL)
             a = np.swapaxes(bi.reshape(32, 128, 4), 0, 1).reshape(128, 128)
-            self.data[:, :, i] = (1 << 14) - a.T
+            self.data[:, :, i] = MAX_14_BIT - a.T
+            if back is not None:
+                self.data[:, :, i] -= back
+            if lines:
+                for k, (l, u) in enumerate(lines):
+                    self.lines[:, k, i] = np.mean(self.data[:, l:u, :], 1)
             # hop.append(self.task.read(1)[0])
             # chop.append(self.task.read())
 

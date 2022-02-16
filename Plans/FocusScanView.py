@@ -1,16 +1,16 @@
 import numpy as np
-import pyqtgraph.parametertree as pt
 import pyqtgraph as pg
-import typing as T
+import pyqtgraph.parametertree as pt
+from qtpy.QtWidgets import QWidget, QPushButton
 
 from .FocusScan import FocusScan
-from Config import config
-from qtpy.QtWidgets import QWidget, QPushButton,QLayout, QSizePolicy, QLabel, QVBoxLayout, QHBoxLayout, QCheckBox, QApplication, QTabWidget
-from qtpy.QtGui import QPalette, QFont
-from qtpy.QtCore import Qt, QTimer, QObject, Signal
-from ControlClasses import Controller, Cam
-from QtHelpers import vlay, hlay, PlanStartDialog, ObserverPlot
+
+from qtpy.QtWidgets import  QVBoxLayout, QMessageBox
+from qtpy.QtCore import QTimer
+from ControlClasses import Controller
+from QtHelpers import vlay, hlay, PlanStartDialog, ObserverPlot, make_entry
 from .PlanBase import sample_parameters
+
 
 class FocusScanView(QWidget):
     def __init__(self, fsPlan: FocusScan, *args, **kwargs):
@@ -43,8 +43,8 @@ class FocusScanView(QWidget):
             )
 
         if fsPlan.scan_x and fsPlan.scan_y:
-            self.plotlay =  vlay([hlay([self.x_probe_plot, self.x_ref_plot]),
-                             hlay([self.y_probe_plot, self.y_ref_plot])])
+            self.plotlay = vlay([hlay([self.x_probe_plot, self.x_ref_plot]),
+                                 hlay([self.y_probe_plot, self.y_ref_plot])])
         elif fsPlan.scan_x and not fsPlan.scan_y:
             self.plotlay = hlay([self.x_probe_plot, self.x_ref_plot])
         elif fsPlan.scan_y and not fsPlan.scan_x:
@@ -52,9 +52,11 @@ class FocusScanView(QWidget):
 
         fsPlan.sigFitDone.connect(lambda: self.button.setEnabled(True))
         fsPlan.sigFitDone.connect(self.plot_fit)
-        self.button = QPushButton('Redo Scan', self)
+        self.button = QPushButton('Save Scan', self)
         self.button.setEnabled(False)
-        self.button.clicked.connect(lambda: print('I wish that worked'))
+        self.button.clicked.connect(fsPlan.save)
+        fname = fsPlan.get_file_name()[0]
+        self.button.clicked.connect(lambda: QMessageBox.information(self, 'Results Saved', 'At %s'%str(fname)))
 
         layout = QVBoxLayout(self)
         layout.addLayout(self.plotlay)
@@ -63,7 +65,7 @@ class FocusScanView(QWidget):
 
     def plot_fit(self):
         pen = pg.mkPen(color='#e377c2', width=2)
-        fsPlan  = self.plan
+        fsPlan = self.plan
         if sx := fsPlan.scan_x:
             pr, pr_text, ref, ref_txt = sx.analyze()
             self.x_probe_plot.plot(sx.pos, pr.model, pen=pen)
@@ -112,7 +114,7 @@ class FocusScanStarter(PlanStartDialog):
         self.p = pt.Parameter.create(name='Exp. Settings', type='group', children=tmp)
         params = [sample_parameters, self.p]
         self.paras = pt.Parameter.create(name='Focus Scan', type='group', children=params)
-        #config.last_pump_probe = self.paras.saveState()
+        # config.last_pump_probe = self.paras.saveState()
 
     def create_plan(self, controller: Controller):
         p = self.paras.child('Exp. Settings')
@@ -129,7 +131,7 @@ class FocusScanStarter(PlanStartDialog):
         fs = FocusScan(
             name=p['Filename'],
             cam=self.candidate_cams[p['Cam']],
-            meta=s,
+            meta=make_entry(p),
             shots=p['Shots'],
             x_parameters=x_stepper,
             y_parameters=y_stepper,
@@ -138,16 +140,16 @@ class FocusScanStarter(PlanStartDialog):
         return fs
 
 
-
-
 if __name__ == '__main__':
     import sys
 
     sys._excepthook = sys.excepthook
 
+
     def exception_hook(exctype, value, traceback):
         sys._excepthook(exctype, value, traceback)
         sys.exit(1)
+
 
     sys.excepthook = exception_hook
 

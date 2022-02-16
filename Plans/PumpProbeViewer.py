@@ -108,7 +108,8 @@ class PumpProbeDataViewer(QWidget):
         self.sig_plot.add_observed((pp_plan, 'mean_signal'))
         self.sig_plot.click_func = self.handle_sig_click
 
-        self.trans_plot = ObserverPlot([], pp_plan.sigStepDone)
+        self.trans_plot = ObserverPlot([], pp_plan.sigStepDone, aa=True)
+
 
         lw.addWidget(self.sig_plot)
         lw.addWidget(self.trans_plot)
