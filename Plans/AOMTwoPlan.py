@@ -43,7 +43,7 @@ class AOMTwoDPlan(ScanPlan):
     pump_freqs: np.ndarray = attrib()
     probe_freqs: np.ndarray = attrib()
 
-    data_file: h5py.File = attrib()
+    data_file_name: str = attrib()
     initial_state: dict = attr.Factory(dict)
 
     disp_arrays: Dict[str, Tuple[np.ndarray, np.ndarray]] = attr.Factory(dict)
@@ -67,19 +67,18 @@ class AOMTwoDPlan(ScanPlan):
         THz = np.fft.rfftfreq(self.t1.size * 2, d=self.step_t1)
         return THz2cm(THz) + self.rot_frame_freq
 
-    @data_file.default
+    @data_file_name.default
     def _default_file(self):
         name = self.get_file_name()[0]
         if name.exists():
             name.unlink()
-        f = h5py.File(name, mode='a')
-        f['t1'] = self.t1
-        f['t2'] = self.t2
-        f['t1'].attrs['rot_frame'] = self.rot_frame_freq
-        f['wn'] = self.controller.cam.wavenumbers
-        f['wl'] = self.controller.cam.wavelengths
-        atexit.register(f.close)
-        return f
+        with h5py.File(name, mode='a') as f:
+            f['t1'] = self.t1
+            f['t2'] = self.t2
+            f['t1'].attrs['rot_frame'] = self.rot_frame_freq
+            f['wn'] = self.controller.cam.wavenumbers
+            f['wl'] = self.controller.cam.wavelengths
+        return name
 
     def scan(self):
         c = self.controller
@@ -111,23 +110,23 @@ class AOMTwoDPlan(ScanPlan):
         yield
 
     def calculate_scan_means(self):
-        for line in self.data_file['ifr_data']:
-            for t3_idx in self.data_file[f'ifr_data/{line}']:
-                data = []
-                specs = []
-                for scan in self.data_file[f'ifr_data/{line}/{t3_idx}']:
-                    if scan == 'mean':
-                        continue
-                    ifr = f'ifr_data/{line}/{t3_idx}/{scan}'
-                    data.append(self.data_file[ifr])
-                    spec = f'2d_data/{line}/{t3_idx}/{scan}'
-                    specs.append(self.data_file[spec])
-                if 'mean' in self.data_file[f'ifr_data/{line}/{t3_idx}/']:
-                    del self.data_file[f'ifr_data/{line}/{t3_idx}/mean']
-                    del self.data_file[f'2d_data/{line}/{t3_idx}/mean']
-
-                self.data_file[f'ifr_data/{line}/{t3_idx}/mean'] = np.mean(data, 0)
-                self.data_file[f'2d_data/{line}/{t3_idx}/mean'] = np.mean(specs, 0)
+        with h5py.File(self.data_file_name, mode='a') as f:
+            for line in f['ifr_data']:
+                for t3_idx in f[f'ifr_data/{line}']:
+                    data = []
+                    specs = []
+                    for scan in f[f'ifr_data/{line}/{t3_idx}']:
+                        if scan == 'mean':
+                            continue
+                        ifr = f'ifr_data/{line}/{t3_idx}/{scan}'
+                        data.append(f[ifr])
+                        spec = f'2d_data/{line}/{t3_idx}/{scan}'
+                        specs.append(f[spec])
+                    if 'mean' in f[f'ifr_data/{line}/{t3_idx}/']:
+                        del f[f'ifr_data/{line}/{t3_idx}/mean']
+                        del f[f'2d_data/{line}/{t3_idx}/mean']
+                    f[f'ifr_data/{line}/{t3_idx}/mean'] = np.mean(data, 0)
+                    f[f'2d_data/{line}/{t3_idx}/mean'] = np.mean(specs, 0)
 
     def post_scan(self) -> Generator:
         thr = threading.Thread(target=self.calculate_scan_means)
@@ -140,7 +139,6 @@ class AOMTwoDPlan(ScanPlan):
             setattr(self.shaper, k, self.initial_state[k])
         self.shaper.generate_waveform()
         self.controller.cam.set_shots(self.initial_state['shots'])
-        self.data_file.close()
         yield
 
     def measure_point(self):
@@ -159,18 +157,19 @@ class AOMTwoDPlan(ScanPlan):
         #self.save_data(ret, self.t3_idx, self.cur_t3)
 
     def save_data(self, ret, t2_idx, cur_scan):
-        for line, data in ret.items():
-            ds = self.data_file.create_dataset(f'ifr_data/{line}/{t2_idx}/{cur_scan}', data=data.interferogram)
-            ds.attrs['time'] = self.cur_t2
-            ds = self.data_file.create_dataset(f'2d_data/{line}/{t2_idx}/{cur_scan}', data=data.signal_2D)
-            ds.attrs['time'] = self.cur_t2
-            if self.save_frames_enabled:
-                ds = self.data_file.create_dataset(f'frames/{line}/{t2_idx}/{cur_scan}', data=data.frames)
-            disp_2d = self.data_file.get(f'2d_data/{line}/{t2_idx}/mean', data.signal_2D)
-            disp_ifr = self.data_file.get(f'ifr_data/{line}/{t2_idx}/mean', data.interferogram)
-            self.disp_arrays[line] = disp_2d, disp_ifr
-        self.last_2d = np.array(disp_2d)
-        self.last_ir = np.array(disp_ifr)
+        with h5py.File(self.data_file_name, mode='a') as f:
+            for line, data in ret.items():
+                ds = f.create_dataset(f'ifr_data/{line}/{t2_idx}/{cur_scan}', data=data.interferogram)
+                ds.attrs['time'] = self.cur_t2
+                ds = f.create_dataset(f'2d_data/{line}/{t2_idx}/{cur_scan}', data=data.signal_2D)
+                ds.attrs['time'] = self.cur_t2
+                if self.save_frames_enabled:
+                    ds = f.create_dataset(f'frames/{line}/{t2_idx}/{cur_scan}', data=data.frames)
+                disp_2d = f.get(f'2d_data/{line}/{t2_idx}/mean', data.signal_2D)
+                disp_ifr = f.get(f'ifr_data/{line}/{t2_idx}/mean', data.interferogram)
+                self.disp_arrays[line] = disp_2d, disp_ifr
+            self.last_2d = np.array(disp_2d)
+            self.last_ir = np.array(disp_ifr)
 
     def stop_plan(self):
         self.post_plan()
