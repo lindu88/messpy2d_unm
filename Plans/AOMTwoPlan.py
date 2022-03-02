@@ -103,7 +103,7 @@ class AOMTwoDPlan(ScanPlan):
         self.shaper.mode = self.mode
         self.shaper.double_pulse(self.t1, cm2THz(self.rot_frame_freq), self.phase_frames)
 
-        self.shaper.set_wave_amp(0.2)
+        self.shaper.set_wave_amp(0.4)
 
         self.shaper.generate_waveform()
         self.controller.cam.set_shots(self.repetitions * (self.t1.size * self.phase_frames))
@@ -151,8 +151,9 @@ class AOMTwoDPlan(ScanPlan):
 
         self.time_tracker.point_ending()
         ret = future.result()
-        thr = threading.Thread(target=self.save_data, args=(ret, self.t2_idx, self.cur_t2,))
-        thr.start()
+        #thr = threading.Thread(target=self.save_data, args=(ret, self.t2_idx, self.cur_t2,))
+        #thr.start()
+        self.save_data(ret, self.t2_idx, self.cur_scan)
 
         #self.save_data(ret, self.t3_idx, self.cur_t3)
 
