@@ -40,6 +40,7 @@ class AOM(IDevice):
     pixel: np.ndarray = np.arange(PIXEL)
 
     compensation_phase: Optional[np.ndarray] = None
+    compensation_amp: Optional[np.ndarray] = None
     phase: Optional[np.ndarray] = np.zeros((PIXEL, 1))
     amp: np.ndarray = np.ones((PIXEL, 1))
     total_phase: Optional[np.ndarray] = np.zeros(PIXEL)
@@ -216,10 +217,15 @@ class AOM(IDevice):
 
         self.total_phase = phase
 
-        if self.mode == "bragg" and self.calib is not None:
-            masks = self.bragg_wf(self.amp, self.total_phase)
+        if self.compensation_amp is not None:
+            amp = self.amp * self.compensation_amp
         else:
-            masks = self.classic_wf(self.amp, self.total_phase)
+            amp = self.amp
+
+        if self.mode == "bragg" and self.calib is not None:
+            masks = self.bragg_wf(amp, self.total_phase)
+        else:
+            masks = self.classic_wf(amp, self.total_phase)
 
         if self.chopped:
             masks = np.concatenate((0 * masks, masks), axis=1)
@@ -312,9 +318,21 @@ class AOM(IDevice):
 
     def load_full_mask(self):
         """Loads a full mask using a frequency of 75 MHz"""
-        self.set_amp_and_phase(np.ones_like(PIXEL), np.zeros_like(PIXEL))
-        full_mask = np.cos(np.arange(PIXEL) / 16 * 2 * np.pi)
-        self.load_mask(full_mask)
+        self.set_amp_and_phase(np.ones(PIXEL), np.zeros(PIXEL))
+        self.generate_waveform()
+
+    def set_compensation_amp(self, x0=2150, width=200):
+        x0 = 2150
+        x0_nu = cm2THz(x0)
+        width = 30
+        xw = abs(x0_nu - cm2THz(x0+width))
+        print(x0_nu, xw)
+        amp_f = np.zeros_like(self.nu)
+        amp_f[(self.nu < x0_nu+xw) & (self.nu > x0_nu-xw)] = 1
+        amp = np.exp(-0.5*(self.nu-x0_nu)**2/xw**2)[:, None]
+
+        self.compensation_amp = amp_f[:, None]
+
 
 
 if __name__ == "__main__":

@@ -65,6 +65,10 @@ class ShaperControl(QtWidgets.QWidget):
         self.apply.clicked.connect(lambda x: self.aom.generate_waveform())
         self.cali = QtWidgets.QPushButton("Full Mask")
         self.cali.clicked.connect(self.aom.load_full_mask)
+        self.sc = QtWidgets.QPushButton("Set spec amp")
+        self.sc.clicked.connect(self.aom.set_compensation_amp)
+        self.sc2 = QtWidgets.QPushButton("Del spec amp")
+        self.sc2.clicked.connect(lambda p: setattr(self.aom, 'compensation_amp', None))
 
         self.pt = ParameterTree()
         self.disp_param = Parameter.create(name='Dispersion',
@@ -85,6 +89,8 @@ class ShaperControl(QtWidgets.QWidget):
                             self.chopped,
                             self.pc,
                             self.pt,
+                            self.sc,
+                            self.sc2,
                             hlay((self.apply, self.cali))))
 
     def update_disp(self):
