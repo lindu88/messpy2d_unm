@@ -1,16 +1,32 @@
 # from Config import config
-from qtpy.QtCore import QTimer, Qt, QThread
-from qtpy.QtGui import QFont, QIntValidator, QKeyEvent
-from qtpy.QtWidgets import (QMainWindow, QApplication, QWidget, QLineEdit, QDockWidget,
+import attr
+from qtpy.QtCore import QTimer, Qt, QThread, QObject, Slot
+from qtpy.QtGui import QFont, QIntValidator, QKeyEvent, QIcon, QPixmap
+from qtpy.QtWidgets import (QMainWindow, QApplication, QWidget, QLineEdit, QDockWidget, QShortcut,
                             QPushButton, QLabel, QVBoxLayout, QSizePolicy, QFormLayout,
                             QToolBar, QCheckBox)
-import qtawesome as qta
+from qtpy.QtSvg import QSvgWidget
+from QtHelpers import  vlay, hlay
 
-from QtHelpers import dark_palette, ControlFactory, make_groupbox, \
-    ObserverPlot, ValueLabels, vlay, hlay
-# from ControlClasses import Controller
 from Instruments.interfaces import ILissajousScanner
 
+@attr.define
+class ScannerMover(QObject):
+    @Slot()
+    def move_left(self):
+        pass
+
+    @Slot()
+    def move_right(self):
+        pass
+
+    @Slot()
+    def move_up(self):
+        pass
+
+    @Slot()
+    def move_down(self):
+        pass
 
 class MoveWidget(QWidget):
     def __init__(self, sh: ILissajousScanner):
@@ -19,19 +35,28 @@ class MoveWidget(QWidget):
         self.setFocusPolicy(Qt.StrongFocus)
         home_button = QPushButton('Set Home')
         home_button.clicked.connect(lambda: self.scanner.set_home())
-        self.move_button = QPushButton('Moving')
+        self.move_button = QPushButton('Cont. Move.')
         self.move_button.setCheckable(True)
         self.move_button.setChecked(False)
         self.move_button.toggled.connect(self.mover)
-
         buttons = hlay([home_button, self.move_button])
         pos_str = str(self.scanner.pos_home)
-        self.home_label = QLabel(pos_str)
-        self.setLayout(vlay([self.home_label, buttons]))
+        self.home_label = QLabel()
+        self.label_updater(self.scanner.get_pos_mm(), self.scanner.get_zpos_mm())
+        self.help_button = QPushButton('Help')
+        self.help_button.clicked.connect(self.show_help)
+        self.setLayout(vlay([self.home_label, buttons, self.help_button]))
         self.timer = QTimer()
         self.K = 0.1
         self.x_settings = 3
         self.y_settings = [2, 0.2]
+
+
+    def show_help(self):
+        self.help_label = QLabel()
+        self.help_label.setPixmap(QPixmap('MotorHelp.png'))
+        self.help_label.setAutoFillBackground(False)
+        self.help_label.show()
 
     def show_xy(self):
         pass
