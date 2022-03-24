@@ -76,6 +76,7 @@ class AOM(IDevice):
             "phase_cycle": self.phase_cycle,
             "mode": self.mode,
             "nu0_THz": self.nu0_THz,
+            "amp_fac": self.amp_fac,
         }
         return d
 
