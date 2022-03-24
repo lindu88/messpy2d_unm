@@ -92,8 +92,8 @@ class AOMTwoDViewer(GraphicsLayoutWidget):
                                             pen=mkPen(_int_color, width=1))
         line._int_color = _int_color
         cur_line = 'Probe2'
-        self.ifr_lines[line] = self.trans_plot.plot(self.plan.t1, self.plan.disp_arrays[cur_line][1][round(x), :],
-                                                    pen=line.pen)
+        #self.ifr_lines[line] = self.trans_plot.plot(self.plan.t1, self.plan.disp_arrays[cur_line][1][round(x), :],
+        #                                            pen=line.pen)
 
         def update(line: InfiniteLine):
             idx = np.argmin(abs(self.probe_freq - line.pos()[0]))
