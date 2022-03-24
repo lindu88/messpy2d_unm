@@ -46,14 +46,16 @@ class WavelengthParameter(pTypes.GroupParameter):
                        'decimals': 5, })
         self.wl = self.param('Wavelength (nm)')
         self.wn = self.param('Wavenumber (cm-1)')
-        self.wl.sigValueChanged.connect(self.aChanged)
-        self.wn.sigValueChanged.connect(self.bChanged)
+        self.wl.sigValueChanged.connect(self.wl_changed)
+        self.wn.sigValueChanged.connect(self.wn_changed)
 
-    def aChanged(self):
-        self.wn.setValue(1e7 / self.wl.value(), blockSignal=self.bChanged)
+    def wl_changed(self):
+        self.wn.setValue(1e7 / self.wl.value(), blockSignal=self.wn_changed)
+        self.setValue(self.wl.value())
 
-    def bChanged(self):
-        self.wl.setValue(1e7 / self.wn.value(), blockSignal=self.aChanged)
+    def wn_changed(self):
+        self.wl.setValue(1e7 / self.wn.value(), blockSignal=self.wl_changed)
+        self.setValue(self.wl.value())
 
 
 class ScanSpectrumStarter(PlanStartDialog):
@@ -85,11 +87,13 @@ class ScanSpectrumStarter(PlanStartDialog):
         s = self.paras.child('Sample')
         mapper = {'nm': 'Wavelength (nm)', 'cm-1': 'Wavenumber (cm-1)'}
         unit = mapper[p['Linear Axis']]
-        wl_list = np.arange(p.child('Min.')[unit],
-                            p.child('Max.')[unit],
+        min_val, max_val = sorted([p.child('Min.')[unit],p.child('Max.')[unit]])
+        wl_list = np.arange(min_val,
+                            max_val+0.001,
                             p['Resolution'])
         if p['Linear Axis'] == 'cm-1':
             wl_list = 1e7 / wl_list
+        print(wl_list)
         scan = ScanSpectrum(
             name=p['Filename'],
             cam=self.candidate_cams[p['Cam']],
