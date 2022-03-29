@@ -28,8 +28,8 @@ class CalibPlan(AsyncPlan):
     amps: List[List[float]] = attr.Factory(list)
     single_spectra: np.ndarray = attr.ib(init=False)
     num_shots: int = 100
-    separation: int = 300
-    width: int = 20
+    separation: int = 500
+    width: int = 100
     single: int = 6000
     start_pos: Tuple[float, float] = 0
     check_zero_order: bool = True
