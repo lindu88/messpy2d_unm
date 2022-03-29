@@ -57,11 +57,11 @@ class AOMTwoDPlan(ScanPlan):
         return self.controller.cam.wavenumbers
 
     @t1.default
-    def _t2_default(self):
-        t2 = np.arange(0, abs(self.max_t1) + 1e-3, self.step_t1)
+    def _t1_default(self):
+        t1 = np.arange(0, abs(self.max_t1) + 1e-3, self.step_t1)
         if self.max_t1 < 0:
-            t2 = -t2
-        return t2
+            t1 = -t1
+        return t1
 
     @pump_freqs.default
     def _calc_freqs(self):
