@@ -64,7 +64,9 @@ class NewportDLC(IDelayLine):
                 self.write('OR')
                 while self.controller_state() == 'HOMING':
                     time.sleep(0.1)
-
+            if self.controller_state() == "DISABLE":
+                self.write('MM1')
+                
     def write(self, cmd: str):
         """
         Writes a command to the controller.
