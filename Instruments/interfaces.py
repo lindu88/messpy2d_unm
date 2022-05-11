@@ -114,16 +114,16 @@ class ISpectrograph(IDevice):
         pass
 
     def get_slit(self) -> float:
-        pass
+        raise NotImplementedError
 
     def set_slit(self, slit: float):
-        pass
+        raise NotImplementedError
 
     def set_grating(self, idx):
-        pass
+        raise NotImplementedError
 
     def get_grating(self) -> int:
-        pass
+        raise NotImplementedError
 
 
 # Defining a minimal interface for each hardware
@@ -138,7 +138,7 @@ class ICam(IDevice):
     background: object = None
     spectrograph: T.Optional[ISpectrograph] = None
 
-    can_validate_pixel: bool = None
+    can_validate_pixel: bool = False
 
     @property
     def sig_lines(self):
@@ -265,7 +265,7 @@ class IDelayLine(IDevice):
 
 @attr.s
 class IShutter(IDevice):
-    sigShutterToggled: Signal = attr.ib(attr.Factory(Signal))
+    sigShutterToggled: typing.ClassVar[Signal] = Signal(bool)
 
     @abc.abstractmethod
     def toggle(self):
@@ -331,7 +331,7 @@ class IRotationStage(IDevice):
 
 @attr.s
 class ILissajousScanner(IDevice):
-    pos_home: tuple = attr.ib()
+    pos_home: T.Tuple[float, float] = (0, 0)
     has_zaxis: bool = False
 
     def init_motor(self):
