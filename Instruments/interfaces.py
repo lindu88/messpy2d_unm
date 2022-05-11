@@ -222,21 +222,22 @@ def _try_load():
 class IDelayLine(IDevice):
     home_pos: float = attr.Factory(_try_load)
     pos_sign: float = 1
+    beam_passes: int = 2
 
     def get_state(self) -> dict:
         return dict(home_pos=self.home_pos)
 
     @abc.abstractmethod
-    def move_mm(self, mm, *args, **kwargs):
+    def move_mm(self, mm: float, *args, **kwargs):
         pass
 
     @abc.abstractmethod
-    def get_pos_mm(self):
+    def get_pos_mm(self) -> float:
         pass
 
-    def get_pos_fs(self):
+    def get_pos_fs(self) -> float:
         return self.pos_sign * mm_to_fs(
-            (self.get_pos_mm() - self.home_pos) * 2.)
+            (self.get_pos_mm() - self.home_pos) * self.beam_passes)
 
     def move_fs(self, fs, do_wait=False, *args, **kwargs):
         mm = self.pos_sign * fs_to_mm(fs)
@@ -247,7 +248,7 @@ class IDelayLine(IDevice):
                 time.sleep(0.1)
 
     @abc.abstractmethod
-    def is_moving(self):
+    def is_moving(self) -> bool:
         return False
 
     def def_home(self):
@@ -298,8 +299,8 @@ class IShutter(IDevice):
 
 @attr.s
 class IRotationStage(IDevice):
-    sigDegreesChanged: Signal = attr.ib(attr.Factory(Signal))
-    sigMovementCompleted: Signal = attr.ib(attr.Factory(Signal))
+    sigDegreesChanged: typing.ClassVar[Signal] =  Signal(float)
+    sigMovementCompleted: typing.ClassVar[Signal] =  Signal()
 
     @abc.abstractmethod
     def set_degrees(self, deg: float):
