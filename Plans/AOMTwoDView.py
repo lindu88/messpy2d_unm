@@ -154,6 +154,7 @@ class AOMTwoDStarter(PlanStartDialog):
                {'name': 'Phase Cycles', 'type': 'list', 'values': [1, 2, 4]},
                {'name': 'Rot. Frame', 'suffix': 'cm-1', 'type': 'int', 'value': 2000},
                {'name': 'Mode', 'type': 'list', 'values': ['classic', 'bragg']},
+               {'name': 'AOM Amp.', 'type': 'float', 'value': 0.3, 'min': 0, 'max': 0.6},
                {'name': 'Repetitions', 'type': 'int', 'value': 1},
                DelayParameter()
                ]
@@ -177,6 +178,7 @@ class AOMTwoDStarter(PlanStartDialog):
             step_t1=p['t1 (step)'],
             rot_frame_freq=p['Rot. Frame'],
             shaper=controller.shaper,
+            aom_amplitude=p['AOM Amp.'],
             phase_frames=p['Phase Cycles'],
             mode=p['Mode'],
             repetitions=p['Repetitions']
