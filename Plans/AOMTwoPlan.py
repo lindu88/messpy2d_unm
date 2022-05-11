@@ -39,6 +39,7 @@ class AOMTwoDPlan(ScanPlan):
     repetitions: int = 1
     phase_frames: Literal[1, 2, 4] = 4
     save_frames_enabled: bool = False
+    aom_amplitude: float = 0.3
 
     pump_freqs: np.ndarray = attrib()
     probe_freqs: np.ndarray = attrib()
@@ -103,7 +104,7 @@ class AOMTwoDPlan(ScanPlan):
         self.shaper.mode = self.mode
         self.shaper.double_pulse(self.t1, cm2THz(self.rot_frame_freq), self.phase_frames)
 
-        self.shaper.set_wave_amp(0.4)
+        self.shaper.set_wave_amp(self.aom_amplitude)
 
         self.shaper.generate_waveform()
         self.controller.cam.set_shots(self.repetitions * (self.t1.size * self.phase_frames))
