@@ -34,8 +34,7 @@ TWO_PROBES = True
 @attr.s(auto_attribs=True, kw_only=True)
 class PhaseTecCam(ICam):
     spectrograph: SP2150i = attr.ib()
-    probe_rows: Tuple[int, int] = attr.ib()
-    ref_rows: Tuple[int, int] = attr.ib()
+    rows: Dict[str, Tuple[int, int]] = attr.ib()
     name: str = 'Phasetec Array'
     shots: int = 50
 
@@ -44,7 +43,6 @@ class PhaseTecCam(ICam):
         std_names: List[str] = ['Probe', 'Ref', 'Probe/Ref']
         sig_names: List[str] = ['Sig', 'SigNoRef']
     else:
-        probe2_rows: Tuple[int, int] = attr.ib()
         line_names: List[str] = ['Probe', 'Probe2', 'Ref', 'max']
         std_names: List[str] = ['Probe', 'Probe2', 'Ref', 'Probe/Ref']
         sig_names: List[str] = ['SigNoRef', 'Sig',  'Sig2NoRef', 'Sig2']
@@ -62,17 +60,12 @@ class PhaseTecCam(ICam):
 
     sigRowsChanged: ClassVar[Signal] = Signal()
 
-    @probe_rows.default
-    def _probe_rows_default(self):
-        return getattr(config, 'probe2_rows', PROBE_RANGE)
+    @rows.default
+    def _rows_default(self):
+        return {'Probe': PROBE_RANGE,
+                'Probe2': PROBE2_RANGE,
+                'Ref': REF_RANGE}
 
-    @probe2_rows.default
-    def _probe2_rows_default(self):
-        return getattr(config, 'probe2_rows', PROBE2_RANGE)
-
-    @ref_rows.default
-    def _ref_rows_default(self):
-        return getattr(config, 'ref_rows', REF_RANGE)
 
     @spectrograph.default
     def _default_spec(self):
@@ -89,9 +82,7 @@ class PhaseTecCam(ICam):
     def get_state(self):
         d = {
             'shots': self.shots,
-            'probe_rows': self.probe_rows,
-            'ref_rows': self.ref_rows,
-            'probe2_rows': self.probe2_rows
+            'rows': self.rows,
         }
         return d
 
@@ -107,6 +98,10 @@ class PhaseTecCam(ICam):
         return self._cam.read_cam()
 
     def mark_valid_pixel(self,  min_val=2000, max_val=9000):
+        """"
+        Reads the camera and for each row-region, marks pixels which have a value within given range.
+        The result is saved in an attribute.
+        """
         arr, ch = self._cam.read_cam()
 
         pr_range = self.probe_rows
@@ -114,7 +109,7 @@ class PhaseTecCam(ICam):
         pr2_range = self.probe2_rows
 
         self.valid_pixel = []
-        for (l, u) in [pr_range, ref_range, pr2_range,]:
+        for (l, u) in self.rows.values():
             sub_arr = arr[l:u, :, :].mean(-1)
             self.valid_pixel += [(min_val < sub_arr) & (sub_arr < max_val)]
 
@@ -130,9 +125,9 @@ class PhaseTecCam(ICam):
         else:
             first_frame = None
 
-        pr_range = self.probe_rows
-        pr2_range = self.probe2_rows
-        ref_range = self.ref_rows
+        pr_range = self.rows['Probe']
+        pr2_range = self.rows['Probe2']
+        ref_range = self.rows['Ref']
 
         if self.valid_pixel is not None:
             probe = fast_col_mean(arr[pr_range[0]:pr_range[1], ...], self.valid_pixel[0])
