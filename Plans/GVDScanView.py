@@ -36,12 +36,12 @@ class GVDScanView(QWidget):
 
 
 class GVDScanStarter(PlanStartDialog):
-    experiment_type = 'FocusScan'
-    title = "Focus Scan"
+    experiment_type = 'GVDScan'
+    title = "GVD Scan"
     viewer = GVDScanView
 
     def setup_paras(self):
-        tmp = [{'name': 'Filename', 'type': 'str', 'value': 'temp_focus'},
+        tmp = [{'name': 'Filename', 'type': 'str', 'value': 'temp_gvd'},
                {'name': 'Shots', 'type': 'int', 'max': 2000, 'value': 100},
                {'name': 'Start Val', 'type': 'float', 'value': -300, 'step': 1},
                {'name': 'End Val', 'type': 'float', 'value': -100, 'step': 1},

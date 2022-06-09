@@ -47,8 +47,8 @@ class CalibView(QWidget):
     y_full: Optional[np.ndarray] = None
 
     single: int = 6000
-    width: int = 40
-    dist: int = 300
+    width: int = 50
+    dist: int = 500
 
     prominence: float = 50
     distance: int = 3
