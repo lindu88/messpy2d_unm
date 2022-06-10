@@ -29,7 +29,7 @@ class CalibPlan(AsyncPlan):
     single_spectra: np.ndarray = attr.ib(init=False)
     num_shots: int = 100
     separation: int = 500
-    width: int = 100
+    width: int = 50
     single: int = 6000
     start_pos: Tuple[float, float] = 0
     check_zero_order: bool = True

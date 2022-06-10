@@ -1,11 +1,12 @@
 import time
-from typing import Optional
+from typing import Optional, Tuple
 
 import attr
 import numpy as np
 from nicelib import (NiceObject, load_lib, NiceLib,
                      Sig, RetHandler, ret_ignore, ret_return)
 
+from serial import Serial
 
 @RetHandler(num_retvals=0)
 def ret_errcode(retval, funcargs, niceobj):
@@ -32,6 +33,8 @@ class Avaspec(NiceLib):
         PollScan = Sig('in', ret=ret_return)
         GetScopeData = Sig('in', 'out', 'arr[2048]', ret=ret_errcode)
         UseHighResAdc = Sig('in', 'in')
+        GetDigIn = Sig('in', 'in', 'out', ret=ret_errcode)
+        StopMeasure = Sig('in', ret=ret_return)
         # Measure = Sig('in', 'in', 'in')
         # MeasureCallback = Sig('in', '
         # in', 'in')
@@ -40,14 +43,15 @@ class Avaspec(NiceLib):
 @attr.define
 class MeasurmentSettings:
     start_pixel: int = 0
-    stop_pixel: int = 2048
-    int_time: float = 0.7  # in ms
+    stop_pixel: int = 2047
+    int_time: float = 0.4# in ms
     int_delay: int = 0
     n_avg: int = 1
     dark_correct: bool = True
-    smooth_pixel: int = 0
+    smooth_pixel: int = 5
     saturation_detection: bool = False
-    store_to_ram: int = 20
+    store_to_ram: int = 0
+    trigger_type: Tuple[int] = (2, 0, 0)
 
     """
     typedef struct {
@@ -71,10 +75,14 @@ class MeasurmentSettings:
         mc.m_IntegrationTime = self.int_time
         mc.m_IntegrationDelay = self.int_delay
         mc.m_NrAverages = self.n_avg
-        mc.m_CorDynDark = (self.dark_correct, self.dark_correct * 100)
-        mc.m_Smoothing = (self.smooth_pixel, 0)
+        mc.m_CorDynDark = (self.dark_correct, self.dark_correct * 50)
+        mc.m_Smoothing = (self.smooth_pixel, self.smooth_pixel > 0)
         mc.m_SaturationDetection = self.saturation_detection
-        mc.m_Trigger = (0, 0, 0)
+        trig = Avaspec._ffi.new("TriggerType*")
+        trig.m_Mode = Avaspec._defs['SS_TRIGGER_MODE']
+        trig.m_Source = Avaspec._defs['EXTERNAL_TRIGGER']
+        trig.m_SourceType = Avaspec._defs['EDGE_TRIGGER_SOURCE']
+        mc.m_Trigger = trig[0]
         mc.m_Control = (0, 0, 0, 0, self.store_to_ram)
         return mc
 
@@ -86,16 +94,22 @@ class AvantesSpec:
     measurement_settings: MeasurmentSettings = attr.field(factory=MeasurmentSettings)
     wl: np.ndarray = attr.field()
     data: np.ndarray = attr.field(init=False)
+    chopper: np.ndarray = attr.field(init=False)
+    analog_in: np.ndarray = attr.field(init=False)
     shots: int = 300
     count: int = 0
+    wl_range: tuple[float, float] = (300, 1300)
+    wl_index: tuple[int, int] = attr.attrib()
     _cb: object = None
     is_reading: bool = False
+    first_chop: bool = False
+    port: Optional[str] = 'COM9'
+    ardudino: Optional[Serial] = attr.attrib()
 
     @classmethod
     def take_nth(cls, i=0):
         Avaspec.Init(0)
         num_dev = Avaspec.UpdateUSBDevices()
-
         if num_dev == 0:
             raise IOError("No Avantes spectrometer found")
         elif i + 1 > num_dev:
@@ -112,34 +126,110 @@ class AvantesSpec:
     def wl_default(self):
         return self.device.GetLambda()
 
+    @ardudino.default
+    def make_connection(self):
+        if self.port is not None:
+            port = Serial(self.port, baudrate=115200)
+            port.timeout = 0.3
+            print(port.read(1))
+            port.flushInput()
+            port.write(b'10\n')
+            print(port.read(20))
+            port.timeout = 0.1
+        else:
+            port = None
+        return port
+
+    @wl_index.default
+    def _wl_index_factory(self):
+        a = np.argmin(np.abs(self.wl - self.wl_range[0]))
+        b = np.argmin(np.abs(self.wl - self.wl_range[1]))
+        print(a, b)
+        return a,b
+
     def start_reading(self, shots: int, callback):
+        if self.is_reading:
+            raise IOError('Already reading')
         ffi = Avaspec._ffi
         self.shots = shots
         self.measurement_settings.store_to_ram = shots
+
+        self.measurement_settings.start_pixel = self.wl_index[0]
+        self.measurement_settings.stop_pixel = self.wl_index[1]
         self.device.PrepareMeasure(self.measurement_settings.make_struct(ffi))
         hdl = self.device._handles[0]
         if callback is None:
             callback = ffi.NULL
-        Avaspec.AVS_MeasureCallback(hdl, callback, -2)
-        self.data = np.empty((2048, shots))
-        self.count = 0
+        self.data = np.empty((self.wl_index[1]-self.wl_index[0], self.shots))
+        self.chopper = np.empty(self.shots, dtype=bool)
+        self.analog_in = np.empty(self.shots, dtype='int')
         self.is_reading = True
+        self.count = 0
+        self.ardudino.flushInput()
+        Avaspec.AVS_MeasureCallback(hdl, callback, -2)
+
+        self.ardudino.write(b'%d\n' % self.shots)
+        #ans = self.ardudino.read_until(b'\r\n')
+        #print(ans)
+        #assert(ans == '%d\r\n'%self.shots)
 
 
     def callback_factory(self, fin_cb=None):
         @Avaspec._ffi.callback("void(long*, int*)")
         def callback(handle, intp):
-            self.data[:, self.count] = self.device.GetScopeData()[1]
+            self.data[:, self.count] = self.device.GetScopeData()[1][:self.wl_index[1]-self.wl_index[0]]
+            c, a = self.ardudino.read(2)
+            self.chopper[self.count] = c
+            self.analog_in[self.count] = a
             self.count += 1
+
             if self.count == self.shots:
                 self.is_reading = False
                 if fin_cb:
                     fin_cb()
+                self.count = 0
         self._cb = callback
         return callback
 
 if __name__ == '__main__':
+    from qtpy.QtCore import QTimer
     spec = AvantesSpec.take_nth(0)
-    print(spec.measurement_settings)
-    spec.start_reading(200, spec.callback_factory())
-    time.sleep(1)
+
+    while 0:
+        print(spec.device.GetDigIn(0))
+        print(spec.device.GetDigIn(1))
+        print(spec.device.GetDigIn(2))
+        print('--')
+
+    import pyqtgraph as pg
+    app = pg.mkQApp()
+    pw = pg.PlotWidget()
+    pw2 = pg.PlotWidget()
+    l1 = pw.plotItem.plot([],[])
+    l2 = pw2.plotItem.plot([], [])
+    i400 = np.argmin(abs(spec.wl - 400))
+
+    def read():
+        if not spec.is_reading:
+            if hasattr(spec, 'data'):
+                mean = spec.data.mean(1)
+                spec.data -= mean[None, -300:].mean()
+                l1.setData( spec.data.mean(1))
+                sign = -1 if spec.analog_in[0] > 100 else 1
+                print(sign)
+                l2.setData(spec.wl, 1000*sign*np.log10(spec.data[:, ::2].mean(1)/spec.data[:, 1::2].mean(1)))
+                #2.setData(spec.data[i400, :])
+                #2.setData(100*spec.data.std(1)/spec.data.mean(1))
+                #print(spec.analog_in[1-2:])
+                #spec.ardudino.read(100)
+            spec.start_reading(100, spec.callback_factory())
+        else:
+            pass
+
+
+    timer = QTimer()
+    timer.timeout.connect(read)
+    timer.start(30)
+    pw.show()
+    pw2.show()
+    app.exec_()

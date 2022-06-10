@@ -157,7 +157,8 @@ class PumpProbeData(QObject):
             self.wavelengths[i, :] = self.cam.get_wavelengths(wl)
         self.current_scan = np.zeros((num_wl, num_t, num_sig, num_ch))
         self.mean_scans = None
-        self.cam.set_wavelength(self.cwl[0])
+        if self.cam.changeable_wavelength:
+            self.cam.set_wavelength(self.cwl[0])
 
     def post_scan(self):
         'Called when a scan through the delay-line has finished'

@@ -161,7 +161,7 @@ class ICam(IDevice):
         pass
 
     @abc.abstractmethod
-    def get_spectra(self, frames: int) -> T.Tuple[T.Dict[str, Spectrum], T.Any]:
+    def get_spectra(self, frames: T.Optional[int]) -> T.Tuple[T.Dict[str, Spectrum], T.Any]:
         pass
 
     def make_2D_reading(self, t2: np.ndarray, rot_frame: float, repetitions: int = 1,
@@ -242,7 +242,7 @@ class IDelayLine(IDevice):
     def move_fs(self, fs, do_wait=False, *args, **kwargs):
         mm = self.pos_sign * fs_to_mm(fs)
         # print('mm', mm+self.home_pos)
-        self.move_mm(mm / 2. + self.home_pos, *args, **kwargs)
+        self.move_mm(mm / self.beam_passes + self.home_pos, *args, **kwargs)
         if do_wait:
             while self.is_moving():
                 time.sleep(0.1)

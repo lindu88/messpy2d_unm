@@ -46,7 +46,7 @@ SHORT_STATES = Literal['NOT_REFERENCED', 'READY', 'JOGGING', 'INITIALAZING', 'HO
 @attr.s(auto_attribs=True)
 class NewportDLC(IDelayLine):
     name: str = 'Newport DLC'
-    port: str = 'COM3'
+    port: str = 'COM8'
     serial: Serial = attr.ib()
 
     @serial.default
@@ -74,7 +74,7 @@ class NewportDLC(IDelayLine):
         self.serial.write((cmd+'\r\n').encode())
 
     def read(self) -> str:
-        return self.serial.read_until(b'\r\n').decode().strip()[:-2]
+        return self.serial.read_until(b'\r\n').decode().strip()
 
     def controller_state(self) -> SHORT_STATES:
         """
@@ -82,6 +82,7 @@ class NewportDLC(IDelayLine):
         """
         self.write('TS')
         state = self.read()
+        print(state)
         return MAIN_STATES[state[-2:]]
 
     def is_moving(self) -> bool:
@@ -89,7 +90,15 @@ class NewportDLC(IDelayLine):
 
     def get_pos_mm(self):
         self.write('TP?')
-        return float(self.read())
+        return float(self.read()[2:])
 
-    def set_pos_mm(self, pos_mm: float):
-        self.write(f'TP{pos_mm:.3f}')
+    def move_mm(self, mm: float, *args, **kwargs):
+        self.write(f'PA{mm:.3f}')
+
+
+if __name__ == '__main__':
+    dl = NewportDLC()
+    print(dl.get_pos_mm())
+    dl.move_mm(0)
+    print(dl.is_moving())
+    print(dl.get_pos_mm())
