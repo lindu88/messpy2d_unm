@@ -1,5 +1,5 @@
 import platform
-
+import sys
 import Instruments.dac_px
 from Config import config
 from Instruments.mocks import CamMock, DelayLineMock, StageMock
@@ -16,6 +16,11 @@ _sh = None
 _shaper = None
 
 pc_name = platform.node()
+if len(sys.argv) > 1:
+    arg = sys.argv[1]
+else:
+    arg = ''
+
 
 if pc_name == '2dir-PC':
     from Instruments.delay_line_mercury import dl
@@ -64,6 +69,14 @@ elif pc_name == 'helmholm' and not TESTING:
     from Instruments.remotes import RotationStage, Shutter
     #_rot_stage = RotationStage()
     _shutter = Shutter()
+
+
+elif pc_name == 'DESKTOP-BBLLUO7' and arg == 'Vis':
+    from Instruments.cam_avaspec import AvaCam
+    _cam = AvaCam()
+    _cam2 = None
+    from Instruments.delay_line_apt import DelayLine
+    _dl = DelayLine(name="VisDelay")
 
 elif pc_name == 'DESKTOP-BBLLUO7':
     from Instruments.cam_phasetec import PhaseTecCam

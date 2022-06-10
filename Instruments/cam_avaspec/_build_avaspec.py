@@ -27,7 +27,7 @@ def build():
     build_lib(header_info, lib_names, '_avaspeclib', __file__,
               ignored_headers=['vcruntime.h',
                                'stdio.h', 'corecrt.h', 'stddef.h'],
-              preamble=preamble, cffi_kwargs=dict(packed=True))
+              preamble=preamble, pack=True)
 
 
 if __name__ == "__main__":
