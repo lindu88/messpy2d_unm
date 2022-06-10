@@ -177,10 +177,12 @@ class Reading2D:
     freqs: np.ndarray = attr.ib()
     signal_2D: np.ndarray = attr.ib()
     frames: Optional[np.ndarray] = None
+    ref_frames: Optional[np.ndarray] = None
 
     @classmethod
     def from_spectrum(cls, s: Spectrum, t2_ps: np.ndarray,
-                      rot_frame: float, save_frame_enabled: bool,  **kwargs) -> 'Reading2D':
+                      rot_frame: float, save_frame_enabled: bool,
+                      ref_frames: Optional[np.ndarray] = None,  **kwargs) -> 'Reading2D':
         f = s.frame_data
         n = s.frame_data.shape[1] / len(t2_ps)
         if n == 1:
@@ -194,6 +196,8 @@ class Reading2D:
         assert (sig.shape[1] == len(t2_ps))
         if save_frame_enabled:
             kwargs['frames'] = f
+            if ref_frames is not None:
+                kwargs['ref_frames'] = ref_frames
         return cls(spectra=s, interferogram=sig, t2_ps=t2_ps, rot_frame=rot_frame, **kwargs)
 
     @freqs.default

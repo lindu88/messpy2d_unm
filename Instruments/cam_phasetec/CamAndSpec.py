@@ -225,6 +225,7 @@ class PhaseTecCam(ICam):
                 two_d_data[name] = future
             for name in ('Probe1', 'Probe2'):
                 two_d_data[name] = two_d_data[name].result()
+            two_d_data['Ref'] = spectra['Ref']
         return two_d_data
 
     def calibrate_ref(self):
