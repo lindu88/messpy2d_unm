@@ -194,8 +194,8 @@ class PhaseTecCam(ICam):
                 dp = probe.data[:, ::2] - probe.data[:, 1::2]
                 dp2 = probe2.data[:, ::2] - probe2.data[:, 1::2]
                 dr = ref.data[:, ::2] - ref.data[:, 1::2]
-                dp = (dp - self.beta1 @ dr)
-                dp2 = (dp2 - self.beta2 @ dr)
+                dp = (dp - self.beta1.T @ dr)
+                dp2 = (dp2 - self.beta2.T @ dr)
 
                 sig = f / LOG10 * np.log1p(dp.mean(1) / probe.mean)
                 sig_pr2 = f / LOG10 * np.log1p(dp2.mean(1) / probe2.mean)
@@ -242,9 +242,9 @@ class PhaseTecCam(ICam):
         self.beta1 = np.linalg.lstsq(dr.T, dp1.T, rcond=-1)[0]
         self.beta2 = np.linalg.lstsq(dr.T, dp2.T, rcond=-1)[0]
         self.deltaK1 = 1000 / LOG10 * np.log1p(
-            (dp1 - self.beta1 @ dr).mean(1) / probe.mean(1))
+            (dp1 - self.beta1.T @ dr).mean(1) / probe.mean(1))
         self.deltaK2 = 1000 / LOG10 * (
-                dp2 - self.beta2 @ dr).mean(1) / probe2.mean(1)
+                dp2 - self.beta2.T @ dr).mean(1) / probe2.mean(1)
 
 
     def set_background(self, shots=0):

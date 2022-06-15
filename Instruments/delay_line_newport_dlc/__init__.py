@@ -66,7 +66,7 @@ class NewportDLC(IDelayLine):
                     time.sleep(0.1)
             if self.controller_state() == "DISABLE":
                 self.write('MM1')
-                
+
     def write(self, cmd: str):
         """
         Writes a command to the controller.
@@ -88,7 +88,7 @@ class NewportDLC(IDelayLine):
     def is_moving(self) -> bool:
         return self.controller_state() == 'MOVING'
 
-    def get_pos_mm(self):
+    def get_pos_mm(self) -> float:
         self.write('TP?')
         return float(self.read()[2:])
 
