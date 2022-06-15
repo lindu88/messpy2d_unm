@@ -158,8 +158,10 @@ if __name__ == "__main__":
 
     cam = Cam()
     cam.read_cam()
+    cam.set_shots(2000)
 
-
+    cnt = 0
+    import numpy as np
     def up():
         t = time.time()
         thr = threading.Thread(target=cam.read_cam)
@@ -169,7 +171,11 @@ if __name__ == "__main__":
             app.processEvents()
         print(time.time() - t)
         l.setData(cam.data[10, 10, :])
-
+        global cnt
+        np.save('%d testread'%cnt, cam.data )
+        cnt += 1
+        if cnt == 20:
+            quit()
 
     timer.timeout.connect(up)
     timer.start(0)
