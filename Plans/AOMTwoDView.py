@@ -80,7 +80,7 @@ class AOMTwoDViewer(GraphicsLayoutWidget):
     async def update_data(self, al=True):
         if self.plan.last_2d is not None:
             self.ifr_img.setImage(self.plan.last_ir, autoLevels=al)
-            self.spec_img.setImage(self.plan.last_2d[:, ::], autoLevels=al)
+            self.spec_img.setImage(self.plan.last_2d[::-1, ::], autoLevels=al)
 
     def ifr_clicked(self, ev):
         x, y = ev.pos()
