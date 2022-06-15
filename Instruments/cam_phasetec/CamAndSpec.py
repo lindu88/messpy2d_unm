@@ -97,16 +97,12 @@ class PhaseTecCam(ICam):
     def read_cam(self):
         return self._cam.read_cam()
 
-    def mark_valid_pixel(self,  min_val=2000, max_val=9000):
+    def mark_valid_pixel(self,  min_val=300, max_val=12000):
         """"
         Reads the camera and for each row-region, marks pixels which have a value within given range.
         The result is saved in an attribute.
         """
         arr, ch = self._cam.read_cam()
-
-        pr_range = self.probe_rows
-        ref_range = self.ref_rows
-        pr2_range = self.probe2_rows
 
         self.valid_pixel = []
         for (l, u) in self.rows.values():
@@ -197,12 +193,12 @@ class PhaseTecCam(ICam):
             if self.beta1 is not None:
                 dp = probe.data[:, ::2] - probe.data[:, 1::2]
                 dp2 = probe2.data[:, ::2] - probe2.data[:, 1::2]
-                dr = np.diff(ref.data[::16, :], axis=1)
+                dr = ref.data[:, ::2] - ref.data[:, 1::2]
                 dp = (dp - self.beta1 @ dr)
                 dp2 = (dp2 - self.beta2 @ dr)
 
-                sig = f / LOG10 * np.log1p(dp.mean(1) / probe.mean(1))
-                sig_pr2 = f / LOG10 * np.log1p(dp2.mean(1) / probe2.mean(1))
+                sig = f / LOG10 * np.log1p(dp.mean(1) / probe.mean)
+                sig_pr2 = f / LOG10 * np.log1p(dp2.mean(1) / probe2.mean)
 
             which = 1 if (ch[0][0] > 1) else 0
             reading = Reading(lines=np.stack(
@@ -230,21 +226,21 @@ class PhaseTecCam(ICam):
 
     def calibrate_ref(self):
         tmp_shots = self.shots
-        self._cam.set_shots(2000)
-        arr, ch = self._cam.read_cam()
+        self._cam.set_shots(5000)
+        #arr, ch = self._cam.read_cam()
         specs, _ = self.get_spectra()
         self._cam.set_shots(tmp_shots)
 
-        probe = specs['Probe'].data
+        probe = specs['Probe1'].data
         probe2 = specs['Probe2'].data
         ref = specs['Ref'].data
 
-        dp1 = probe.data[:, ::2] - probe.data[:, 1::2]
-        dp2 = probe2.data[:, ::2] - probe2.data[:, 1::2]
-        dr = ref.data[:, ::2] - ref.data[:, 1::2]
+        dp1 = probe[:, ::2] - probe[:, 1::2]
+        dp2 = probe2[:, ::2] - probe2[:, 1::2]
+        dr = ref[:, ::2] - ref[:, 1::2]
 
-        self.beta1 = np.linalg.lstsq(dr.T, dp1.T)[0]
-        self.beta2 = np.linalg.lstsq(dr.T, dp2.T)[0]
+        self.beta1 = np.linalg.lstsq(dr.T, dp1.T, rcond=-1)[0]
+        self.beta2 = np.linalg.lstsq(dr.T, dp2.T, rcond=-1)[0]
         self.deltaK1 = 1000 / LOG10 * np.log1p(
             (dp1 - self.beta1 @ dr).mean(1) / probe.mean(1))
         self.deltaK2 = 1000 / LOG10 * (
