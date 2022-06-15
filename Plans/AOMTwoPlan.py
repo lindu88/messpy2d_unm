@@ -46,6 +46,7 @@ class AOMTwoDPlan(ScanPlan):
 
     data_file_name: str = attrib()
     initial_state: dict = attr.Factory(dict)
+    save_ref: bool = True
 
     disp_arrays: Dict[str, Tuple[np.ndarray, np.ndarray]] = attr.Factory(dict)
     last_ir: Optional[np.ndarray] = None
@@ -57,11 +58,11 @@ class AOMTwoDPlan(ScanPlan):
         return self.controller.cam.wavenumbers
 
     @t1.default
-    def _t2_default(self):
-        t2 = np.arange(0, abs(self.max_t1) + 1e-3, self.step_t1)
+    def _t1_default(self):
+        t1 = np.arange(0, abs(self.max_t1) + 1e-3, self.step_t1)
         if self.max_t1 < 0:
-            t2 = -t2
-        return t2
+            t1 = -t1
+        return t1
 
     @pump_freqs.default
     def _calc_freqs(self):
@@ -152,24 +153,28 @@ class AOMTwoDPlan(ScanPlan):
 
         self.time_tracker.point_ending()
         ret = future.result()
-        #thr = threading.Thread(target=self.save_data, args=(ret, self.t2_idx, self.cur_t2,))
-        #thr.start()
-        self.save_data(ret, self.t2_idx, self.cur_scan)
+        thr = threading.Thread(target=self.save_data, args=(ret, self.t2_idx, self.cur_t2,))
+        thr.start()
+        #self.save_data(ret, self.t2_idx, self.cur_scan)
 
         #self.save_data(ret, self.t3_idx, self.cur_t3)
 
     def save_data(self, ret, t2_idx, cur_scan):
         with h5py.File(self.data_file_name, mode='a') as f:
             for line, data in ret.items():
-                ds = f.create_dataset(f'ifr_data/{line}/{t2_idx}/{cur_scan}', data=data.interferogram)
-                ds.attrs['time'] = self.cur_t2
-                ds = f.create_dataset(f'2d_data/{line}/{t2_idx}/{cur_scan}', data=data.signal_2D)
-                ds.attrs['time'] = self.cur_t2
-                if self.save_frames_enabled:
-                    ds = f.create_dataset(f'frames/{line}/{t2_idx}/{cur_scan}', data=data.frames)
-                disp_2d = f.get(f'2d_data/{line}/{t2_idx}/mean', data.signal_2D)
-                disp_ifr = f.get(f'ifr_data/{line}/{t2_idx}/mean', data.interferogram)
-                self.disp_arrays[line] = disp_2d, disp_ifr
+                if line == 'Ref':
+                    if self.save_ref:
+                        ds = f.create_dataset(f'ref_data//{t2_idx}/{cur_scan}', data=data.mean)
+                else:
+                    ds = f.create_dataset(f'ifr_data/{line}/{t2_idx}/{cur_scan}', data=data.interferogram)
+                    ds.attrs['time'] = self.cur_t2
+                    ds = f.create_dataset(f'2d_data/{line}/{t2_idx}/{cur_scan}', data=data.signal_2D)
+                    ds.attrs['time'] = self.cur_t2
+                    if self.save_frames_enabled:
+                        ds = f.create_dataset(f'frames/{line}/{t2_idx}/{cur_scan}', data=data.frames)
+                    disp_2d = f.get(f'2d_data/{line}/{t2_idx}/mean', data.signal_2D)
+                    disp_ifr = f.get(f'ifr_data/{line}/{t2_idx}/mean', data.interferogram)
+                    self.disp_arrays[line] = disp_2d, disp_ifr
             self.last_2d = np.array(disp_2d)
             self.last_ir = np.array(disp_ifr)
 

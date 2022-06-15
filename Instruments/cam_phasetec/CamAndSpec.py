@@ -34,8 +34,7 @@ TWO_PROBES = True
 @attr.s(auto_attribs=True, kw_only=True)
 class PhaseTecCam(ICam):
     spectrograph: SP2150i = attr.ib()
-    probe_rows: Tuple[int, int] = attr.ib()
-    ref_rows: Tuple[int, int] = attr.ib()
+    rows: Dict[str, Tuple[int, int]] = attr.ib()
     name: str = 'Phasetec Array'
     shots: int = 50
 
@@ -44,7 +43,6 @@ class PhaseTecCam(ICam):
         std_names: List[str] = ['Probe', 'Ref', 'Probe/Ref']
         sig_names: List[str] = ['Sig', 'SigNoRef']
     else:
-        probe2_rows: Tuple[int, int] = attr.ib()
         line_names: List[str] = ['Probe', 'Probe2', 'Ref', 'max']
         std_names: List[str] = ['Probe', 'Probe2', 'Ref', 'Probe/Ref']
         sig_names: List[str] = ['SigNoRef', 'Sig',  'Sig2NoRef', 'Sig2']
@@ -62,17 +60,12 @@ class PhaseTecCam(ICam):
 
     sigRowsChanged: ClassVar[Signal] = Signal()
 
-    @probe_rows.default
-    def _probe_rows_default(self):
-        return getattr(config, 'probe2_rows', PROBE_RANGE)
+    @rows.default
+    def _rows_default(self):
+        return {'Probe': PROBE_RANGE,
+                'Probe2': PROBE2_RANGE,
+                'Ref': REF_RANGE}
 
-    @probe2_rows.default
-    def _probe2_rows_default(self):
-        return getattr(config, 'probe2_rows', PROBE2_RANGE)
-
-    @ref_rows.default
-    def _ref_rows_default(self):
-        return getattr(config, 'ref_rows', REF_RANGE)
 
     @spectrograph.default
     def _default_spec(self):
@@ -89,9 +82,7 @@ class PhaseTecCam(ICam):
     def get_state(self):
         d = {
             'shots': self.shots,
-            'probe_rows': self.probe_rows,
-            'ref_rows': self.ref_rows,
-            'probe2_rows': self.probe2_rows
+            'rows': self.rows,
         }
         return d
 
@@ -107,6 +98,10 @@ class PhaseTecCam(ICam):
         return self._cam.read_cam()
 
     def mark_valid_pixel(self,  min_val=2000, max_val=9000):
+        """"
+        Reads the camera and for each row-region, marks pixels which have a value within given range.
+        The result is saved in an attribute.
+        """
         arr, ch = self._cam.read_cam()
 
         pr_range = self.probe_rows
@@ -114,7 +109,7 @@ class PhaseTecCam(ICam):
         pr2_range = self.probe2_rows
 
         self.valid_pixel = []
-        for (l, u) in [pr_range, ref_range, pr2_range,]:
+        for (l, u) in self.rows.values():
             sub_arr = arr[l:u, :, :].mean(-1)
             self.valid_pixel += [(min_val < sub_arr) & (sub_arr < max_val)]
 
@@ -130,9 +125,9 @@ class PhaseTecCam(ICam):
         else:
             first_frame = None
 
-        pr_range = self.probe_rows
-        pr2_range = self.probe2_rows
-        ref_range = self.ref_rows
+        pr_range = self.rows['Probe']
+        pr2_range = self.rows['Probe2']
+        ref_range = self.rows['Ref']
 
         if self.valid_pixel is not None:
             probe = fast_col_mean(arr[pr_range[0]:pr_range[1], ...], self.valid_pixel[0])
@@ -230,32 +225,31 @@ class PhaseTecCam(ICam):
                 two_d_data[name] = future
             for name in ('Probe1', 'Probe2'):
                 two_d_data[name] = two_d_data[name].result()
+            two_d_data['Ref'] = spectra['Ref']
         return two_d_data
 
     def calibrate_ref(self):
         tmp_shots = self.shots
-        self._cam.set_shots(10000)
+        self._cam.set_shots(2000)
         arr, ch = self._cam.read_cam()
+        specs, _ = self.get_spectra()
         self._cam.set_shots(tmp_shots)
-        if self.background is not None:
-            arr = arr - self.background[:, :, None]
-        pr_range = self.probe_rows
-        ref_range = self.ref_rows
-        probe = np.nanmean(arr[pr_range[0]:pr_range[1], :, :], 0)
-        dp1 = np.diff(probe, axis=1)
-        ref = np.nanmean(arr[ref_range[0]:ref_range[1], :, :], 0)
 
-        dr = np.diff(ref[::16, :], axis=1)
-        self.beta1 = np.linalg.lstsq(dp1.T, dr.T)[0]
+        probe = specs['Probe'].data
+        probe2 = specs['Probe2'].data
+        ref = specs['Ref'].data
+
+        dp1 = probe.data[:, ::2] - probe.data[:, 1::2]
+        dp2 = probe2.data[:, ::2] - probe2.data[:, 1::2]
+        dr = ref.data[:, ::2] - ref.data[:, 1::2]
+
+        self.beta1 = np.linalg.lstsq(dr.T, dp1.T)[0]
+        self.beta2 = np.linalg.lstsq(dr.T, dp2.T)[0]
         self.deltaK1 = 1000 / LOG10 * np.log1p(
             (dp1 - self.beta1 @ dr).mean(1) / probe.mean(1))
-
-        if TWO_PROBES:
-            probe2 = np.nanmean(arr[PROBE2_RANGE[0]:PROBE2_RANGE[1], :, :], 0)
-            dp2 = np.diff(probe2, axis=1)
-            self.beta2 = np.linalg.lstsq(dp2.T, dr.T)[0]
-            self.deltaK2 = 1000 / LOG10 * (
+        self.deltaK2 = 1000 / LOG10 * (
                 dp2 - self.beta2 @ dr).mean(1) / probe2.mean(1)
+
 
     def set_background(self, shots=0):
         arr = self._cam.read_cam()[0]
