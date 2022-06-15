@@ -157,6 +157,8 @@ class AOMTwoDStarter(PlanStartDialog):
                {'name': 'AOM Amp.', 'type': 'float', 'value': 0.3, 'min': 0, 'max': 0.6},
                {'name': 'Repetitions', 'type': 'int', 'value': 1},
                DelayParameter()
+               {'name': 'Save Frames', 'type': 'bool', 'value': False},
+               {'name': 'Save Ref. Frames', 'type': 'bool', 'value': False},
                ]
 
         two_d = {'name': 'Exp. Settings', 'type': 'group', 'children': tmp}
@@ -181,7 +183,9 @@ class AOMTwoDStarter(PlanStartDialog):
             aom_amplitude=p['AOM Amp.'],
             phase_frames=p['Phase Cycles'],
             mode=p['Mode'],
-            repetitions=p['Repetitions']
+            repetitions=p['Repetitions'],
+            save_frames_enabled=p['Save Frames'],
+            save_ref=p['Save Ref. Frames'] and p['Save Frames']
         )
         return p
 

@@ -230,28 +230,26 @@ class PhaseTecCam(ICam):
 
     def calibrate_ref(self):
         tmp_shots = self.shots
-        self._cam.set_shots(10000)
+        self._cam.set_shots(2000)
         arr, ch = self._cam.read_cam()
+        specs, _ = self.get_spectra()
         self._cam.set_shots(tmp_shots)
-        if self.background is not None:
-            arr = arr - self.background[:, :, None]
-        pr_range = self.probe_rows
-        ref_range = self.ref_rows
-        probe = np.nanmean(arr[pr_range[0]:pr_range[1], :, :], 0)
-        dp1 = np.diff(probe, axis=1)
-        ref = np.nanmean(arr[ref_range[0]:ref_range[1], :, :], 0)
 
-        dr = np.diff(ref[::16, :], axis=1)
-        self.beta1 = np.linalg.lstsq(dp1.T, dr.T)[0]
+        probe = specs['Probe'].data
+        probe2 = specs['Probe2'].data
+        ref = specs['Ref'].data
+
+        dp1 = probe.data[:, ::2] - probe.data[:, 1::2]
+        dp2 = probe2.data[:, ::2] - probe2.data[:, 1::2]
+        dr = ref.data[:, ::2] - ref.data[:, 1::2]
+
+        self.beta1 = np.linalg.lstsq(dr.T, dp1.T)[0]
+        self.beta2 = np.linalg.lstsq(dr.T, dp2.T)[0]
         self.deltaK1 = 1000 / LOG10 * np.log1p(
             (dp1 - self.beta1 @ dr).mean(1) / probe.mean(1))
-
-        if TWO_PROBES:
-            probe2 = np.nanmean(arr[PROBE2_RANGE[0]:PROBE2_RANGE[1], :, :], 0)
-            dp2 = np.diff(probe2, axis=1)
-            self.beta2 = np.linalg.lstsq(dp2.T, dr.T)[0]
-            self.deltaK2 = 1000 / LOG10 * (
+        self.deltaK2 = 1000 / LOG10 * (
                 dp2 - self.beta2 @ dr).mean(1) / probe2.mean(1)
+
 
     def set_background(self, shots=0):
         arr = self._cam.read_cam()[0]
