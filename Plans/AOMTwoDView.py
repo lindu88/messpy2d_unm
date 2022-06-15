@@ -156,7 +156,7 @@ class AOMTwoDStarter(PlanStartDialog):
                {'name': 'Mode', 'type': 'list', 'values': ['classic', 'bragg']},
                {'name': 'AOM Amp.', 'type': 'float', 'value': 0.3, 'min': 0, 'max': 0.6},
                {'name': 'Repetitions', 'type': 'int', 'value': 1},
-               DelayParameter()
+               DelayParameter(),
                {'name': 'Save Frames', 'type': 'bool', 'value': False},
                {'name': 'Save Ref. Frames', 'type': 'bool', 'value': False},
                ]
