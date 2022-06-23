@@ -153,7 +153,7 @@ class AOMTwoDPlan(ScanPlan):
 
         self.time_tracker.point_ending()
         ret = future.result()
-        thr = threading.Thread(target=self.save_data, args=(ret, self.t2_idx, self.cur_t2,))
+        thr = threading.Thread(target=self.save_data, args=(ret, self.t2_idx, self.cur_scan,))
         thr.start()
         #self.save_data(ret, self.t2_idx, self.cur_scan)
 
