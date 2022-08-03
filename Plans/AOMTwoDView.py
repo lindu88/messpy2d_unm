@@ -3,7 +3,7 @@ import numpy as np
 import pyqtgraph.parametertree as pt
 from pyqtgraph import PlotWidget, ImageItem, PlotItem, colormap, GraphicsLayoutWidget, HistogramLUTItem, InfiniteLine, \
     mkPen, PlotDataItem
-from qtpy.QtWidgets import QWidget, QLabel, QTabWidget
+from qtpy.QtWidgets import QWidget, QLabel, QTabWidget, QVBoxLayout
 from qtpy.QtCore import Slot
 from ControlClasses import Controller
 from QtHelpers import vlay, PlanStartDialog, hlay, remove_nodes, make_entry
@@ -14,32 +14,35 @@ from .PlanBase import sample_parameters
 from typing import Callable
 import qasync
 
-class AOMTwoDViewer(GraphicsLayoutWidget):
+class AOMTwoDViewer(QWidget):
     def __init__(self, plan: AOMTwoDPlan, parent=None):
         super().__init__(parent=parent)
         self.plan = plan
         self.pump_freqs = plan.pump_freqs
         self.probe_freq = plan.probe_freqs
 
-        pw = self.addPlot()
-        pw: PlotItem
-        pw.setLabels(bottom='Probe Freq', left='Time')
-        cmap = colormap.get("CET-D1")
-        self.ifr_img = ImageItem()
-        rect = (self.probe_freq.max(), 0, -self.probe_freq.ptp(), plan.max_t1)
-        self.ifr_img.setImage(np.zeros((128, plan.t1.size)), rect=rect)
-        pw.addItem(self.ifr_img)
-        self.spec_image_view = pw
-        self.ifr_img.mouseClickEvent = self.ifr_clicked
-        hist = HistogramLUTItem()
-        hist.setImageItem(self.ifr_img)
-        hist.gradient.setColorMap(cmap)
-        self.addItem(hist)
-        self.ifr_lines: dict[InfiniteLine, PlotDataItem] = {}
-        self.ifr_free_colors = list(range(9))
-        self.addPlot: Callable[[], PlotItem]
+        gl = GraphicsLayoutWidget(self)
+        self.setLayout(QVBoxLayout())
+        self.layout().addWidget(gl)
+        #pw = self.addPlot()
+        #pw: PlotItem
+        #pw.setLabels(bottom='Probe Freq', left='Time')
+        #cmap = colormap.get("CET-D1")
+        #self.ifr_img = ImageItem()
+        #rect = (self.probe_freq.max(), 0, -self.probe_freq.ptp(), plan.max_t1)
+        #self.ifr_img.setImage(np.zeros((128, plan.t1.size)), rect=rect)
+        #pw.addItem(self.ifr_img)
+        #self.spec_image_view = pw
+        #self.ifr_img.mouseClickEvent = self.ifr_clicked
+        #hist = HistogramLUTItem()
+        #hist.setImageItem(self.ifr_img)
+        #hist.gradient.setColorMap(cmap)
+        #self.addItem(hist)
+        #self.ifr_lines: dict[InfiniteLine, PlotDataItem] = {}
+        #self.ifr_free_colors = list(range(9))
+        gl.addPlot: Callable[[], PlotItem]
 
-        pw = self.addPlot()
+        pw = gl.addPlot()
         pw.setLabels(bottom='Probe Freq', left='Pump Freq')
         cmap = colormap.get("CET-D1")
 
@@ -57,16 +60,16 @@ class AOMTwoDViewer(GraphicsLayoutWidget):
         hist.setImageItem(self.spec_img)
         hist.gradient.setColorMap(cmap)
 
-        self.addItem(hist)
-        self.ci.nextRow()
-        self.trans_plot = self.ci.addPlot(colspan=2)
-        self.trans_plot.setLabels(bottom="Time", left='Signal')
-        self.spec_plot = self.ci.addPlot(colspan=2)
+        gl.addItem(hist)
+        gl.ci.nextRow()
+        #self.trans_plot = self.ci.addPlot(colspan=2)
+        #self.trans_plot.setLabels(bottom="Time", left='Signal')
+        self.spec_plot = gl.ci.addPlot(colspan=2)
         self.spec_plot.setLabels(bottom="Probe Freq", left='Signal')
         self.spec_cut_line = self.spec_plot.plot()
         self.spec_mean_line = self.spec_plot.plot()
-        self.ci.nextRow()
-        self.info_label = self.ci.addLabel("Hallo", colspan=4)
+        gl.ci.nextRow()
+        self.info_label = gl.ci.addLabel("Hallo", colspan=4)
         
         self.update_plots()
         self.spec_line.sigPositionChanged.connect(self.update_spec_lines)
@@ -79,7 +82,7 @@ class AOMTwoDViewer(GraphicsLayoutWidget):
     @qasync.asyncSlot()
     async def update_data(self, al=True):
         if self.plan.last_2d is not None:
-            self.ifr_img.setImage(self.plan.last_ir, autoLevels=al)
+        #    self.ifr_img.setImage(self.plan.last_ir, autoLevels=al)
             self.spec_img.setImage(self.plan.last_2d[::, ::-1], autoLevels=al)
 
     def ifr_clicked(self, ev):
@@ -112,8 +115,8 @@ class AOMTwoDViewer(GraphicsLayoutWidget):
     def update_plots(self):
         if self.plan.last_2d is not None:
             self.spec_mean_line.setData(self.probe_freq, self.plan.last_2d.mean(1))
-            for line in self.ifr_lines.keys():
-                line.sigPositionChanged.emit(line)  # Causes an update
+            #for line in self.ifr_lines.keys():
+            #    line.sigPositionChanged.emit(line)  # Causes an update
 
     def update_spec_lines(self, *args):
         idx = np.argmin(abs(self.pump_freqs - self.spec_line.pos()[1]))
