@@ -9,6 +9,8 @@ from numba import jit, prange
 LOG10 = math.log(10)
 f = Union[float, np.ndarray]
 
+np.seterr(all="ignore")
+
 def THz2cm(nu: f) -> f:
     return (nu * 1e10) / c
 
@@ -175,7 +177,7 @@ class Reading2D:
     upsample: int = 2
     rot_frame: float = 0
     freqs: np.ndarray = attr.ib()
-    signal_2D: np.ndarray = attr.ib()
+    signal_2D: Optional[np.ndarray] = None
     frames: Optional[np.ndarray] = None
     ref_frames: Optional[np.ndarray] = None
 
@@ -205,7 +207,6 @@ class Reading2D:
         freqs = np.fft.rfftfreq(len(self.t2_ps) * self.upsample, self.t2_ps[1] - self.t2_ps[0])
         return THz2cm(freqs) + self.rot_frame
 
-    @signal_2D.default
     def calc_2d(self):
         a = self.interferogram.copy()
         a[:, 0] *= 0.5
@@ -213,3 +214,10 @@ class Reading2D:
             win = self.window(a.shape[1] * 2)
             a = a * win[None, a.shape[1]:]
         return np.fft.rfft(a, a.shape[1] * self.upsample, 1).real
+
+def calc_2d(ifr, window=np.hanning, upsample=2):
+    ifr[:, 0] *= 0.5
+    if window is not None:
+        win = window(ifr.shape[1] * 2)
+        ifr = ifr * win[None, ifr.shape[1]:]
+    return np.fft.rfft(ifr, ifr.shape[1] * upsample, 1).real
