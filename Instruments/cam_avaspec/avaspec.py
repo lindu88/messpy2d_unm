@@ -68,7 +68,7 @@ class MeasurmentSettings:
     } MeasConfigType;"""
 
     def make_struct(self, ffi):
-        print(self.start_pixel)
+        #print(self.start_pixel)
         mc = Avaspec._ffi.new("MeasConfigType*")
         mc.m_StartPixel = self.start_pixel
         mc.m_StopPixel = self.stop_pixel
@@ -98,12 +98,12 @@ class AvantesSpec:
     analog_in: np.ndarray = attr.field(init=False)
     shots: int = 300
     count: int = 0
-    wl_range: tuple[float, float] = (300, 1300)
+    wl_range: tuple[float, float] = (0, 2000)
     wl_index: tuple[int, int] = attr.attrib()
     _cb: object = None
     is_reading: bool = False
     first_chop: bool = False
-    port: Optional[str] = 'COM9'
+    port: Optional[str] = 'COM3'
     ardudino: Optional[Serial] = attr.attrib()
 
     @classmethod
@@ -135,7 +135,7 @@ class AvantesSpec:
             port.flushInput()
             port.write(b'10\n')
             print(port.read(20))
-            port.timeout = 0.1
+            port.timeout = 1.3
         else:
             port = None
         return port
@@ -154,13 +154,13 @@ class AvantesSpec:
         self.shots = shots
         self.measurement_settings.store_to_ram = shots
 
-        self.measurement_settings.start_pixel = self.wl_index[0]
-        self.measurement_settings.stop_pixel = self.wl_index[1]
+        #self.measurement_settings.start_pixel = self.wl_index[0]
+        #self.measurement_settings.stop_pixel = self.wl_index[1]
         self.device.PrepareMeasure(self.measurement_settings.make_struct(ffi))
         hdl = self.device._handles[0]
         if callback is None:
             callback = ffi.NULL
-        self.data = np.empty((self.wl_index[1]-self.wl_index[0], self.shots))
+        self.data = np.empty((2048, self.shots))
         self.chopper = np.empty(self.shots, dtype=bool)
         self.analog_in = np.empty(self.shots, dtype='int')
         self.is_reading = True
@@ -177,8 +177,10 @@ class AvantesSpec:
     def callback_factory(self, fin_cb=None):
         @Avaspec._ffi.callback("void(long*, int*)")
         def callback(handle, intp):
-            self.data[:, self.count] = self.device.GetScopeData()[1][:self.wl_index[1]-self.wl_index[0]]
-            c, a = self.ardudino.read(2)
+            scope_data = self.device.GetScopeData()[1]
+            self.data[:scope_data.size, self.count] = scope_data#[:self.wl_index[1]-self.wl_index[0]]
+            out = self.ardudino.read(2)
+            c, a = out
             self.chopper[self.count] = c
             self.analog_in[self.count] = a
             self.count += 1
@@ -207,7 +209,9 @@ if __name__ == '__main__':
     pw2 = pg.PlotWidget()
     l1 = pw.plotItem.plot([],[])
     l2 = pw2.plotItem.plot([], [])
-    i400 = np.argmin(abs(spec.wl - 400))
+    i400 = np.argmin(abs(spec.wl - 370))
+    i1200 = np.argmin(abs(spec.wl - 1200))
+    print(i400, i1200)
 
     def read():
         if not spec.is_reading:
@@ -216,7 +220,7 @@ if __name__ == '__main__':
                 spec.data -= mean[None, -300:].mean()
                 l1.setData( spec.data.mean(1))
                 sign = -1 if spec.analog_in[0] > 100 else 1
-                print(sign)
+                #print(sign)
                 l2.setData(spec.wl, 1000*sign*np.log10(spec.data[:, ::2].mean(1)/spec.data[:, 1::2].mean(1)))
                 #2.setData(spec.data[i400, :])
                 #2.setData(100*spec.data.std(1)/spec.data.mean(1))

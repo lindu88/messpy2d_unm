@@ -65,14 +65,15 @@ class AvaCam(ICam):
                        valid=True)
 
     def get_spectra(self, frames: Optional[int] = None) -> T.Tuple[T.Dict[str, Spectrum], T.Any]:
-        print('Starting', self.shots)
+        #print('Starting', self.shots)
         s = self._spec
         self.lock.acquire(timeout=1)
-        self._spec.start_reading(self.shots*2, self._spec.callback_factory())
+        self._spec.start_reading(self.shots, self._spec.callback_factory())
         while self._spec.is_reading:
             time.sleep(0.010)
 
-        #s.data = s.data[:, s.wl_index[1]-s.wl_index[0]]
+        s.data = s.data[208:1981, :]
+
 
         if self.background is not None:
             self._spec.data -= self.background[:, None]
@@ -110,4 +111,4 @@ class AvaCam(ICam):
         self.get_spectra(2)
 
     def get_wavelength_array(self, center_wl):
-        return self._spec.wl[self._spec.wl_index[0]:self._spec.wl_index[1]]
+        return self._spec.wl[208:1981]

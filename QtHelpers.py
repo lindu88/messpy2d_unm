@@ -172,7 +172,7 @@ class ControlFactory(QWidget):
             # QPushButton { color: lightblue;}''')
             but.setFlat(False)
             but.clicked.connect(lambda x, p=p: self.preset_func(p))
-            but.setFixedWidth(200 / min(len(presets), 4))
+            but.setFixedWidth(200 // min(len(presets), 4))
             hlay.addWidget(but)
             hlay.setSpacing(10)
             len_row += 1

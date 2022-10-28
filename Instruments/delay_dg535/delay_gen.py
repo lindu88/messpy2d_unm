@@ -1,6 +1,7 @@
 from typing import Literal
 from serial import Serial
 
+import time
 # Open serial port
 
 
@@ -41,22 +42,24 @@ class DG535:
     def cmd(self, cmd):
         print(cmd)
         double_cmd = "".join(list(double(cmd)))
-        self.port.write(double_cmd.encode('ascii'))
+        self.port.write(double_cmd.encode('ascii')[:-1])
 
     def set_delay(self, channel: Literal['A', 'B', 'C', 'D'], delay_ns: float):
         """Set delay for channel in seconds"""
-        delay = delay_ns*1e-9
-        print(delay)
+        delay = delay_ns*10
         channel_int = self.channel_to_int[channel]
-        self.cmd(f'DT {channel_int}, 1, {delay_ns}E-9\n')
+        self.cmd(f'DT {channel_int}, 1, {delay: .2f}E-10\n')
         disp = {'A': 0, 'B': 1, 'C': 2, 'D': 3, 'T0': 4}
+        time.sleep(0.05)
         self.cmd(f'DL 1, 0, {disp[channel]}\n')
 
 
 if __name__ == '__main__':
     dg = DG535()
     dg.cmd('DS\n')
-    for i in range(20):
-        dg.set_delay('A', i*10)
-        import time
-        time.sleep(0.1)
+    for i in range(100):
+        for j in range(20):
+            dg.set_delay('A', j*10)
+
+            time.sleep(0.5)
+

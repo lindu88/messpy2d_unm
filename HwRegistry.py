@@ -19,7 +19,7 @@ pc_name = platform.node()
 if len(sys.argv) > 1:
     arg = sys.argv[1]
 else:
-    arg = ''
+    arg = 'vis'
 
 
 if pc_name == '2dir-PC':
@@ -71,12 +71,14 @@ elif pc_name == 'helmholm' and not TESTING:
     _shutter = Shutter()
 
 
-elif pc_name == 'DESKTOP-BBLLUO7' and arg == 'Vis':
+elif pc_name == 'DESKTOP-RMRQA8D':
     from Instruments.cam_avaspec import AvaCam
+    from Instruments.delay_dg535 import GeneratorDelayline
     _cam = AvaCam()
     _cam2 = None
-    from Instruments.delay_line_apt import DelayLine
-    _dl = DelayLine(name="VisDelay")
+    #from Instruments.delay_line_apt import DelayLine
+    #_dl = DelayLine(name="VisDelay")
+    _dl = GeneratorDelayline()
 
 elif pc_name == 'DESKTOP-BBLLUO7':
     from Instruments.cam_phasetec import PhaseTecCam
