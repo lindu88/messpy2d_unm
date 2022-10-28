@@ -1,6 +1,5 @@
 import concurrent
 import threading
-import time
 from math import log
 from pathlib import Path
 from typing import ClassVar, List, Optional, Tuple, Dict
@@ -64,9 +63,8 @@ class PhaseTecCam(ICam):
     @rows.default
     def _rows_default(self):
         return {'Probe': PROBE_RANGE,
-                'Ref': REF_RANGE,
                 'Probe2': PROBE2_RANGE,
-                }
+                'Ref': REF_RANGE}
 
 
     @spectrograph.default
@@ -115,13 +113,9 @@ class PhaseTecCam(ICam):
         self.valid_pixel = None
 
     def get_spectra(self, frames=None, **kwargs) -> Tuple[Dict[str, Spectrum], object]:
-        import time
-        t = time.time()
-
-        arr, ch = self._cam.read_cam(back=self.background, lines=self.rows.values())
-        print(-t + time.time(), self.shots)
-        #if self.background is not None:
-        #    arr = arr - self.background[:, :, None]
+        arr, ch = self._cam.read_cam(back=None)
+        if self.background is not None:
+            arr = arr - self.background[:, :, None]
         if frames is not None:
             first_frame = first(np.array(ch[0]), 1)
         else:
@@ -137,13 +131,10 @@ class PhaseTecCam(ICam):
             if TWO_PROBES:
                 probe2 = fast_col_mean(arr[pr2_range[0]:pr2_range[1], ...], self.valid_pixel[2])
         else:
-            probe = self._cam.lines[0]
-            ref = self._cam.lines[1]
-            #probe = np.nanmean(arr[pr_range[0]:pr_range[1], :, :], 0)
-            #ref = np.nanmean(arr[ref_range[0]:ref_range[1], :, :], 0)
+            probe = np.nanmean(arr[pr_range[0]:pr_range[1], :, :], 0)
+            ref = np.nanmean(arr[ref_range[0]:ref_range[1], :, :], 0)
             if TWO_PROBES:
-                probe2 = self._cam.lines[2]
-                #probe2 = np.nanmean(arr[pr2_range[0]:pr2_range[1], :, :], 0)
+                probe2 = np.nanmean(arr[pr2_range[0]:pr2_range[1], :, :], 0)
 
         get_max = kwargs.get('get_max', None)
         if get_max:
@@ -151,13 +142,10 @@ class PhaseTecCam(ICam):
         else:
             probemax = None
         probe = Spectrum.create(probe, probemax, name='Probe1', frames=frames, first_frame=first_frame)
-
-
         ref = Spectrum.create(ref, name='Ref', frames=frames, first_frame=first_frame)
 
         if TWO_PROBES:
             probe2 = Spectrum.create(probe2, name='Probe2', frames=frames, first_frame=first_frame)
-
 
         return {i.name: i for i in (probe, probe2, ref)}, ch
 
@@ -180,20 +168,27 @@ class PhaseTecCam(ICam):
             not_pu = trim_mean(normed[:, 1::2], 0.2, 1)
 
             sig = f * np.log10(pu / not_pu)
-            sig_noref = d['Probe1'].signal
+            sig2 = d['Probe1'].signal
 
         # print(sig.shape, ref_mean.shape, norm_std.shape, probe_mean.shape)
         if not TWO_PROBES:
             reading = Reading(lines=np.stack(
                 (probe.mean, ref.mean, probe.max)),
                               stds=np.stack((probe.std, ref.std, norm_std)),
-                              signals=np.stack((sig, sig_noref)),
+                              signals=np.stack((sig, sig2)),
                               valid=True)
 
         else:
             probe2 = d['Probe2']
             normed2 = probe2.data / ref.data
 
+            pu2 = trim_mean(normed2[:, ::2], 0.2, 1)
+            not_pu2 = trim_mean(normed2[:, 1::2], 0.2, 1)
+            sig_pr2 = f * np.log10(pu2 / not_pu2)
+
+            pu2 = trim_mean(probe2.data[:, ::2], 0.2, 1)
+            not_pu2 = trim_mean(probe2.data[:, 1::2], 0.2, 1)
+            sig_pr2_noref = f * np.log10(pu2 / not_pu2)
 
             if self.beta1 is not None:
                 dp = probe.data[:, ::2] - probe.data[:, 1::2]
@@ -204,31 +199,21 @@ class PhaseTecCam(ICam):
 
                 sig = f / LOG10 * np.log1p(dp.mean(1) / probe.mean)
                 sig_pr2 = f / LOG10 * np.log1p(dp2.mean(1) / probe2.mean)
-            else:
-                pu2 = trim_mean(normed2[:, ::2], 0.2, 1)
-                not_pu2 = trim_mean(normed2[:, 1::2], 0.2, 1)
-                sig_pr2 = f * np.log10(pu2 / not_pu2)
 
-            pu2 = trim_mean(probe2.data[:, ::2], 0.2, 1)
-            not_pu2 = trim_mean(probe2.data[:, 1::2], 0.2, 1)
-
-            sig_pr2_noref = f * np.log10(pu2 / not_pu2)
             which = 1 if (ch[0][0] > 1) else 0
             reading = Reading(lines=np.stack(
                 (probe.mean, probe2.mean, ref.mean, probe.max)),
                               stds=np.stack(
                                   (probe.std, probe2.std, ref.std, norm_std)),
                               signals=np.stack(
-                                  (sig_noref, sig, sig_pr2_noref, sig_pr2)),
+                                  (sig2, sig, sig_pr2_noref, sig_pr2)),
                               valid=True)            #
         return reading
 
     def make_2D_reading(self, t2: np.ndarray, rot_frame: float,
                         repetitions: int = 1, save_frames: bool = False) -> \
             Dict[str, Reading2D]:
-
         spectra, ch = self.get_spectra(frames=self.shots // repetitions, get_max=False)
-
         two_d_data = {}
         with concurrent.futures.ThreadPoolExecutor() as executor:
             for name in ('Probe1', 'Probe2'):
@@ -237,12 +222,11 @@ class PhaseTecCam(ICam):
             for name in ('Probe1', 'Probe2'):
                 two_d_data[name] = two_d_data[name].result()
             two_d_data['Ref'] = spectra['Ref']
-        self.two_d_data_ = two_d_data
         return two_d_data
 
     def calibrate_ref(self):
         tmp_shots = self.shots
-        self._cam.set_shots(2000)
+        self._cam.set_shots(5000)
         #arr, ch = self._cam.read_cam()
         specs, _ = self.get_spectra()
         self._cam.set_shots(tmp_shots)
@@ -264,18 +248,12 @@ class PhaseTecCam(ICam):
 
 
     def set_background(self, shots=0):
-        if self.background is not None:
-            self.background = None
-        else:
-            arr = self._cam.read_cam(lines=self.rows.values(), back=None)[0]
-            #back_probe = np.nanmean(arr[:, :, :], 2)
-            self.background = self._cam.lines.mean(2)
-            import matplotlib.pyplot as plt
-            plt.plot(self.background.T)
-            plt.show()
+        arr = self._cam.read_cam()[0]
+        back_probe = np.nanmean(arr[:, :, :], 2)
+        self.background = back_probe
 
-            fname = Path(__file__).parent / 'back'
-            np.save(fname, self.background)
+        fname = Path(__file__).parent / 'back'
+        np.save(fname, back_probe)
 
     def remove_background(self):
         self.background = None

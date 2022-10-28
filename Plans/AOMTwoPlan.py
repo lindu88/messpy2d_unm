@@ -14,24 +14,12 @@ if TYPE_CHECKING:
 from Instruments.dac_px import AOM
 
 # from qtpy.QtWidgets import QApplication
-from Instruments.signal_processing import cm2THz, THz2cm, calc_2d
-from qtpy.QtCore import Signal, QRunnable, QThreadPool
-from qtpy.QtWidgets import QApplication
+from Instruments.signal_processing import cm2THz, THz2cm
+from qtpy.QtCore import Signal
 import h5py
 
 from typing import Optional
 import atexit
-
-
-class Runnable(QRunnable):
-    def __init__(self, cam, args):
-        super().__init__()
-        self.cam = cam
-        self.args = args
-        self.result = None
-
-    def run(self):
-        self.result = self.cam.make_2D_reading(*self.args)
 
 @attrs(auto_attribs=True, kw_only=True)
 class AOMTwoDPlan(ScanPlan):
@@ -134,14 +122,13 @@ class AOMTwoDPlan(ScanPlan):
                             continue
                         ifr = f'ifr_data/{line}/{t3_idx}/{scan}'
                         data.append(f[ifr])
-                        #spec = f'2d_data/{line}/{t3_idx}/{scan}'
-                       # specs.append(f[spec])
+                        spec = f'2d_data/{line}/{t3_idx}/{scan}'
+                        specs.append(f[spec])
                     if 'mean' in f[f'ifr_data/{line}/{t3_idx}/']:
                         del f[f'ifr_data/{line}/{t3_idx}/mean']
                         del f[f'2d_data/{line}/{t3_idx}/mean']
-                    ifr = np.mean(data, 0)
-                    f[f'ifr_data/{line}/{t3_idx}/mean'] = ifr
-                    f[f'2d_data/{line}/{t3_idx}/mean'] = calc_2d(ifr)
+                    f[f'ifr_data/{line}/{t3_idx}/mean'] = np.mean(data, 0)
+                    f[f'2d_data/{line}/{t3_idx}/mean'] = np.mean(specs, 0)
 
     def post_scan(self) -> Generator:
         thr = threading.Thread(target=self.calculate_scan_means)
@@ -157,28 +144,15 @@ class AOMTwoDPlan(ScanPlan):
         yield
 
     def measure_point(self):
-        import threading
+        with concurrent.futures.ThreadPoolExecutor() as executor:
+            self.time_tracker.point_starting()
+            future = executor.submit(self.controller.cam.cam.make_2D_reading, self.t1,
+                                     self.rot_frame_freq, self.repetitions, self.save_frames_enabled)
+            while not future.done():
+                yield
 
-
-        self.time_tracker.point_starting()
-        if True:
-            thr = threading.Thread(target=self.controller.cam.cam.make_2D_reading, args=(self.t1,self.rot_frame_freq, self.repetitions, self.save_frames_enabled))
-            thr.start()
-            while thr.is_alive():
-                QApplication.instance().processEvents()
-            yield
-            ret = self.controller.cam.cam.two_d_data_
-        else:
-             with concurrent.futures.ProcessPoolExecutor(1) as executor:
-                self.time_tracker.point_starting()
-                future = executor.submit(self.controller.cam.cam.make_2D_reading, self.t1,
-                                             self.rot_frame_freq, self.repetitions, self.save_frames_enabled)
-                while not future.done():
-                    yield
-                ret = future.result()
         self.time_tracker.point_ending()
-
-
+        ret = future.result()
         thr = threading.Thread(target=self.save_data, args=(ret, self.t2_idx, self.cur_scan,))
         thr.start()
         #self.save_data(ret, self.t2_idx, self.cur_scan)
@@ -186,26 +160,19 @@ class AOMTwoDPlan(ScanPlan):
         #self.save_data(ret, self.t3_idx, self.cur_t3)
 
     def save_data(self, ret, t2_idx, cur_scan):
-        print(self.save_ref, self.save_frames_enabled)
         with h5py.File(self.data_file_name, mode='a') as f:
             for line, data in ret.items():
                 if line == 'Ref':
-                    print('jo')
                     if self.save_ref:
-                        ds = f.create_dataset(f'ref_data/{t2_idx}/{cur_scan}', data=data.mean)
+                        ds = f.create_dataset(f'ref_data//{t2_idx}/{cur_scan}', data=data.mean)
                 else:
                     ds = f.create_dataset(f'ifr_data/{line}/{t2_idx}/{cur_scan}', data=data.interferogram)
                     ds.attrs['time'] = self.cur_t2
-                    #ds = f.create_dataset(f'2d_data/{line}/{t2_idx}/{cur_scan}', data=data.signal_2D)
-                    #ds.attrs['time'] = self.cur_t2
+                    ds = f.create_dataset(f'2d_data/{line}/{t2_idx}/{cur_scan}', data=data.signal_2D)
+                    ds.attrs['time'] = self.cur_t2
                     if self.save_frames_enabled:
                         ds = f.create_dataset(f'frames/{line}/{t2_idx}/{cur_scan}', data=data.frames)
-
-                    if f'2d_data/{line}/{t2_idx}/mean' in f:
-                        disp_2d = f.get(f'2d_data/{line}/{t2_idx}/mean')
-                    else:
-                        disp_2d = calc_2d(data.interferogram)
-
+                    disp_2d = f.get(f'2d_data/{line}/{t2_idx}/mean', data.signal_2D)
                     disp_ifr = f.get(f'ifr_data/{line}/{t2_idx}/mean', data.interferogram)
                     self.disp_arrays[line] = disp_2d, disp_ifr
             self.last_2d = np.array(disp_2d)

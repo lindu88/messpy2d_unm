@@ -38,28 +38,26 @@ ffi: FFI = IMAQ._info._ffi  # typing: FFI
 class Cam:
     def __init__(self):
         self.reading_lock = Lock()
-        self.i, self.s = self.init_imaq()
-        self.task = self.init_nidaqmx()
-        self.frames = 0
+        self.init_imaq()
+        self.init_nidaqmx()
         self.set_shots(200)
 
         if (p := (pathlib.Path(__file__).parent / 'back.npy')).exists():
             self.background = np.load(p)
         else:
             self.background = None
-        self.data = None
-        self.line_data = None
 
-    @staticmethod
-    def init_imaq():
-        i = IMAQ.imgInterfaceOpen('img0')
-        s = IMAQ.imgSessionOpen(i)
-        IMAQ.imgSessionTriggerConfigure2(s, IMAQ.IMG_SIGNAL_EXTERNAL, IMAQ.IMG_EXT_TRIG0,
+    def init_imaq(self):
+        self.i = IMAQ.imgInterfaceOpen('img0')
+        self.s = IMAQ.imgSessionOpen(self.i)
+        IMAQ.imgSessionTriggerConfigure2(self.s, IMAQ.IMG_SIGNAL_EXTERNAL, IMAQ.IMG_EXT_TRIG0,
                                          IMAQ.IMG_TRIG_POLAR_ACTIVEH,
                                          1000, IMAQ.IMG_TRIG_ACTION_CAPTURE)
-        return i, s
+        self.frames = 0
 
     def init_nidaqmx(self, first='Chopper'):
+        if hasattr(self, 'task'):
+            self.task.close()
         task = nidaqmx.Task()
         if first == "Chopper":
             task.ai_channels.add_ai_voltage_chan('Dev1/AI0', min_val=0, max_val=2)
@@ -73,7 +71,7 @@ class Cam:
         # task.triggers.start_trigger.cfg_anlg_edge_start_trig("APFI0", trigger_level=2.5)
         task.triggers.start_trigger.cfg_dig_edge_start_trig("PFI0")
         task.export_signals.start_trig_output_term = "PFI12"
-        return task
+        self.task = task
 
     def set_shots(self, shots):
         self.reading_lock.acquire()
@@ -108,8 +106,11 @@ class Cam:
         ba = bytearray(128 * 128 * 2)
         bap = ffi.from_buffer(ba)
         bi = np.frombuffer(ba).view('u2')
+        chop = []
+        status, buf = IMAQ.imgSessionStatus(self.s)
         MAX_14_BIT = (1 << 14)
-
+        #if back is not None:
+        #    MAX_14_BIT = MAX_14_BIT + back
 
         if lines is not None:
             self.lines = np.empty((len(lines), 128, self.shots))
@@ -118,14 +119,11 @@ class Cam:
             IMAQ.imgSessionCopyBufferByNumber(self.s, i + self.frames, bap, IMAQ.IMG_OVERWRITE_FAIL)
             a = np.swapaxes(bi.reshape(32, 128, 4), 0, 1).reshape(128, 128)
             self.data[:, :, i] = MAX_14_BIT - a.T
-            # self.background is not None:            #    self.data[:, :, i] -= self.background.astype('uint16')
-            if lines:
-                for k, (l, u) in enumerate(lines):
-                    m = np.mean(self.data[l:u, :, i], 0)
-                    if back is not None:
-                        m = m - back[k]
-                    self.lines[k, :, i] = m
-
+            # self.background is not None:
+            #    self.data[:, :, i] -= self.background.astype('uint16')
+            #if lines:
+            #    for k, (l, u) in enumerate(lines):
+            #        self.lines[:, k, i] = np.mean(self.data[:, l:u, :], 1)
             # hop.append(self.task.read(1)[0])
             # chop.append(self.task.read())
 
