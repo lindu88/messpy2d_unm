@@ -342,7 +342,7 @@ class DelayLineControl(QGroupBox):
                               format_str='%.1f fs',
                               extra_buttons=[("Set Home", dl.set_home)],
                               presets=[-50000, -10000, -1000.0001, -50,
-                                       50000, 10000, 1000.0001, 50],
+                                        50000, 10000, 1000.0001, 50],
                               preset_func=lambda x: dl.set_pos(dl.get_pos() + x, do_wait=False),
                               )
         c.delay_line.sigPosChanged.connect(dl1c.update_value)

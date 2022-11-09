@@ -82,7 +82,7 @@ class AvaCam(ICam):
 
         spec = Spectrum.create(self._spec.data, name='Probe', frames=frames, first_frame=ff)
         #if ff == 0:
-        #    spec.signal *= -1
+            #spec.signal *= -1
         return {"Probe": spec}, self._spec.chopper
 
     def set_shots(self, shots):

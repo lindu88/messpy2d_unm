@@ -140,8 +140,9 @@ class Spectrum:
                 frame_data[:, i] = np.nanmean(data[:, i::frames], 1)
             frame_data = np.roll(frame_data, -first_frame, 1)
             if frames == 2:
-                signal = 1000 / LOG10 * np.log1p(
-                    frame_data[:, 0] / frame_data[:, 1] - 1)
+                with np.errstate(invalid='ignore'):
+                    signal = 1000 / LOG10 * np.log1p(
+                        frame_data[:, 0] / frame_data[:, 1] - 1)
         else:
             frame_data = None
 

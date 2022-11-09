@@ -127,7 +127,7 @@ class ControlFactory(QWidget):
         self.format_str = format_str
         self.update_value(0)
         self.edit_box = QLineEdit()
-        self.edit_box.setMaxLength(7)
+        self.edit_box.setMaxLength(12)
         self.edit_box.setMaximumWidth(100)
         # self.edit_box.setValidator(QDoubleValidator())
         self.edit_box.returnPressed.connect(lambda: apply_fn(self.edit_box.text()))

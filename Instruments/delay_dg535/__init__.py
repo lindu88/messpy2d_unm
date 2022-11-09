@@ -8,7 +8,7 @@ class GeneratorDelayline(IDelayLine):
     name: str = 'GeneratorDelayline'
     generator: DG535 = attr.Factory(DG535)
     last_set: float = 0
-    home_pos: float = 265.9
+    home_pos: float = 772_691
 
     def __attrs_post_init__(self):
         super().__attrs_post_init__()
@@ -24,11 +24,11 @@ class GeneratorDelayline(IDelayLine):
         return 0
 
     def get_pos_fs(self) -> float:
-        return self.last_set*1000
+        return self.last_set
 
     def def_home(self):
         print('new_home')
-        self.home_pos = self.last_set + self.home_pos
+        self.home_pos = -self.last_set + self.home_pos
         print(self.home_pos)
         self.last_set = 0
 
@@ -40,13 +40,11 @@ class GeneratorDelayline(IDelayLine):
 
 
         """
-        self.last_set = fs/1000.
-        self.generator.set_delay('A', fs/1000. + self.home_pos)
+        self.last_set = fs
+        self.generator.set_delay('A', -fs + self.home_pos)
 
 
 if __name__ == '__main__':
     import time
     g = GeneratorDelayline()
-    for i in range(20):
-        g.move_fs(i*1000)
-        time.sleep(0.5)
+    g.home_pos = 772_691

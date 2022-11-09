@@ -44,11 +44,11 @@ class Avaspec(NiceLib):
 class MeasurmentSettings:
     start_pixel: int = 0
     stop_pixel: int = 2047
-    int_time: float = 0.4# in ms
+    int_time: float = 0.45# in ms
     int_delay: int = 0
     n_avg: int = 1
     dark_correct: bool = True
-    smooth_pixel: int = 5
+    smooth_pixel: int = 2
     saturation_detection: bool = False
     store_to_ram: int = 0
     trigger_type: Tuple[int] = (2, 0, 0)
@@ -209,7 +209,8 @@ if __name__ == '__main__':
     pw2 = pg.PlotWidget()
     l1 = pw.plotItem.plot([],[])
     l2 = pw2.plotItem.plot([], [])
-    i400 = np.argmin(abs(spec.wl - 370))
+    l3 = pw2.plotItem.plot([], [])
+    i400 = np.argmin(abs(spec.wl - 350))
     i1200 = np.argmin(abs(spec.wl - 1200))
     print(i400, i1200)
 
@@ -218,11 +219,12 @@ if __name__ == '__main__':
             if hasattr(spec, 'data'):
                 mean = spec.data.mean(1)
                 spec.data -= mean[None, -300:].mean()
-                l1.setData( spec.data.mean(1))
+                l1.setData( spec.data[:, 0])
                 sign = -1 if spec.analog_in[0] > 100 else 1
                 #print(sign)
-                l2.setData(spec.wl, 1000*sign*np.log10(spec.data[:, ::2].mean(1)/spec.data[:, 1::2].mean(1)))
-                #2.setData(spec.data[i400, :])
+                #l2.setData(spec.wl, 1000*sign*np.log10(spec.data[:, ::2].mean(1)/spec.data[:, 1::2].mean(1)))
+                l2.setData(spec.data[i400, :])
+                l3.setData(spec.analog_in)
                 #2.setData(100*spec.data.std(1)/spec.data.mean(1))
                 #print(spec.analog_in[1-2:])
                 #spec.ardudino.read(100)

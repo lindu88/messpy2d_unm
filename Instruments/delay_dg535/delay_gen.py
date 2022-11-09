@@ -46,9 +46,9 @@ class DG535:
 
     def set_delay(self, channel: Literal['A', 'B', 'C', 'D'], delay_ns: float):
         """Set delay for channel in seconds"""
-        delay = delay_ns*10
+        delay = delay_ns
         channel_int = self.channel_to_int[channel]
-        self.cmd(f'DT {channel_int}, 1, {delay: .2f}E-10\n')
+        self.cmd(f'DT {channel_int}, 1, {delay: .2f}E-9\n')
         disp = {'A': 0, 'B': 1, 'C': 2, 'D': 3, 'T0': 4}
         time.sleep(0.05)
         self.cmd(f'DL 1, 0, {disp[channel]}\n')
