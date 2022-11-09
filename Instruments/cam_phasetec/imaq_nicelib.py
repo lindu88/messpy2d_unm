@@ -75,17 +75,17 @@ class Cam:
 
     def set_shots(self, shots):
         self.reading_lock.acquire()
-        N = shots
+
         self.task.timing.cfg_samp_clk_timing(1000, 'PFI0', c.Edge.RISING, sample_mode=c.AcquisitionType.FINITE,
-                                             samps_per_chan=N)
-        self.data = np.empty((128, 128, N), dtype='uint16')
+                                             samps_per_chan=shots)
+        self.data = np.empty((128, 128, shots), dtype='uint16')
 
-        self.buflist = ffi.new("void *[]", [ffi.NULL] * N)
-        self.skiplist = ffi.new("uInt32[]", [0] * N)
+        self.buflist = ffi.new("void *[]", [ffi.NULL] * shots)
+        self.skiplist = ffi.new("uInt32[]", [0] * shots)
 
-        IMAQ.imgSequenceSetup(self.s, N, ffi.cast("void **", self.buflist), self.skiplist, 0, 0)
+        IMAQ.imgSequenceSetup(self.s, shots, ffi.cast("void **", self.buflist), self.skiplist, 0, 0)
         self.frames = 0
-        self.shots = N
+        self.shots = shots
         self.reading_lock.release()
 
     def set_trigger(self, mode):
