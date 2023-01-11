@@ -29,7 +29,7 @@ class GVDScan(Plan):
     fod: float = 0
     shots: int = 50
     observed_channel: T.Optional[int] = None
-
+    settings_before: dict = attr.Factory(dict)
 
     sigPointRead = Signal()
 
@@ -44,7 +44,7 @@ class GVDScan(Plan):
         self.probe2 = np.zeros((n_disp, n_pix))
         self.ref = np.zeros((n_disp, n_pix))
         self.signal = np.zeros((n_disp,  n_pix, self.cam.sig_lines))
-
+        self.settings_before['shots'] = self.cam.shots
         gen = self.make_step_gen()
         self.make_step = lambda: next(gen)
 
@@ -81,6 +81,8 @@ class GVDScan(Plan):
 
         self.save()
         yield
+        self.cam.set_shots(self.settings_before['shots'])
+        self.sigPlanFinished.emit()
 
     def get_name(self, data_path=False):
         if data_path:
@@ -125,5 +127,3 @@ class GVDScan(Plan):
             print('saved in local temp')
 
 
-    def stop_plan(self):
-        pass

@@ -24,6 +24,7 @@ class ShaperControl(QtWidgets.QWidget):
 
     def __attrs_post_init__(self):
         super(ShaperControl, self).__init__()
+        self.setWindowTitle('Shaper Controls')
         preset = [-1, -0.1, -0.01] + [0.01, 0.1, 1][::-1]
         f = self.rs1.move_relative
         c1 = ControlFactory("Grating1", apply_fn=self.rs1.set_degrees,
