@@ -134,6 +134,7 @@ class Spectrum:
         mean, std, max = stats(data, data_max)
         signal = None
         if frames is not None:
+            assert first_frame is not None
             frame_data = np.empty((mean.shape[0], frames))
 
             for i in range(frames):
@@ -184,6 +185,7 @@ class Reading2D:
     def from_spectrum(cls, s: Spectrum, t2_ps: np.ndarray,
                       rot_frame: float, save_frame_enabled: bool,
                       ref_frames: Optional[np.ndarray] = None,  **kwargs) -> 'Reading2D':
+        assert s.frame_data is not None
         f = s.frame_data
         n = s.frame_data.shape[1] / len(t2_ps)
         if n == 1:
@@ -192,8 +194,10 @@ class Reading2D:
             sig = (f[:, 0::2] - f[:, 1::2])*(-1000/LOG10)
             sig /= 0.5*(f[:, 0::2]+f[:, 1::2])
         elif n == 4:
-            sig = (f[:, 0::4] - f[:, 1::4] + f[:, 2::4] - f[:, 3::4])*(-1000/LOG10)
+            sig = ((f[:, 0::4] - f[:, 1::4]) + (f[:, 2::4] - f[:, 3::4]))*(-1000/LOG10) #type: np.ndarray
             sig /= f[:, 0::4] + f[:, 1::4] + f[:, 2::4] + f[:, 3::4]
+        else:
+            raise ValueError(f"Invalid number of frames {n}")
         assert (sig.shape[1] == len(t2_ps))
         if save_frame_enabled:
             kwargs['frames'] = f

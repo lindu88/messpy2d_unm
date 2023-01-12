@@ -1,24 +1,25 @@
 from functools import partial
 
 import qtawesome as qta
-qta.set_defaults(color='white')
 from pyqtgraph import setConfigOptions
-setConfigOptions(enableExperimental=True, useNumba=True, antialias=False, useOpenGL=False)
 
 from qtpy.QtCore import QTimer, Qt, QSettings
 from qtpy.QtGui import QIntValidator
-from qtpy.QtWidgets import (QMainWindow, QApplication, QWidget, QDockWidget, QPushButton, QLabel, QSizePolicy,
-                            QFormLayout, QMessageBox, QGroupBox, QCheckBox)
+from qtpy.QtWidgets import (QMainWindow, QApplication, QWidget, QDockWidget, QPushButton,
+                            QLabel, QSizePolicy, QFormLayout, QMessageBox,
+                            QGroupBox, QCheckBox)
 
 from Config import config
 from ControlClasses import Controller
-from Instruments.interfaces import IAOMPulseShaper, ICam
+from Instruments.interfaces import ICam
 from Plans import *
 
 from QtHelpers import ControlFactory, make_groupbox, \
     ValueLabels, ObserverPlotWithControls, hlay, vlay
 from SampleMoveWidget import MoveWidget
 
+qta.set_defaults(color='white')
+setConfigOptions(enableExperimental=True, useNumba=True, antialias=False, useOpenGL=False)
 
 class MainWindow(QMainWindow):
     def __init__(self, controller):
@@ -39,7 +40,7 @@ class MainWindow(QMainWindow):
         dock_wigdets = []
         for c in controller.cam_list:
             lf = controller.loop_finished
-            lr = c.last_read
+            c.last_read
             self.xaxis[c] = c.wavelengths.copy()
 
             obs = [lambda i=i, c=c: c.last_read.lines[i, :] for i in range(c.cam.lines)]
@@ -253,7 +254,7 @@ class CommandMenu(QWidget):
         gb = make_groupbox([move_wid], "Sample Holder")
         self._layout.addWidget(gb)
 
-    def add_shaper(self, sh: IAOMPulseShaper):
+    def add_shaper(self, sh):
         from ShaperRotStages import ShaperControl
         self.shaper_controls = ShaperControl(sh.rot1, sh.rot2, sh)
         but = QPushButton("Shaper Contorls")
@@ -308,7 +309,8 @@ class SpectrometerControls(QGroupBox):
         spec.sigWavelengthChanged.emit(spec.get_wavelength())
         l = [spec_control]
         if spec.changeable_slit:
-            pre_fcn = lambda x: spec.spectrograph.set_slit(spec.get_slit() + x)
+            def pre_fcn(x):
+                return spec.spectrograph.set_slit(spec.get_slit() + x)
             slit_control = ControlFactory('Slit (μm)', spec.set_slit, presets=[-10, 10], preset_func=pre_fcn)
             slit_control.update_value(spec.get_slit())
             spec.sigSlitChanged.connect(slit_control.update_value)

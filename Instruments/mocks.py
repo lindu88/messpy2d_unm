@@ -4,9 +4,9 @@ from typing import Dict, Optional
 import numpy as np
 import attr
 from Instruments.interfaces import ICam, IDelayLine, IRotationStage, \
-    IShutter, Reading, Spectrum, ISpectrograph, ILissajousScanner
+    IShutter, Reading, ISpectrograph, ILissajousScanner
 import time
-import threading
+
 
 @attr.s(auto_attribs=True)
 class MockState:
@@ -64,7 +64,7 @@ class CamMock(ICam):
     std_names: list = ['Probe', 'Ref', 'Normed']
     channels: int = 200
     ext_channels: int = 3
-    background: object = None
+    background: Optional[np.ndarray] = None
     spectrograph: Optional[ISpectrograph] = attr.Factory(MockSpectrograph)
 
     def get_state(self) -> dict:

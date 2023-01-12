@@ -13,7 +13,7 @@ from pathlib import Path
 
 import attr
 import numpy as np
-from qtpy.QtCore import Signal, QObject
+from qtpy.QtCore import Signal, QObject #type: ignore
 from scipy.constants import c
 
 from .signal_processing import Reading, Reading2D, Spectrum
@@ -369,9 +369,9 @@ class ILissajousScanner(IDevice):
         raise NotImplementedError
 
 
-@attr.s
+@attr.s(kw_only=True)
 class PulseShaper(IDevice):
-    pixel: np.array
+    pixel: np.ndarray
     freqs: np.ndarray
     nu0: float
 
@@ -401,54 +401,3 @@ class DAC(abc.ABC):
     def running(self):
         pass
 
-
-@attr.s(kw_only=True)
-class IAOMPulseShaper(PulseShaper):
-    dac: DAC
-    disp: T.Optional[np.ndarray] = None
-    use_brag: bool = False
-    ac_freq: float = 75e6
-    dac_freq: float = 1.2e9
-    t: np.ndarray = attr.ib()
-    grating_1: T.Optional[IRotationStage]
-    grating_2: T.Optional[IRotationStage]
-
-    @t.default
-    def _t_def(self):
-        return np.arange(self.pixel) / self.dac_freq
-
-    def set_running(self, running: bool):
-        pass
-
-    def set_mask(self, amp, phase):
-        return self.dac.set_mask(amp, phase)
-
-    def mask_wfn(self, masks):
-        wfn = np.zeros((self.pixel, len(masks)))
-        for i, m in enumerate(masks):
-            wfn[i, :] = np.cos(2 * np.pi * self.t * self.ac_freq -
-                               np.angle(m)) * np.abs(m)
-        self.dac.upload(wfn)
-
-    def set_disp_mask(self, mask):
-        pass
-
-    def set_mode(self, chopped=True, phase_cycling=False):
-        mask1 = np.ones(self.pixel)
-        mask2 = np.zeros(self.pixel)
-        if self.disp is not None:
-            mask1 *= self.disp
-        m = [mask1, mask2]
-        if phase_cycling:
-            mask3 = mask1 * np.exp(1j * np.pi)
-            m.append(mask3)
-            m.append(mask1)
-        if not chopped:
-            m = m[0, 2]
-        self.mask_wfn(m)
-
-    def set_grating_angle(self, ang1=None, ang2=None):
-        if ang1 and self.grating_1:
-            self.grating_1.set_degrees(ang1)
-        if ang2 and self.grating_2:
-            self.grating_2.set_degrees(ang2)
