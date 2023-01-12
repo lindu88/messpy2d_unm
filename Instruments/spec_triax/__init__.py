@@ -8,9 +8,10 @@ Created on Thu Aug 15 17:40:25 2013
 from __future__ import print_function
 import serial
 import time
-#import numpy as np
+import numpy as np
 
 DEBUG = True
+
 
 class TriaxSpectrometer(object):
     step_slit = 2
@@ -26,40 +27,39 @@ class TriaxSpectrometer(object):
         port.timeout = 10
         out = port.read(1)
         print(out)
-        try:            
+        try:
             if len(out) == 0:
                 print("Can't connect to Triax Spectrometer")
                 raise IOError
-    
+
             if out == b'B':
-    
-                self.write('O2000'+chr(0))
+
+                self.write('O2000' + chr(0))
                 out = port.read(1)
-                if len(out) == 0 or out==b'F':
+                if len(out) == 0 or out == b'F':
                     print("Can't connect to Triax Spectrometer")
                     raise IOError
-    
+
                 self.write(" ")
-    
+
                 out = port.read(1)
-                if len(out) == 0 or out==b'F':
+                if len(out) == 0 or out == b'F':
                     print("Can't connect to Triax Spectrometer")
                     raise IOError
-    
+
                 self.write("A")
-    
+
                 out = port.read(1)
-                if out!=b'o':
+                if out != b'o':
                     print("Init of Triax Spectrometer failed")
                     raise IOError
-    
-    
+
                 self.write("i,0,0,0\r")
                 out = port.read(1)
-                if out!=b'o':
+                if out != b'o':
                     print("Init of Triax Spectrometer failed")
                     raise IOError
-    
+
             #self.motor_init()
             self.get_wl()
             self.get_slit()
@@ -71,7 +71,7 @@ class TriaxSpectrometer(object):
         bstring = bstring.encode()
         self.port.flush()
         if DEBUG:
-            print('WRITE "%s"'%str(bstring))
+            print('WRITE "%s"' % str(bstring))
         self.port.write(bstring)
 
     def read(self, ):
@@ -86,13 +86,13 @@ class TriaxSpectrometer(object):
     def set_wl(self, wl):
         port = self.port
         wl = wl / 1200. * self.lines_grating
-        self.write("Z61,1,"+str(round(wl,2))+"\r")
-        if port.read(1)!=b"o":
+        self.write("Z61,1," + str(round(wl, 2)) + "\r")
+        if port.read(1) != b"o":
             print("Setting wl failed")
             raise IOError
 
         out = "q"
-        while out=="q":
+        while out == "q":
             self.write("E")
             out = port.read(1)
             out = port.read(1)
@@ -117,8 +117,8 @@ class TriaxSpectrometer(object):
             self.wl_pos = wl
             return wl
         else:
-            print(out,  port.read(1))
-           
+            print(out, port.read(1))
+
             print("Getting wl failed")
             raise IOError
 
@@ -140,14 +140,14 @@ class TriaxSpectrometer(object):
             out = self.read_until()
             print('readallslit', out)
             read_slit = float(out)
-            self.slit_pos =  int(read_slit) * 2
-            print(self .slit_pos)
+            self.slit_pos = int(read_slit) * 2
+            print(self.slit_pos)
             return int(read_slit) * 2
 
     def set_slit(self, slit_width):
         port = self.port
         cur_slit_width = self.get_slit()
-        change = int((slit_width - cur_slit_width) /2)
+        change = int((slit_width - cur_slit_width) / 2)
         self.write("k0,0," + str(change) + "\r")
         if port.read(1) != b"o":
             print("Setting slit failed")
@@ -161,27 +161,28 @@ class TriaxSpectrometer(object):
             print(out)
             time.sleep(0.04)
 
-
     def calc_wavelengths(self, wl, grating=150.):
         if self.disp is not None:
-            x = np.arange(16)-8
-            return x*self.disp + wl
-            
+            x = np.arange(16) - 8
+            return x * self.disp + wl
+
         WaveZero = 7
         Wavecorrection = 0
         Gamma = 15 / 180. * 3.1415
         f = 193.  #193
         spacing = 0.6  #0.6
-        d = 1 / self.lines_grating * 1000000#
+        d = 1 / self.lines_grating * 1000000  #
         cwl = wl
-        Dispersion = spacing * (np.sqrt(d * d * np.cos(Gamma)**2 - cwl**2  / 4.) - np.tan(Gamma) * cwl / 2.) / f
+        Dispersion = spacing * (np.sqrt(d * d * np.cos(Gamma)**2 - cwl**2 / 4.)
+                                - np.tan(Gamma) * cwl / 2.) / f
         Dispersion = -Dispersion / cwl**2 * 10000000.
         chan = np.arange(1, 17)
         try:
-            WavelengthChannel = 1 / cwl * 10000000. + (-chan + WaveZero) * Dispersion + Wavecorrection
+            WavelengthChannel = 1 / cwl * 10000000. + (
+                -chan + WaveZero) * Dispersion + Wavecorrection
         except ZeroDivisionError:
-            return np.arange(16)-8
-        return 1e7/WavelengthChannel
+            return np.arange(16) - 8
+        return 1e7 / WavelengthChannel
 
 
 def readline(port, eol=b'\r'):
@@ -189,15 +190,3 @@ def readline(port, eol=b'\r'):
 
 
 spec = TriaxSpectrometer('COM21')
-
-print(spec.set_slit(50))
-#print(spec.get_slit())
-
-
-
-
-
-
-
-
-                #
