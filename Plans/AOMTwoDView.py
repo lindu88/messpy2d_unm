@@ -60,7 +60,7 @@ class AOMTwoDViewer(GraphicsLayoutWidget):
         self.ifr_img.setImage(np.zeros((128, plan.t1.size)), rect=rect)
         pw.addItem(self.ifr_img)
         self.spec_image_view = pw
-        self.ifr_img.mouseClickEvent = self.ifr_clicked
+
         hist = HistogramLUTItem()
         hist.setImageItem(self.ifr_img)
         hist.gradient.setColorMap(cmap)
@@ -102,7 +102,7 @@ class AOMTwoDViewer(GraphicsLayoutWidget):
 
         self.update_plots()
         self.spec_line.sigPositionChanged.connect(self.update_spec_lines)
-        self.spec_line.sig
+
         self.plan.sigStepDone.connect(self.update_data)
         self.plan.sigStepDone.connect(self.update_plots)
         self.plan.sigStepDone.connect(self.update_label)

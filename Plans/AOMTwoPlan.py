@@ -1,6 +1,6 @@
 import threading
 from typing import TYPE_CHECKING, ClassVar, Callable, Literal, Generator, Tuple, Dict
-
+from collections import OrderedDict
 import attr
 import numpy as np
 from attr import attrs, attrib
@@ -21,6 +21,14 @@ import h5py
 from typing import Optional
 import atexit
 
+
+def flat_dict(d, grp):
+    print(d, grp)
+    for key, val in d.items():
+        if isinstance(val, dict):
+            return flat_dict(val, grp.create_group(key))
+        else:
+            grp.attrs[key] = val
 
 @attrs(auto_attribs=True, kw_only=True)
 class AOMTwoDPlan(ScanPlan):
@@ -81,7 +89,8 @@ class AOMTwoDPlan(ScanPlan):
             f['t1'].attrs['rot_frame'] = self.rot_frame_freq
             f['wn'] = self.controller.cam.wavenumbers
             f['wl'] = self.controller.cam.wavelengths
-            f.attrs['meta'] = self.meta
+            grp = f.create_group('meta')
+            flat_dict(self.meta, grp)
         return name
 
     def scan(self):
