@@ -1,3 +1,4 @@
+import asyncio
 import json
 import time
 from asyncio import Task
@@ -13,7 +14,7 @@ from Instruments.interfaces import IDevice
 
 sample_parameters = {'name': 'Sample', 'type': 'group', 'children': [
     dict(name='Sample', type='str', value=''),
-    dict(name='Solvent', type='list', values=config.list_of_solvents),
+    dict(name='Solvent', type='str', values=''),
     dict(name='Excitation', type='str'),
     dict(name='Thickness', type='str'),
     dict(name='Annotations', type='str'),
@@ -169,9 +170,6 @@ class ScanPlan(Plan):
 
     def post_scan(self) -> Generator:
         yield True
-
-
-import asyncio
 
 
 @attr.s(auto_attribs=True)
