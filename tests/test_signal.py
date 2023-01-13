@@ -1,14 +1,16 @@
-from Instruments.signal_processing import first, fast_stats, fast_stats2d, fast_signal, fast_signal2d, fast_col_mean
+from MessPy.Instruments.signal_processing import first, fast_stats, fast_stats2d, fast_signal, fast_signal2d, fast_col_mean
 import numpy as np
 from numpy.testing import assert_almost_equal
 
 import pytest
+
 
 @pytest.fixture
 def array():
     np.random.seed(1)
     x = 100+10*np.random.random((128, 10000))
     return x
+
 
 def test_first():
     arr = np.zeros(10000)
@@ -90,4 +92,3 @@ def test_col_mean():
     idx2 = np.tile(idx[..., None], arr.shape[2])
     true_val = np.average(arr, axis=0, weights=idx2)
     assert_almost_equal(true_val, fast_col_mean(arr, idx))
-
