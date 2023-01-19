@@ -153,8 +153,6 @@ class PhaseTecCam(ICam):
         else:
             probemax = None
         probe = Spectrum.create(probe, probemax, name='Probe1', frames=frames, first_frame=first_frame)
-
-
         ref = Spectrum.create(ref, name='Ref', frames=frames, first_frame=first_frame)
 
         if TWO_PROBES:

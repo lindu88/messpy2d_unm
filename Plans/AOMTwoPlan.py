@@ -89,8 +89,8 @@ class AOMTwoDPlan(ScanPlan):
             f['t1'].attrs['rot_frame'] = self.rot_frame_freq
             f['wn'] = self.controller.cam.wavenumbers
             f['wl'] = self.controller.cam.wavelengths
-            grp = f.create_group('meta')
-            flat_dict(self.meta, grp)
+            #grp = f.create_group('meta')
+            #flat_dict(self.meta, grp)
         return name
 
     def scan(self):
@@ -177,7 +177,7 @@ class AOMTwoDPlan(ScanPlan):
                 if line == 'Ref':
                     if self.save_ref:
                         ds = f.create_dataset(
-                            f'ref_data//{t2_idx}/{cur_scan}', data=data.mean)
+                            f'ref_data//{t2_idx}/{cur_scan}', data=data.frame_data)
                 else:
                     ds = f.create_dataset(
                         f'ifr_data/{line}/{t2_idx}/{cur_scan}', data=data.interferogram)
