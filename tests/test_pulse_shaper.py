@@ -1,12 +1,13 @@
 from unittest.mock import MagicMock
-from Instruments.dac_px import AOM
+from MessPy.Instruments.dac_px import AOM
 from pytest import raises
+
 
 def test_aom():
     mock_dac = MagicMock()
     aom = AOM(dac=mock_dac)
 
-    #with raises(ValueError):
+    # with raises(ValueError):
     #    aom.double_pulse(4, 0.1, 1600)
 
     aom.load_calib_mask()
@@ -28,8 +29,3 @@ def test_aom():
     aom.generate_waveform()
     aom.bragg_wf(1, 1)
     aom.classic_wf(1, 1)
-
-
-
-
-    

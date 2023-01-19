@@ -1,17 +1,21 @@
 
 
-from Config import config
+import pytest
+import os
+import pathlib
+import os.path as osp
+from MessPy.Plans import PumpProbePlan
+from MessPy.ControlClasses import Controller
+from MessPy.Config import config
 config.testing = True
 config.data_directory
-from ControlClasses import Controller
-from Plans import PumpProbePlan
-import pathlib, os, pytest
-import os.path as osp
+
 
 def test_init():
     controller = Controller()
     for i in range(10):
         controller.loop()
+
 
 def test_functions():
     c = Controller()
@@ -26,11 +30,11 @@ def test_functions():
 def test_pump_probe():
     c = Controller()
     t_list = range(0, 10)
-    cwls = [[0,]]
+    cwls = [[0, ]]
     pp = PumpProbePlan(controller=c, t_list=t_list, name='test')
     c.plan = pp
-    while pp.num_scans < 2:          
-        c.loop()                     
+    while pp.num_scans < 2:
+        c.loop()
     print(pp.cam_data[0].completed_scans.shape)
     assert(pp.cam_data[0].completed_scans.shape[0] == pp.cam_data[0].scan)
 
@@ -38,7 +42,7 @@ def test_pump_probe():
 def test_overwrite_protection_pump_probe():
     c = Controller()
     t_list = range(0, 10)
-    cwls = [[0,]]
+    cwls = [[0, ]]
     pp = PumpProbePlan(controller=c, t_list=t_list, name='test')
     c.plan = pp
     while pp.num_scans < 2:
