@@ -147,9 +147,6 @@ class AOMTwoDStarter(PlanStartDialog):
     experiment_type = '2D Time Domain'
 
     def setup_paras(self):
-        has_rot = self.controller.rot_stage is not None
-        has_shutter = self.controller.shutter is not None
-
         tmp = [{'name': 'Filename', 'type': 'str', 'value': 'temp'},
                {'name': 'Operator', 'type': 'str', 'value': 'Till'},
                {'name': 't1 (+)', 'suffix': 'ps', 'type': 'float', 'value': -4},
