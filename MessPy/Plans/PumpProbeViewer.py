@@ -1,22 +1,31 @@
-from .PlanParameters import DelayParameter
-from .PlanBase import sample_parameters
-from MessPy.Plans.PumpProbe import PumpProbeData, PumpProbePlan
-from typing import List, TYPE_CHECKING
 import os
-import attr
 from collections import defaultdict
-from MessPy.Config import config
-from qtpy.QtWidgets import (QWidget, QSizePolicy, QLabel, QVBoxLayout, QHBoxLayout,
-                            QCheckBox, QApplication, QTabWidget, QFrame)
-from qtpy.QtGui import QPalette, QFont
-from qtpy.QtCore import Qt, QTimer
-from MessPy.ControlClasses import Controller, Cam
-from MessPy.Plans.PumpProbe import PumpProbePlan
-from pyqtgraph.parametertree import Parameter, ParameterTree
+from typing import TYPE_CHECKING, List
 
-import pyqtgraph as pg
-from MessPy.QtHelpers import ObserverPlot, PlanStartDialog, make_entry
+import attr
 import numpy as np
+import pyqtgraph as pg
+from MessPy.Config import config
+from MessPy.ControlClasses import Cam, Controller
+from MessPy.Plans.PumpProbe import PumpProbeData, PumpProbePlan
+from MessPy.QtHelpers import ObserverPlot, PlanStartDialog, make_entry
+from pyqtgraph.parametertree import Parameter, ParameterTree
+from qtpy.QtCore import Qt, QTimer
+from qtpy.QtGui import QFont, QPalette
+from qtpy.QtWidgets import (
+    QApplication,
+    QCheckBox,
+    QFrame,
+    QHBoxLayout,
+    QLabel,
+    QSizePolicy,
+    QTabWidget,
+    QVBoxLayout,
+    QWidget,
+)
+
+from .PlanBase import sample_parameters
+from .PlanParameters import DelayParameter
 
 np.seterr('ignore')
 
@@ -113,8 +122,9 @@ class PumpProbeDataViewer(QWidget):
 
         lw.addWidget(self.sig_plot)
         lw.addWidget(self.trans_plot)
-        # type: List[List[IndicatorLine]]
-        self.inf_lines = [list() for i in pp_plan.cwl]
+
+        self.inf_lines: List[List[IndicatorLine]] = [list()
+                                                     for i in pp_plan.cwl]
 
         for i in [self.update_info, self.update_trans]:
             self.pp_plan.sigStepDone.connect(i)

@@ -34,7 +34,7 @@ class AOMTwoDPlan(ScanPlan):
     do_stop: bool = False
     max_t1: float = 4
     step_t1: float = 0.05
-    mode: Literal['classic', 'bragg'] = 'classic'
+    mode: Literal['classic', 'bragg'] = 'bragg'
     t1: np.ndarray = attrib()
     rot_frame_freq: float = 0
     repetitions: int = 1
