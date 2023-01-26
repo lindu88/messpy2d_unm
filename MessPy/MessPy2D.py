@@ -270,7 +270,7 @@ class CommandMenu(QWidget):
         self._layout.addWidget(gb)
 
     def add_shaper(self, sh):
-        from ShaperRotStages import ShaperControl
+        from .ShaperRotStages import ShaperControl
         self.shaper_controls = ShaperControl(sh.rot1, sh.rot2, sh)
         but = QPushButton("Shaper Contorls")
         but.clicked.connect(self.shaper_controls.show)

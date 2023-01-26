@@ -9,12 +9,12 @@ import attr
 import numpy as np
 from scipy.stats import trim_mean
 from qtpy.QtCore import Slot, Signal
-from Config import config
-from Instruments.interfaces import ICam
-from Instruments.signal_processing import Reading, Spectrum, first, fast_col_mean, Reading2D
+from MessPy.Config import config
+from MessPy.Instruments.interfaces import ICam
+from MessPy.Instruments.signal_processing import Reading, Spectrum, first, fast_col_mean, Reading2D
 
-from Instruments.cam_phasetec.imaq_nicelib import Cam
-from Instruments.cam_phasetec.spec_sp2500i import SP2150i
+from MessPy.Instruments.cam_phasetec.imaq_nicelib import Cam
+from MessPy.Instruments.cam_phasetec.spec_sp2500i import SP2150i
 from typing import List, Optional, Tuple, Dict
 from scipy.stats import trim_mean
 from math import log

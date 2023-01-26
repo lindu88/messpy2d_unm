@@ -3,12 +3,12 @@ import numpy as np
 import pyqtgraph.parametertree as pt
 from pyqtgraph import PlotWidget, ImageItem, PlotItem, colormap, GraphicsLayoutWidget, HistogramLUTItem, InfiniteLine, \
     mkPen, PlotDataItem
-from qtpy.QtWidgets import QWidget, QLabel, QTabWidget, QVBoxLayout
+from qtpy.QtWidgets import QWidget, QLabel, QTabWidget, QVBoxLayout, QCheckBox, QRadioButton
 from qtpy.QtCore import Slot
-from ControlClasses import Controller
-from QtHelpers import vlay, PlanStartDialog, hlay, remove_nodes, make_entry
-from Plans.PlanParameters import DelayParameter
-from QtHelpers import vlay, PlanStartDialog, hlay
+from ..ControlClasses import Controller
+from ..QtHelpers import vlay, PlanStartDialog, hlay, remove_nodes, make_entry
+from .PlanParameters import DelayParameter
+from ..QtHelpers import vlay, PlanStartDialog, hlay
 from .AOMTwoPlan import AOMTwoDPlan
 from .PlanBase import sample_parameters
 from typing import Callable
@@ -78,6 +78,10 @@ class AOMTwoDViewer(QWidget):
         self.plan.sigStepDone.connect(self.update_label)
         self.time_str = ''
         self.plan.time_tracker.sigTimesUpdated.connect(self.set_time_str)
+        self.pr_1_pb = QRadioButton('Probe1')
+        self.pr_2_pb = QRadioButton('Probe2')
+        self.pr_2_pb = QRadioButton('Probe2')
+        self.layout()
 
     @qasync.asyncSlot()
     async def update_data(self, al=True):

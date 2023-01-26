@@ -30,6 +30,14 @@ def flat_dict(d, grp):
         else:
             grp.attrs[key] = val
 
+
+h5py_ops = dict(compression="lzf",
+                compression_opts=5,
+                shuffle=True,
+                chunk=True,
+                track_order=True)
+
+
 @attrs(auto_attribs=True, kw_only=True)
 class AOMTwoDPlan(ScanPlan):
     """Plan used for pump-probe experiments"""
@@ -62,6 +70,7 @@ class AOMTwoDPlan(ScanPlan):
     last_2d: Optional[np.ndarray] = None
     sigStepDone: ClassVar[Signal] = Signal()
 
+
     @probe_freqs.default
     def _read_freqs(self):
         return self.controller.cam.wavenumbers
@@ -83,7 +92,7 @@ class AOMTwoDPlan(ScanPlan):
         name = self.get_file_name()[0]
         if name.exists():
             name.unlink()
-        with h5py.File(name, mode='a') as f:
+        with h5py.File(name, mode='a', track_order=True) as f:
             f['t1'] = self.t1
             f['t2'] = self.t2
             f['t1'].attrs['rot_frame'] = self.rot_frame_freq
@@ -125,7 +134,7 @@ class AOMTwoDPlan(ScanPlan):
         yield
 
     def calculate_scan_means(self):
-        with h5py.File(self.data_file_name, mode='a') as f:
+        with h5py.File(self.data_file_name, mode='a', track_order=True) as f:
             for line in f['ifr_data']:
                 for t3_idx in f[f'ifr_data/{line}']:
                     data = []
@@ -172,22 +181,23 @@ class AOMTwoDPlan(ScanPlan):
         thr.start()
 
     def save_data(self, ret, t2_idx, cur_scan):
-        with h5py.File(self.data_file_name, mode='a') as f:
+        with h5py.File(self.data_file_name, mode='a', track_order=True) as f:
+            data_ops = dict(dtype='float64', scaleoffset=2)
             for line, data in ret.items():
                 if line == 'Ref':
                     if self.save_ref:
                         ds = f.create_dataset(
-                            f'ref_data//{t2_idx}/{cur_scan}', data=data.frame_data)
+                            f'ref_data//{t2_idx}/{cur_scan}', data=data.frame_data, **data_ops)
                 else:
                     ds = f.create_dataset(
-                        f'ifr_data/{line}/{t2_idx}/{cur_scan}', data=data.interferogram)
+                        f'ifr_data/{line}/{t2_idx}/{cur_scan}', data=data.interferogram,  **data_ops)
                     ds.attrs['time'] = self.cur_t2
                     ds = f.create_dataset(
-                        f'2d_data/{line}/{t2_idx}/{cur_scan}', data=data.signal_2D)
+                        f'2d_data/{line}/{t2_idx}/{cur_scan}', data=data.signal_2D, **data_ops)
                     ds.attrs['time'] = self.cur_t2
                     if self.save_frames_enabled:
                         ds = f.create_dataset(
-                            f'frames/{line}/{t2_idx}/{cur_scan}', data=data.frames)
+                            f'frames/{line}/{t2_idx}/{cur_scan}', data=data.frames,  **data_ops)
                     disp_2d = f.get(
                         f'2d_data/{line}/{t2_idx}/mean', data.signal_2D)
                     disp_ifr = f.get(

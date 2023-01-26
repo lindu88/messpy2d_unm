@@ -189,5 +189,5 @@ class PumpProbeData(QObject):
         lr = self.cam.last_read
         self.current_scan[self.wl_idx, t_idx, :, :] = lr.signals[...]
         if self.mean_scans is not None:
-            self.mean_signal = self.mean_scans[self.wl_idx, t_idx, 0, :]
-        self.last_signal = lr.signals[0, :]
+            self.mean_signal = self.mean_scans[self.wl_idx, t_idx, :, :]
+        self.last_signal = lr.signals[:, :]

@@ -22,6 +22,7 @@ from qtpy.QtWidgets import (
     QTabWidget,
     QVBoxLayout,
     QWidget,
+    QSpinBox
 )
 
 from .PlanBase import sample_parameters
@@ -92,6 +93,13 @@ class PumpProbeDataViewer(QWidget):
         lw = QVBoxLayout()
         vlay = QVBoxLayout()
 
+        self.signal_channel = 0
+
+        self.signal_ch_selector = QSpinBox()
+        self.signal_ch_selector.setMinimum(0)
+        self.signal_ch_selector.setMaximum(self.pp_plan.cam.sig_lines-1)
+        self.signal_ch_selector.valueChanged.connect(lambda x: self.update_trans())
+
         self.do_show_cur = QCheckBox('Current Scan', self)
         self.do_show_cur.setChecked(True)
         self.do_show_cur.stateChanged.connect(self.hide_current_lines)
@@ -102,7 +110,9 @@ class PumpProbeDataViewer(QWidget):
         self.use_wavenumbers.stateChanged.connect(
             self.update_indicator_line_pos)
 
+
         vlay.addWidget(self.info_label)
+        vlay.addWidget(self.signal_ch_selector)
         vlay.addWidget(self.do_show_cur)
         vlay.addWidget(self.do_show_mean)
         vlay.addWidget(self.use_wavenumbers)
@@ -114,8 +124,10 @@ class PumpProbeDataViewer(QWidget):
         self._layout.addLayout(lw)
 
         self.sig_plot = ObserverPlot([], pp_plan.sigStepDone, x=self.get_x)
-        self.sig_plot.add_observed((pp_plan, 'last_signal'))
-        self.sig_plot.add_observed((pp_plan, 'mean_signal'))
+        self.last_signal = np.zeros_like(self.get_x())
+        self.mean_signal = np.zeros_like(self.last_signal)
+        self.sig_plot.add_observed((self, 'last_signal'))
+        self.sig_plot.add_observed((self, 'mean_signal'))
         self.sig_plot.click_func = self.handle_sig_click
 
         self.trans_plot = ObserverPlot([], pp_plan.sigStepDone, aa=True)
@@ -226,14 +238,20 @@ class PumpProbeDataViewer(QWidget):
         pass
 
     def update_trans(self):
+
         pp = self.pp_plan
         if pp.t_idx == 0:
             return
-
+        sig_ch = self.signal_ch_selector.value()
+        print(pp.last_signal.shape, self.mean_signal.shape)
+        self.last_signal = pp.last_signal[sig_ch, :]
+        print(self.last_signal.shape)
+        if pp.mean_signal is not None:
+            self.mean_signal = pp.mean_signal[sig_ch, :]
         if self.do_show_cur.checkState():
             for i in self.inf_lines[pp.wl_idx]:
                 i.trans_line.setData(x=pp.t_list[:pp.t_idx],
-                                     y=pp.current_scan[pp.wl_idx, :pp.t_idx, 0, i.channel])
+                                     y=pp.current_scan[pp.wl_idx, :pp.t_idx, sig_ch, i.channel])
 
         if pp.completed_scans is not None and self.do_show_mean.checkState():
             for j in self.inf_lines:
@@ -241,7 +259,7 @@ class PumpProbeDataViewer(QWidget):
                     if i.hist_trans_line not in self.trans_plot.plotItem.dataItems:
                         continue
                     ym = np.nanmean(
-                        pp.completed_scans[:, i.wl_idx, :, 0, i.channel], 0)
+                        pp.completed_scans[:, i.wl_idx, :, sig_ch, i.channel], 0)
                     i.hist_trans_line.setData(x=pp.t_list, y=ym)
 
     def get_x(self):
