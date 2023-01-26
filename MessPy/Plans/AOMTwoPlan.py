@@ -70,7 +70,6 @@ class AOMTwoDPlan(ScanPlan):
     last_2d: Optional[np.ndarray] = None
     sigStepDone: ClassVar[Signal] = Signal()
 
-
     @probe_freqs.default
     def _read_freqs(self):
         return self.controller.cam.wavenumbers
@@ -181,23 +180,27 @@ class AOMTwoDPlan(ScanPlan):
         thr.start()
 
     def save_data(self, ret, t2_idx, cur_scan):
+
         with h5py.File(self.data_file_name, mode='a', track_order=True) as f:
-            data_ops = dict(dtype='float64', scaleoffset=2)
+            data_ops = dict(dtype='float64', scaleoffset=2,
+                            compression='gzip', compression_opts=3)
             for line, data in ret.items():
                 if line == 'Ref':
                     if self.save_ref:
+                        chunks = (1, data.frame_data.shape[1])
                         ds = f.create_dataset(
-                            f'ref_data//{t2_idx}/{cur_scan}', data=data.frame_data, **data_ops)
+                            f'ref_data//{t2_idx}/{cur_scan}', data=data.frame_data, **data_ops, chunks=chunks)
                 else:
                     ds = f.create_dataset(
-                        f'ifr_data/{line}/{t2_idx}/{cur_scan}', data=data.interferogram,  **data_ops)
+                        f'ifr_data/{line}/{t2_idx}/{cur_scan}', data=data.interferogram,  dtype='float32')
                     ds.attrs['time'] = self.cur_t2
                     ds = f.create_dataset(
-                        f'2d_data/{line}/{t2_idx}/{cur_scan}', data=data.signal_2D, **data_ops)
+                        f'2d_data/{line}/{t2_idx}/{cur_scan}', data=data.signal_2D, dtype='float32')
                     ds.attrs['time'] = self.cur_t2
                     if self.save_frames_enabled:
+                        chunks = (1, data.frames.shape[1])
                         ds = f.create_dataset(
-                            f'frames/{line}/{t2_idx}/{cur_scan}', data=data.frames,  **data_ops)
+                            f'frames/{line}/{t2_idx}/{cur_scan}', data=data.frames,  **data_ops, chunks=chunks)
                     disp_2d = f.get(
                         f'2d_data/{line}/{t2_idx}/mean', data.signal_2D)
                     disp_ifr = f.get(
