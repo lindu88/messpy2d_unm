@@ -12,12 +12,14 @@ Created on Tue Jun 03 15:41:22 2014
 @author: tillsten
 """
 
-try:
+
 from MessPy.Instruments.interfaces import IRotationStage
 from qtpy.QtCore import QObject, Signal, QTimer
 import serial
 import attr
 import time
+
+try:
     rs.s.close()
 except NameError:
     pass
