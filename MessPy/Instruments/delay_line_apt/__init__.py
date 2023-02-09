@@ -1,19 +1,22 @@
+import sys
+sys.path.append(r"C:\Users\MUELLER-WERKMEISTER\Downloads\download\messpy2d - Copy")
+sys.path.append(r"C:\Program Files\Thorlabs\Kinesis")
+
+
+import clr
+clr.AddReference("Thorlabs.MotionControl.Benchtop.BrushlessMotorCLI")
+clr.AddReference("Thorlabs.MotionControl.DeviceManagerCLI")
+
 from Thorlabs.MotionControl.DeviceManagerCLI import DeviceManagerCLI
 from Thorlabs.MotionControl.Benchtop.BrushlessMotorCLI import BenchtopBrushlessMotor
 from System import Decimal, Action, UInt64
-import clr
+
 import attr
 import logging
 import wrapt
 from MessPy.Instruments.interfaces import IDelayLine
 from xmlrpc.client import ServerProxy
-import sys
-sys.path.append(r"C:\Users\MUELLER-WERKMEISTER\Downloads\download\messpy2d")
 
-
-sys.path.append(r"C:\Program Files\Thorlabs\Kinesis")
-clr.AddReference("Thorlabs.MotionControl.Benchtop.BrushlessMotorCLI")
-clr.AddReference("Thorlabs.MotionControl.DeviceManagerCLI")
 
 
 #config.dl_server = 'http://130.133.30.223:8000'
@@ -33,7 +36,13 @@ class APTDelay:
         channel.WaitForSettingsInitialized(5000)
         channel.EnableDevice()
         channel.LoadMotorConfiguration(channel.DeviceID)
-        channel.StartPolling(150)
+        channel.StartPolling(500)
+
+        motorConfiguration = channel.LoadMotorConfiguration(channel.DeviceID)
+        currentDeviceSettings = channel.MotorDeviceSettings
+
+        pid = channel.GetPosLoopParams()
+        pid.set_DerivativeGain(3000)
         self.channel = channel
         self.moving = False
 
@@ -71,10 +80,10 @@ class DelayLine(IDelayLine):
 
 if __name__ == "__main__":
     dl = DelayLine("ExtDelay")
-    dl.load_home()
+
     print(dl.get_pos_mm())
-    print(dl.move_mm(30))
-    while dl.is_moving():
-        pass  # print(dl.is_moving())
+    #print(dl.move_mm(30))
+    #while dl.is_moving():
+    #    pass  # print(dl.is_moving())
     print(dl.get_pos_mm())
     # dl.def_home()
