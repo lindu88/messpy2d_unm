@@ -10,7 +10,7 @@ _cam2 = None  # CamMock(name="Mock2")
 _dl = None
 _dl2 = None
 _rot_stage = None
-_shutter = None
+_shutter = []
 _sh = None
 _shaper = None
 
@@ -81,6 +81,7 @@ elif pc_name == 'DESKTOP-RMRQA8D':
 elif pc_name == 'DESKTOP-BBLLUO7':
     from MessPy.Instruments.cam_phasetec import PhaseTecCam
     _cam = PhaseTecCam()
+    #_cam = CamMock()
     _cam2 = None
     from MessPy.Instruments.delay_line_apt import DelayLine
     _dl = DelayLine(name="VisDelay")
@@ -94,7 +95,9 @@ elif pc_name == 'DESKTOP-BBLLUO7':
 
     _shaper.rot1 = r1
     _shaper.rot2 = r2
-
+    from MessPy.Instruments.shutter_topas import TopasShutter
+    from MessPy.Instruments.shutter_phidget import PhidgetShutter
+    _shutter = [TopasShutter(), PhidgetShutter()]
 else:
     _cam = CamMock()
     _dl = DelayLineMock()

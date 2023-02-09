@@ -1,6 +1,7 @@
+import requests, time
+from attr import dataclass
+
 from MessPy.Instruments.interfaces import IShutter
-import requests
-from attr import field, dataclass
 
 ip_address = '127.0.0.1'
 port = '8000'
@@ -34,6 +35,7 @@ class TopasShutter(IShutter):
 
 if __name__ == '__main__':
     import time
+
     sh = TopasShutter()
     print(sh.is_open())
     sh.toggle()

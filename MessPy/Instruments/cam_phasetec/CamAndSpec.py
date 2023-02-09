@@ -270,10 +270,6 @@ class PhaseTecCam(ICam):
             arr = self._cam.read_cam(lines=self.rows.values(), back=None)[0]
             #back_probe = np.nanmean(arr[:, :, :], 2)
             self.background = self._cam.lines.mean(2)
-            import matplotlib.pyplot as plt
-            plt.plot(self.background.T)
-            plt.show()
-
             fname = Path(__file__).parent / 'back'
             np.save(fname, self.background)
 

@@ -133,6 +133,7 @@ class AOMTwoDPlan(ScanPlan):
             self.repetitions * (self.t1.size * self.phase_frames))
         yield
 
+
     def calculate_scan_means(self):
         with h5py.File(self.data_file_name, mode='a', track_order=True) as f:
             for line in f['ifr_data']:
