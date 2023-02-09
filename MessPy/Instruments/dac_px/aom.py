@@ -159,7 +159,7 @@ class AOM(IDevice):
         return amp * np.cos(self.pixel[:, None] / f * 2 * np.pi + phase)
 
     def double_pulse(
-        self, taus, rot_frame: float, phase_frames: Literal[1, 2, 4] = 4
+        self, taus, rot_frame: float, rot_frame2: float, phase_frames: Literal[1, 2, 4] = 4
     ) -> Tuple[np.ndarray, np.ndarray]:
         """
         Calculates the masks for creating a series a double pulses with phase cycling.
@@ -178,7 +178,8 @@ class AOM(IDevice):
         taus = taus.repeat(phase_frames)
         masks = double_pulse_mask(
             self.nu[:, None], rot_frame, taus[None,
-                                              :], phi1[None, :], phi2[None, :]
+                                              :], phi1[None, :], phi2[None, :],
+            rot_frame2
         )
 
         self.set_amp_and_phase(np.abs(masks), np.angle(masks))
@@ -327,16 +328,16 @@ class AOM(IDevice):
         self.generate_waveform()
 
     def set_compensation_amp(self, x0=2150, width=200):
-        x0 = 2150
+        x0 = 1650
         x0_nu = cm2THz(x0)
-        width = 30
+        width = 50
         xw = abs(x0_nu - cm2THz(x0+width))
         print(x0_nu, xw)
         amp_f = np.zeros_like(self.nu)
         amp_f[(self.nu < x0_nu+xw) & (self.nu > x0_nu-xw)] = 1
         amp = np.exp(-0.5*(self.nu-x0_nu)**2/xw**2)[:, None]
 
-        self.compensation_amp = amp_f[:, None]
+        self.compensation_amp = amp#[:, None]
 
 
 if __name__ == "__main__":
