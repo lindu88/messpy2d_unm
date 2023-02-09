@@ -124,7 +124,7 @@ class PhaseTecCam(ICam):
         #if self.background is not None:
         #    arr = arr - self.background[:, :, None]
         if frames is not None:
-            first_frame = first(np.array(ch[0]), 1)
+            first_frame = first(np.array(ch[1]), 1)
         else:
             first_frame = None
 
@@ -172,9 +172,9 @@ class PhaseTecCam(ICam):
 
             n = first(ch[0], 1)
             if (n % 2) == 0:
-                f = 1000
-            else:
                 f = -1000
+            else:
+                f = 1000
 
             pu = trim_mean(normed[:, ::2], 0.2, 1)
             not_pu = trim_mean(normed[:, 1::2], 0.2, 1)
@@ -198,7 +198,7 @@ class PhaseTecCam(ICam):
             if self.beta1 is not None:
                 dp = probe.data[:, ::2] - probe.data[:, 1::2]
                 dp2 = probe2.data[:, ::2] - probe2.data[:, 1::2]
-                dr = ref.data[:, ::2] - ref.data[:, 1::2]
+                dr = ref.data[::8, ::2] - ref.data[::8, 1::2]
                 dp = (dp - self.beta1.T @ dr)
                 dp2 = (dp2 - self.beta2.T @ dr)
 
@@ -212,8 +212,8 @@ class PhaseTecCam(ICam):
             pu2 = trim_mean(probe2.data[:, ::2], 0.2, 1)
             not_pu2 = trim_mean(probe2.data[:, 1::2], 0.2, 1)
 
-            sig_pr2_noref = f * np.log10(pu2 / not_pu2)
-            which = 1 if (ch[0][0] > 1) else 0
+            sig_pr2_noref = probe2.signal#f * np.log10(pu2 / not_pu2)
+
             reading = Reading(lines=np.stack(
                 (probe.mean, probe2.mean, ref.mean, probe.max)),
                               stds=np.stack(
@@ -242,7 +242,7 @@ class PhaseTecCam(ICam):
 
     def calibrate_ref(self):
         tmp_shots = self.shots
-        self._cam.set_shots(2000)
+        self._cam.set_shots(4000)
         #arr, ch = self._cam.read_cam()
         specs, _ = self.get_spectra()
         self._cam.set_shots(tmp_shots)
@@ -253,7 +253,7 @@ class PhaseTecCam(ICam):
 
         dp1 = probe[:, ::2] - probe[:, 1::2]
         dp2 = probe2[:, ::2] - probe2[:, 1::2]
-        dr = ref[:, ::2] - ref[:, 1::2]
+        dr = ref[::8, ::2] - ref[::8, 1::2]
 
         self.beta1 = np.linalg.lstsq(dr.T, dp1.T, rcond=-1)[0]
         self.beta2 = np.linalg.lstsq(dr.T, dp2.T, rcond=-1)[0]
