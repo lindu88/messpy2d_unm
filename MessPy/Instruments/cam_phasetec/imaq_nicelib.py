@@ -133,6 +133,7 @@ class Cam:
 
         #chop = self.task.in_stream.read(c.READ_ALL_AVAILABLE)
         chop = self.task.read(c.READ_ALL_AVAILABLE)
+
         self.task.stop()
         self.reading_lock.release()
         return self.data, chop

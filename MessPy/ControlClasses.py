@@ -182,7 +182,7 @@ class Controller(QObject):
     delay_line_second: T.Optional[DelayLine] = None
     cam2: T.Optional[Cam] = attrib(init=False)
     cam_list: T.List[Cam] = Factory(list)
-    shutter: T.Optional[I.IShutter] = _shutter
+    shutter: T.List[I.IShutter] = _shutter
     rot_stage: T.Optional[I.IRotationStage] = _rot_stage
     sample_holder: T.Optional[I.ILissajousScanner] = _sh
     shaper: T.Optional[object] = _shaper

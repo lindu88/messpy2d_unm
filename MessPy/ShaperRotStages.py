@@ -63,7 +63,8 @@ class ShaperControl(QtWidgets.QWidget):
         self.pc = QtWidgets.QCheckBox("Phase Cycle")
         self.pc.setChecked(self.aom.phase_cycle)
         self.pc.toggled.connect(lambda x: setattr(self.aom, 'phase_cycle', x))
-        self.pc.chopped.toggled.connect(lambda x: self.aom.generate_waveform())
+        self.pc.toggled.connect(lambda x: self.aom.generate_waveform())
+        self.chopped.toggled.connect(lambda x: self.aom.generate_waveform())
 
         self.apply = QtWidgets.QPushButton("Apply Waveform")
         self.apply.clicked.connect(lambda x: self.aom.generate_waveform())
@@ -76,7 +77,6 @@ class ShaperControl(QtWidgets.QWidget):
             self.aom, 'compensation_amp', None))
         self.playing_cb = QtWidgets.QCheckBox('Play')
         self.playing_cb.toggled.connect(self.toggle_playback)
-
 
         self.pt = ParameterTree()
         self.disp_param = Parameter.create(name='Dispersion',
@@ -114,6 +114,7 @@ class ShaperControl(QtWidgets.QWidget):
             self.aom.start_playback()
         else:
             self.aom.end_playback()
+
 
 if __name__ == '__main__':
     app = QtWidgets.QApplication([])

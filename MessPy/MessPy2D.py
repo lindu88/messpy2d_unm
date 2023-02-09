@@ -82,7 +82,7 @@ class MainWindow(QMainWindow):
                 dock_wigdets[2], dock_wigdets[5], Qt.Horizontal)
         self.setCentralWidget(self.cm)
 
-        self.controller.cam.sigRefCalibrationFinished.connect(self.plot_calib)
+        #self.controller.cam.sigRefCalibrationFinished.connect(self.plot_calib)
         self.readSettings()
 
     def plot_calib(self, k1, k2):
@@ -150,7 +150,7 @@ class MainWindow(QMainWindow):
 
     def toggle_run(self, bool):
         if bool:
-            self.timer.start(10)
+            self.timer.start(35)
         else:
             self.timer.stop()
 
@@ -208,7 +208,8 @@ class CommandMenu(QWidget):
                 self._layout.addWidget(gb)
                 c.starting_plan.connect(gb.setDisabled)
                 c.stopping_plan.connect(gb.setEnabled)
-
+        if len(c.shutter) > 0:
+            self._layout.addWidget(ShutterControls(c))
         if c.rot_stage:
             self.add_rot_stage(c.rot_stage)
         if c.sample_holder:
@@ -276,6 +277,19 @@ class CommandMenu(QWidget):
         but.clicked.connect(self.shaper_controls.show)
         self._layout.addWidget(but)
         return
+
+class ShutterControls(QGroupBox):
+    def __init__(self, c: Controller):
+        super(ShutterControls, self).__init__()
+        self.setTitle("Shutters")
+        assert len(c.shutter) > 0
+        w = []
+        for shutter in c.shutter:
+            cb = QCheckBox(shutter.name)
+            cb.setChecked(shutter.is_open())
+            cb.toggled.connect(shutter.toggle)
+            w.append(cb)
+        self.setLayout(vlay(*w))
 
 
 class CamControls(QGroupBox):

@@ -53,6 +53,7 @@ class AOMTwoDPlan(ScanPlan):
     mode: Literal['classic', 'bragg'] = 'bragg'
     t1: np.ndarray = attrib()
     rot_frame_freq: float = 0
+    rot_frame2_freq: float = 0
     repetitions: int = 1
     phase_frames: Literal[1, 2, 4] = 4
     save_frames_enabled: bool = False
@@ -123,7 +124,7 @@ class AOMTwoDPlan(ScanPlan):
         self.shaper.do_dispersion_compensation = True
         self.shaper.mode = self.mode
         self.shaper.double_pulse(self.t1, cm2THz(
-            self.rot_frame_freq), self.phase_frames)
+            self.rot_frame_freq), cm2THz(self.rot_frame2_freq), self.phase_frames, )
 
         self.shaper.set_wave_amp(self.aom_amplitude)
 
@@ -131,6 +132,7 @@ class AOMTwoDPlan(ScanPlan):
         self.controller.cam.set_shots(
             self.repetitions * (self.t1.size * self.phase_frames))
         yield
+
 
     def calculate_scan_means(self):
         with h5py.File(self.data_file_name, mode='a', track_order=True) as f:

@@ -33,7 +33,7 @@ class PumpProbePlan(Plan):
     rot_stage_angles: Optional[list] = None
     rot_at_scan: List[float] = Factory(list)
     time_per_scan: str = ""
-
+    do_ref_calib: bool = True
     sigStepDone = Signal()
     plan_shorthand = "PumpProbe"
 
@@ -79,6 +79,10 @@ class PumpProbePlan(Plan):
             start_t = time.time()
             self.time_tracker.scan_starting()
             # -- scan
+            if self.do_ref_calib and False:
+                print('Calibrating Ref')
+                print(f'At t={self.controller.delay_line.get_pos()}')
+                self.cam_data[0].cam.cam.calibrate_ref()
             for self.t_idx, t in enumerate(self.t_list):
                 c.delay_line.set_pos(t*1000., do_wait=False)
                 while self.controller.delay_line.moving:
