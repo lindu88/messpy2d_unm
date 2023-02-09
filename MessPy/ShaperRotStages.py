@@ -59,10 +59,11 @@ class ShaperControl(QtWidgets.QWidget):
         self.chopped = QtWidgets.QCheckBox("Chopped")
         self.chopped.setChecked(self.aom.chopped)
         self.chopped.toggled.connect(lambda x: setattr(self.aom, 'chopped', x))
-
+        self.chopped.toggled.connect(lambda x: self.aom.generate_waveform())
         self.pc = QtWidgets.QCheckBox("Phase Cycle")
         self.pc.setChecked(self.aom.phase_cycle)
         self.pc.toggled.connect(lambda x: setattr(self.aom, 'phase_cycle', x))
+        self.pc.chopped.toggled.connect(lambda x: self.aom.generate_waveform())
 
         self.apply = QtWidgets.QPushButton("Apply Waveform")
         self.apply.clicked.connect(lambda x: self.aom.generate_waveform())
@@ -73,6 +74,9 @@ class ShaperControl(QtWidgets.QWidget):
         self.sc2 = QtWidgets.QPushButton("Del spec amp")
         self.sc2.clicked.connect(lambda p: setattr(
             self.aom, 'compensation_amp', None))
+        self.playing_cb = QtWidgets.QCheckBox('Play')
+        self.playing_cb.toggled.connect(self.toggle_playback)
+
 
         self.pt = ParameterTree()
         self.disp_param = Parameter.create(name='Dispersion',
@@ -91,6 +95,7 @@ class ShaperControl(QtWidgets.QWidget):
                             hlay(slider_lbl, self.slider),
                             calib_label,
                             self.chopped,
+                            self.playing_cb,
                             self.pc,
                             self.pt,
                             self.sc,
@@ -104,6 +109,11 @@ class ShaperControl(QtWidgets.QWidget):
         self.aom.nu0_THz = cm2THz(self.disp_param['center'])
         self.aom.update_dispersion_compensation()
 
+    def toggle_playback(self, b):
+        if b:
+            self.aom.start_playback()
+        else:
+            self.aom.end_playback()
 
 if __name__ == '__main__':
     app = QtWidgets.QApplication([])
@@ -121,6 +131,4 @@ if __name__ == '__main__':
     # r2 = RotationStage(name="Grating2", comport="COM6")
 
     # sc = ShaperControl(rs1=r1, rs2=r2, aom=aom)
-    # sc.show()
-
-    # app.exec_()
+    # sc.sho
