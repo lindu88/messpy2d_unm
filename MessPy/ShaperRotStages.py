@@ -59,10 +59,12 @@ class ShaperControl(QtWidgets.QWidget):
         self.chopped = QtWidgets.QCheckBox("Chopped")
         self.chopped.setChecked(self.aom.chopped)
         self.chopped.toggled.connect(lambda x: setattr(self.aom, 'chopped', x))
+        self.chopped.toggled.connect(lambda x: self.aom.generate_waveform())
 
         self.pc = QtWidgets.QCheckBox("Phase Cycle")
         self.pc.setChecked(self.aom.phase_cycle)
         self.pc.toggled.connect(lambda x: setattr(self.aom, 'phase_cycle', x))
+        self.pc.toggled.connect(lambda x: self.aom.generate_waveform())
 
         self.apply = QtWidgets.QPushButton("Apply Waveform")
         self.apply.clicked.connect(lambda x: self.aom.generate_waveform())
