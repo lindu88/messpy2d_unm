@@ -82,10 +82,10 @@ elif pc_name == 'DESKTOP-BBLLUO7':
     from MessPy.Instruments.cam_phasetec import PhaseTecCam
     _cam = PhaseTecCam()
     _cam2 = None
-    #from MessPy.Instruments.delay_line_apt import DelayLine
-    #_dl = DelayLine(name="VisDelay")
-    from MessPy.Instruments.delay_line_newport import NewportDelay
-    _dl = NewportDelay(name='IR Delay', pos_sign=-1)
+    from MessPy.Instruments.delay_line_apt import DelayLine
+    _dl = DelayLine(name="VisDelay")
+    #from MessPy.Instruments.delay_line_newport import NewportDelay
+    #_dl = NewportDelay(name='IR Delay', pos_sign=-1)
     from MessPy.Instruments.dac_px import AOM
     _shaper = AOM(name='AOM')
     from MessPy.Instruments.RotationStage import RotationStage
