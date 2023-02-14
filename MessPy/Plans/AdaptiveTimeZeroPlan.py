@@ -44,6 +44,7 @@ class AdaptiveTimeZeroPlan(AsyncPlan):
     is_running: bool = True
     min_diff: float = 1
     max_diff: float = 4
+    auto_scale: bool = True
     start: float = -5
     stop: float = 5
     current_step: float = 0.2
@@ -64,6 +65,13 @@ class AdaptiveTimeZeroPlan(AsyncPlan):
         self.cam.set_shots(self.shots)
         cur_signal = await self.read_point()
         self.sigPlanStarted.emit()
+        for i in np.arange(self.start, self.stop, self.current_step):
+            await self.move_dl(i)
+            new_signal = await self.read_point()
+            self.values.append(new_signal)
+            self.positions.append(i)
+            self.sigStepDone.emit(self.get_data())
+            cam.sigReadCompleted.emit()
 
         while self.is_running:
             cur_pos = dl.get_pos()/1000.
@@ -94,7 +102,7 @@ class AdaptiveTimeZeroPlan(AsyncPlan):
         x, y = self.get_data()
         xd = np.diff(x)
         yd = np.diff(y)
-        i = (np.abs(yd) > self.max_diff)  # & (xd > self.min_step)
+        i = (np.abs(yd) > self.max_diff) & (xd > self.min_step)
         if np.any(i):
             first = np.argmax(i)
             return (x[first+1]+x[first])/2

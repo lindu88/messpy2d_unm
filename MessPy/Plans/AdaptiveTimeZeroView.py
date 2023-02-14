@@ -4,7 +4,7 @@ import numpy as np
 import pyqtgraph.parametertree as pt
 from pyqtgraph import PlotItem, PlotWidget, TextItem, mkPen
 from qtpy.QtCore import Qt
-from qtpy.QtWidgets import QLabel, QMessageBox, QPushButton, QWidget
+from qtpy.QtWidgets import QLabel, QMessageBox, QPushButton, QWidget, QComboBox
 from scipy.special import erfc
 
 from MessPy.ControlClasses import Controller
@@ -20,22 +20,30 @@ from MessPy.QtHelpers import (
 from .AdaptiveTimeZeroPlan import AdaptiveTimeZeroPlan
 
 
-def folded_exp(t, t0, amp, tau, sigma):
+def folded_exp(t, t0, amp, tau, sigma, c=0):
     k = 1/tau
     t = t - t0
     y = amp*np.exp(k * (sigma * sigma * k / 4 - t))
     y *= 0.5 * erfc(-t / sigma + sigma * k / 2)
-    return y
+    return y + c
 
 
-def fit_folded_exp(x, y):
+def gaussian(t, t0, amp, sigma_g):
+    return amp*np.exp(-(t-t0)**2/(2*sigma_g**2))
+
+
+def fit_folded_exp(x, y, add_gaussian=False):
     model = lmfit.Model(folded_exp, ['t'])
+    if add_gaussian:
+        model += lmfit.Model(gaussian, ['t'])
+        model.set_param_hint('amp', value=y.max()-y.min())
+        model.set_param_hint('sigma_g', expr='sigma')
     model.set_param_hint('sigma', min=0.001)
     model.set_param_hint('tau', min=0.001)
     i = np.argmax(abs(y))
     try:
         fit_res = model.fit(
-            y, t=x, amp=y[i], tau=10, sigma=0.1, t0=0, nan_policy='raise')
+            y, t=x, amp=y[i], tau=10, c=0, sigma=0.1, t0=0, nan_policy='raise')
         return fit_res
     except ValueError:
         return False
@@ -46,6 +54,7 @@ class AdaptiveTZViewer(QWidget):
     plan: AdaptiveTimeZeroPlan
     plot_widget: PlotWidget = attr.ib(init=False)
     stop_button: QPushButton = attr.Factory(lambda: QPushButton("Stop"))
+    fit_model_combo: QComboBox = attr.Factory(lambda: QComboBox())
 
     def __attrs_post_init__(self):
         super(AdaptiveTZViewer, self).__init__()
@@ -64,6 +73,9 @@ class AdaptiveTZViewer(QWidget):
             lambda: setattr(self.plan, 'is_running', False))
         self.plan.sigPlanFinished.connect(self.show_stop_options)
 
+        self.fit_model_combo.addItems(
+            ['Folded Exp.', 'Folded Exp. + Gaussian'])
+
     def show_stop_options(self):
         self.stop_button.setDisabled(True)
         self.set_zero_btn = QPushButton('Set t0')
@@ -79,7 +91,11 @@ class AdaptiveTZViewer(QWidget):
 
     def fit_data(self):
         x, y = self.plan.get_data()
-        fit_res = fit_folded_exp(x, y)
+        if self.fit_model_combo.currentText() == 'Folded Exp.':
+            fit_res = fit_folded_exp(x, y)
+        elif self.fit_model_combo.currentText() == 'Folded Exp. + Gaussian':
+            fit_res = fit_folded_exp(x, y, add_gaussian=True)
+
         if fit_res and fit_res.success:
             xn = np.linspace(x.min(), x.max(), 300)
             yn = fit_res.eval(t=xn)
