@@ -4,7 +4,7 @@ import numpy as np
 import pyqtgraph.parametertree as pt
 from pyqtgraph import PlotItem, PlotWidget, TextItem, mkPen
 from qtpy.QtCore import Qt
-from qtpy.QtWidgets import QLabel, QMessageBox, QPushButton, QWidget
+from qtpy.QtWidgets import QLabel, QMessageBox, QPushButton, QWidget, QComboBox
 from scipy.special import erfc
 
 from MessPy.ControlClasses import Controller
@@ -20,12 +20,12 @@ from MessPy.QtHelpers import (
 from .AdaptiveTimeZeroPlan import AdaptiveTimeZeroPlan
 
 
-def folded_exp(t, t0, amp, tau, sigma):
+def folded_exp(t, t0, amp, tau, sigma, c=0):
     k = 1/tau
     t = t - t0
     y = amp*np.exp(k * (sigma * sigma * k / 4 - t))
     y *= 0.5 * erfc(-t / sigma + sigma * k / 2)
-    return y
+    return y + c
 
 
 def fit_folded_exp(x, y):
@@ -35,7 +35,7 @@ def fit_folded_exp(x, y):
     i = np.argmax(abs(y))
     try:
         fit_res = model.fit(
-            y, t=x, amp=y[i], tau=10, sigma=0.1, t0=0, nan_policy='raise')
+            y, t=x, amp=y[i], tau=10, c=0, sigma=0.1, t0=0, nan_policy='raise')
         return fit_res
     except ValueError:
         return False
@@ -46,6 +46,7 @@ class AdaptiveTZViewer(QWidget):
     plan: AdaptiveTimeZeroPlan
     plot_widget: PlotWidget = attr.ib(init=False)
     stop_button: QPushButton = attr.Factory(lambda: QPushButton("Stop"))
+    fit_model_combo: QComboBox = attr.Factory(lambda: QComboBox())
 
     def __attrs_post_init__(self):
         super(AdaptiveTZViewer, self).__init__()

@@ -172,7 +172,7 @@ class ScanPlan(Plan):
         yield True
 
 
-@attr.s(auto_attribs=True)
+@attr.s(auto_attribs=True, kw_only=True)
 class AsyncPlan(Plan):
     is_async: bool = True
     task: Task = attr.ib(init=False)
