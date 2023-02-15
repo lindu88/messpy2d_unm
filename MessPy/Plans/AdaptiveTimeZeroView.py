@@ -28,8 +28,16 @@ def folded_exp(t, t0, amp, tau, sigma, c=0):
     return y + c
 
 
-def fit_folded_exp(x, y):
+def gaussian(t, t0, amp, sigma_g):
+    return amp*np.exp(-(t-t0)**2/(2*sigma_g**2))
+
+
+def fit_folded_exp(x, y, add_gaussian=False):
     model = lmfit.Model(folded_exp, ['t'])
+    if add_gaussian:
+        model += lmfit.Model(gaussian, ['t'])
+        model.set_param_hint('amp', value=y.max()-y.min())
+        model.set_param_hint('sigma_g', expr='sigma')
     model.set_param_hint('sigma', min=0.001)
     model.set_param_hint('tau', min=0.001)
     i = np.argmax(abs(y))
@@ -65,6 +73,9 @@ class AdaptiveTZViewer(QWidget):
             lambda: setattr(self.plan, 'is_running', False))
         self.plan.sigPlanFinished.connect(self.show_stop_options)
 
+        self.fit_model_combo.addItems(
+            ['Folded Exp.', 'Folded Exp. + Gaussian'])
+
     def show_stop_options(self):
         self.stop_button.setDisabled(True)
         self.set_zero_btn = QPushButton('Set t0')
@@ -80,7 +91,11 @@ class AdaptiveTZViewer(QWidget):
 
     def fit_data(self):
         x, y = self.plan.get_data()
-        fit_res = fit_folded_exp(x, y)
+        if self.fit_model_combo.currentText() == 'Folded Exp.':
+            fit_res = fit_folded_exp(x, y)
+        elif self.fit_model_combo.currentText() == 'Folded Exp. + Gaussian':
+            fit_res = fit_folded_exp(x, y, add_gaussian=True)
+
         if fit_res and fit_res.success:
             xn = np.linspace(x.min(), x.max(), 300)
             yn = fit_res.eval(t=xn)
