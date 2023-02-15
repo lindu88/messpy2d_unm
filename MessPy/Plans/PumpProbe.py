@@ -176,11 +176,12 @@ class PumpProbeData(QObject):
         if self.delay_scans % len(self.cwl) == 0:
             self.scan += 1
             if self.completed_scans is None:
-                self.completed_scans = self.current_scan[None, ...]
+                self.completed_scans = self.current_scan[None, ...].copy()
+                self.mean_scans = self.completed_scans[0, ...]
             else:
                 self.completed_scans = np.concatenate(
                     (self.completed_scans, self.current_scan[None, ...]))
-            self.mean_scans = self.completed_scans.mean(0)
+                self.mean_scans = self.completed_scans.mean(0)
             self.plan.save()
         next_wl = self.cwl[self.wl_idx]
         if len(self.cwl) > 1:
