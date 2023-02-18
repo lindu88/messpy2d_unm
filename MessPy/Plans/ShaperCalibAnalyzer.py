@@ -136,8 +136,8 @@ class CalibView(QWidget):
         else:
             y_train, y_single, y_full = self.y_train, self.y_single, self.y_full
         if self.use_norm.isChecked():
-            y_train = 500 * (y_train / (y_full + 50))
-            y_single = 500 * (y_single / (y_full + 50))
+            y_train = 500 * (y_train / (y_full + 100))
+            y_single = 500 * (y_single / (y_full + 100))
 
         p0, _ = find_peaks(
             y_train, prominence=self.prominence, distance=self.distance)

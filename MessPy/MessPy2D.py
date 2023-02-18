@@ -85,13 +85,6 @@ class MainWindow(QMainWindow):
         #self.controller.cam.sigRefCalibrationFinished.connect(self.plot_calib)
         self.readSettings()
 
-    def plot_calib(self, k1, k2):
-        import pyqtgraph as pg
-        win = pg.PlotWidget()
-        win.plotItem.plot(k1)
-        win.plotItem.plot(k2)
-        win.show()
-        self._win = win
 
     def setup_toolbar(self):
         self.toolbar = self.addToolBar('Begin Plan')
@@ -295,7 +288,7 @@ class ShutterControls(QGroupBox):
 class CamControls(QGroupBox):
     def __init__(self, c: Controller):
         super(CamControls, self).__init__()
-        bg_buttons = [('BG', c.cam.get_bg, 'fa5.circle')]
+        bg_buttons = [('BG', c.cam.get_bg, 'fa5.circle')] # type: list[tuple[str, Callable, str]]
         if hasattr(c.cam, 'calibrate_ref'):
             bg_buttons.append(('Refcalib.', c.cam.calibrate_ref, 'fa5.clone'))
         if c.cam2:
@@ -412,10 +405,12 @@ def start_app():
         emsg = QMessageBox()
         emsg.setWindowModality(Qt.WindowModal)
         traceback.print_tb(tb)
-        tb = traceback.format_tb(tb)
+        s = []
+        while (tb := tb.tb_next):
+            s += traceback.format_tb(tb)
         emsg.setText('Exception raised')
-        emsg.setInformativeText(''.join(tb))
-        emsg.setStandardButtons(QMessageBox.Abort | QMessageBox.Ignore)
+        emsg.setInformativeText(''.join(s))
+        emsg.setStandardButtons(QMessageBox.Abort | QMessageBox.Ignore) # type: ignore
         result = emsg.exec_()
         if not result == QMessageBox.Ignore:
             sys._excepthook(exctype, value, tb)
