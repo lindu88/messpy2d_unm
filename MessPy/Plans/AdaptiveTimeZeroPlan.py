@@ -73,35 +73,15 @@ class AdaptiveTimeZeroPlan(AsyncPlan):
             self.sigStepDone.emit(self.get_data())
             cam.sigReadCompleted.emit()
 
-        while self.is_running:
-            cur_pos = dl.get_pos()/1000.
-            new_signal = await self.read_point()
-            self.values.append(new_signal)
-            self.positions.append(cur_pos)
-            self.sigStepDone.emit(self.get_data())
-            cam.sigReadCompleted.emit()
-            sig_diff = abs(new_signal-cur_signal)
-            cur_signal = new_signal
-            if sig_diff > self.max_diff and self.current_step != self.min_step:
-                self.current_step = max(0.5*self.current_step, self.min_step)
-                next_pos = cur_pos - self.current_step-self.current_step/2
-            elif sig_diff < self.min_diff:
-                self.current_step = min(2 * self.current_step, 10)
-                next_pos = cur_pos + self.current_step
-            else:
-                next_pos = cur_pos + self.current_step
-            await self.move_dl(next_pos)
-            if next_pos > self.stop:
-                await self.check_pos(self.stop)
-                while (new_x := self.check_for_holes()) and self.is_running:
-                    await self.check_pos(new_x)
-                self.is_running = False
+        while (new_x := self.check_for_holes()) and self.is_running:
+            await self.check_pos(new_x)
+        self.is_running = False
         self.sigPlanFinished.emit()
 
     def check_for_holes(self):
         x, y = self.get_data()
         xd = np.diff(x)
-        yd = np.diff(y)
+        yd = np.diff(y)/y.ptp()
         i = (np.abs(yd) > self.max_diff) & (xd > self.min_step)
         if np.any(i):
             first = np.argmax(i)
