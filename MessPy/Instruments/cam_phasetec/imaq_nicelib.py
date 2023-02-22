@@ -54,7 +54,9 @@ class Cam:
     def init_imaq():
         i = IMAQ.imgInterfaceOpen('img0')
         s = IMAQ.imgSessionOpen(i)
-        IMAQ.imgSessionTriggerConfigure2(s, IMAQ.IMG_SIGNAL_EXTERNAL, IMAQ.IMG_EXT_TRIG0,
+        IMAQ.imgSessionTriggerConfigure2(s,
+                                         IMAQ.IMG_SIGNAL_EXTERNAL,
+                                         IMAQ.IMG_EXT_TRIG0,
                                          IMAQ.IMG_TRIG_POLAR_ACTIVEH,
                                          1000, IMAQ.IMG_TRIG_ACTION_CAPTURE)
         return i, s
@@ -101,7 +103,7 @@ class Cam:
         IMAQ.imgGetAttribute(self.s, 0x0076 + 0x3FF60000, fcount)
         return fcount[0]
 
-    def read_cam(self, lines: Optional[list[tuple]]=None, back: Optional[np.ndarray]=None):
+    def read_cam(self, lines: Optional[list[tuple]]=None, back: Optional[np.ndarray]=None) -> tuple[np.ndarray, np.ndarray]:
         self.reading_lock.acquire()
         IMAQ.imgSessionStartAcquisition(self.s)
         self.task.start()
@@ -110,6 +112,7 @@ class Cam:
         bi = np.frombuffer(ba).view('u2')
         MAX_14_BIT = (1 << 14)
 
+        assert self.data
 
         if lines is not None:
             self.lines = np.empty((len(lines), 128, self.shots))

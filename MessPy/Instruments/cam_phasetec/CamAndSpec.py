@@ -57,6 +57,7 @@ class PhaseTecCam(ICam):
     background: Optional[np.ndarray] = attr.ib()
     can_validate_pixel: bool = True
     valid_pixel: Optional[List[np.ndarray]] = None
+    frame_channel: int = 0
     _cam: Cam = attr.ib(factory=Cam)
 
     sigRowsChanged: ClassVar[Signal] = Signal()
@@ -120,11 +121,11 @@ class PhaseTecCam(ICam):
         t = time.time()
 
         arr, ch = self._cam.read_cam(back=self.background, lines=self.rows.values())
-        print(-t + time.time(), self.shots)
+        #print(-t + time.time(), self.shots)
         #if self.background is not None:
         #    arr = arr - self.background[:, :, None]
         if frames is not None:
-            first_frame = first(np.array(ch[1]), 1)
+            first_frame = first(np.array(ch[self.frame_channel]), 1)
         else:
             first_frame = None
 
@@ -193,7 +194,6 @@ class PhaseTecCam(ICam):
         else:
             probe2 = d['Probe2']
             normed2 = probe2.data / ref.data
-
 
             if self.beta1 is not None:
                 dp = probe.data[:, ::2] - probe.data[:, 1::2]
@@ -279,7 +279,7 @@ class PhaseTecCam(ICam):
     def get_wavelength_array(self, center_wl):
         center_wl = self.spectrograph.get_wavelength()
         grating = self.spectrograph._last_grating
-        disp = 7.69
+        disp = 7.8
         if grating == 1:
             disp *= 30/75
 
