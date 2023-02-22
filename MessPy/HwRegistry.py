@@ -87,8 +87,9 @@ elif pc_name == 'DESKTOP-BBLLUO7':
     _dl = DelayLine(name="VisDelay")
     #from MessPy.Instruments.delay_line_newport import NewportDelay
     #_dl = NewportDelay(name='IR Delay', pos_sign=-1)
-    from MessPy.Instruments.dac_px import AOM
+    from MessPy.Instruments.dac_px import AOM, AOMShutter
     _shaper = AOM(name='AOM')
+    aom_shutter = AOMShutter()
     from MessPy.Instruments.RotationStage import RotationStage
     r1 = RotationStage(name="Grating1", comport="COM5")
     r2 = RotationStage(name="Grating2", comport="COM6")
@@ -96,8 +97,8 @@ elif pc_name == 'DESKTOP-BBLLUO7':
     _shaper.rot1 = r1
     _shaper.rot2 = r2
     from MessPy.Instruments.shutter_topas import TopasShutter
-    from MessPy.Instruments.shutter_phidget import PhidgetShutter
-    _shutter = [TopasShutter(), PhidgetShutter()]
+    #from MessPy.Instruments.shutter_phidget import PhidgetShutter
+    _shutter = [TopasShutter(), aom_shutter]
 else:
     _cam = CamMock()
     _dl = DelayLineMock()
