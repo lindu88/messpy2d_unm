@@ -45,7 +45,7 @@ class ShaperControl(QtWidgets.QWidget):
         self.slider.setMaximum(1000)
         self.slider.setSingleStep(1)
         self.slider.valueChanged.connect(
-            lambda x: slider_lbl.setText('%0.1f' % (x / 1000)))
+            lambda x: slider_lbl.setText('%0.2f' % (x / 1000)))
         self.slider.setValue(int(self.aom.amp_fac * 1000))
         self.slider.valueChanged.connect(
             lambda x: self.aom.set_wave_amp(x / 1000))
@@ -78,7 +78,6 @@ class ShaperControl(QtWidgets.QWidget):
         self.playing_cb = QtWidgets.QCheckBox('Play')
         self.playing_cb.toggled.connect(self.toggle_playback)
 
-        self.pt = ParameterTree()
         self.disp_param = Parameter.create(name='Dispersion',
                                            type='group',
                                            children=dispersion_params)
@@ -89,7 +88,23 @@ class ShaperControl(QtWidgets.QWidget):
 
         for c in self.disp_param.children():
             c.sigValueChanged.connect(self.update_disp)
+
+        self.chop_params = Parameter.create(name='Chopping',
+                                            type='group',
+                                            children=[
+                                                dict(name='Window Mode', type='bool', value=False),
+                                                dict(name='lower wn', type='float', value=0),
+                                                dict(name='upper wn', type='float', value=0),
+                                            ])
+
+
+        for c in self.disp_param.children():
+            c.sigValueChanged.connect(self.update_chop)
+
+        self.pt = ParameterTree()
         self.pt.setParameters(self.disp_param)
+        self.pt.addParameters(self.chop_params)
+
         self.setLayout(vlay(c1,
                             c2,
                             hlay(slider_lbl, self.slider),
@@ -103,11 +118,16 @@ class ShaperControl(QtWidgets.QWidget):
                             hlay((self.apply, self.cali))))
 
     def update_disp(self):
-
         for i in ['gvd', 'tod', 'fod']:
             setattr(self.aom, i, self.disp_param[i]*1000)
         self.aom.nu0_THz = cm2THz(self.disp_param['center'])
         self.aom.update_dispersion_compensation()
+
+    def update_chop(self):
+        self.aom.chop_window = (self.chop_params['lower wn'], self.chop_params['upper wn'])
+        mode = 'window' if self.chop_params['Window Mode'] else 'standard'
+        self.aom.chop_mode = mode
+        self.aom.generate_waveform()
 
     def toggle_playback(self, b):
         if b:
@@ -126,10 +146,4 @@ if __name__ == '__main__':
     aom.set_wave_amp(0.4)
     aom.gvd = -50
     aom.nu0_THz = cm2THz(2100)
-    aom.update_dispersion_compensation()
-
-    # r1 = RotationStage(name="Grating1", comport="COM5")
-    # r2 = RotationStage(name="Grating2", comport="COM6")
-
-    # sc = ShaperControl(rs1=r1, rs2=r2, aom=aom)
-    # sc.sho
+    aom.update_dispe

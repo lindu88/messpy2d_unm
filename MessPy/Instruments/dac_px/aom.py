@@ -45,8 +45,11 @@ class AOM(IDevice):
     amp: np.ndarray = np.ones((PIXEL, 1))
     total_phase: Optional[np.ndarray] = np.zeros(PIXEL)
     mask: np.ndarray = np.zeros_like(PIXEL)
+    is_running: bool = False
 
     chopped: bool = True
+    chop_mode: Literal["standard", "window"] = "standard"
+    chop_window: tuple[float, float] = (-np.inf, np.inf)
     do_dispersion_compensation: bool = True
     phase_cycle: bool = True
     mode: Literal["bragg", "classic"] = "bragg"
@@ -141,6 +144,7 @@ class AOM(IDevice):
 
     def bragg_wf(self, amp, phase):
         """Calculates a Bragg-correct AOM waveform for given phase and shape"""
+        assert self.calib is not None
         F = np.poly1d(np.polyint(self.calib))
         phase_term = (
             2
@@ -177,8 +181,9 @@ class AOM(IDevice):
         phi2 = phase[:, 1]
         taus = taus.repeat(phase_frames)
         masks = double_pulse_mask(
-            self.nu[:, None], rot_frame, taus[None,
-                                              :], phi1[None, :], phi2[None, :],
+            self.nu[:, None],
+            rot_frame, taus[None, :],
+            phi1[None, :], phi2[None, :],
             rot_frame2
         )
 
@@ -186,6 +191,7 @@ class AOM(IDevice):
         return masks
 
     def delay_scan(self, taus, phi=None):
+        assert self.nu is not None
         taus = np.atleast_1d(taus)
         if phi is None:
             phi = np.zeros(PIXEL)
@@ -233,7 +239,13 @@ class AOM(IDevice):
             masks = self.classic_wf(amp, self.total_phase)
 
         if self.chopped:
-            masks = np.concatenate((0 * masks, masks), axis=1)
+            if self.chop_mode == "standard":
+                masks = np.concatenate((0 * masks, masks), axis=1)
+            elif self.chop_mode == "window":
+                wn = THz2cm(self.nu)
+                idx = (wn > self.chop_window[0]) & (wn < self.chop_window[1])
+                mask2 = np.where(idx, masks, 0)
+                masks = np.concatenate((mask2, masks), axis=1)
         if self.phase_cycle:
             masks = np.concatenate((masks, -masks), axis=1)
         return self.load_mask(masks)
@@ -284,16 +296,18 @@ class AOM(IDevice):
         full_mask[1::2] = mask1
         self.dac.LoadRamBufXD48(0, full_mask.size * 2,
                                 full_mask.ctypes.data, 0)
-        self.dac.BeginRamPlaybackXD48(0, full_mask.size * 2, PIXEL * 2 * 2)
+        self.start_playback()
         return frames
 
     def start_playback(self):
         """Start playback of the current mask"""
         self.dac.BeginRamPlaybackXD48(0, self.mask.size * 2, PIXEL * 2 * 2)
+        self.is_running = True
 
     def end_playback(self):
         """End playback of the current mask"""
         self.dac.EndRamPlaybackXD48()
+        self.is_running = False
 
     def make_calib_mask(self, width=40, separation=350, single=6000):
         """
@@ -328,6 +342,7 @@ class AOM(IDevice):
         self.generate_waveform()
 
     def set_compensation_amp(self, x0=2150, width=200):
+        assert self.nu is not None
         x0 = 1650
         x0_nu = cm2THz(x0)
         width = 50
@@ -336,8 +351,27 @@ class AOM(IDevice):
         amp_f = np.zeros_like(self.nu)
         amp_f[(self.nu < x0_nu+xw) & (self.nu > x0_nu-xw)] = 1
         amp = np.exp(-0.5*(self.nu-x0_nu)**2/xw**2)[:, None]
-
         self.compensation_amp = amp#[:, None]
+
+
+
+
+
+from MessPy.Instruments.interfaces import IShutter
+
+@attr.dataclass(kw_only=True)
+class AOMShutter(IShutter):
+    name: str = 'AOM Playback'
+    aom: AOM = attr.ib()
+
+    def toggle(self):
+        if self.aom.is_running:
+            self.aom.end_playback()
+        else:
+            self.aom.start_playback()
+
+    def is_open(self) -> bool:
+        return self.aom.is_running
 
 
 if __name__ == "__main__":
