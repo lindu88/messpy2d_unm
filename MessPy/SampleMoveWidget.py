@@ -1,7 +1,7 @@
 # from Config import config
 import attr
 from qtpy.QtCore import QTimer, Qt, QThread, QObject, Slot
-from qtpy.QtGui import QFont, QIntValidator, QKeyEvent, QIcon, QPixmap
+from qtpy.QtGui import QFont, QIntValidator, QKeyEvent, QIcon, QPixmap, QFocusEvent
 from qtpy.QtWidgets import (QMainWindow, QApplication, QWidget, QLineEdit, QDockWidget, QShortcut,
                             QPushButton, QLabel, QVBoxLayout, QSizePolicy, QFormLayout,
                             QToolBar, QCheckBox)
@@ -54,6 +54,14 @@ class MoveWidget(QWidget):
         self.x_settings = 3
         self.y_settings = [2, 0.2]
 
+    def focusInEvent(self, a0: QFocusEvent) -> None:
+        self.home_label.setStyleSheet("background-color: green")
+        super().focusInEvent(a0)
+
+    def focusOutEvent(self, a0: QFocusEvent) -> None:
+        self.home_label.setStyleSheet("background-color: red")
+        super(MoveWidget, self).focusOutEvent(a0)
+
     def show_help(self):
         self.help_label = QLabel()
         self.help_label.setPixmap(QPixmap('MotorHelp.png'))
@@ -76,7 +84,7 @@ class MoveWidget(QWidget):
     def keyPressEvent(self, a0: QKeyEvent) -> None:
         key = a0.key()
         pos = list(self.scanner.get_pos_mm())
-
+        print(pos)
         if self.scanner.has_zaxis:
             z_pos = self.scanner.get_zpos_mm()
 
@@ -106,8 +114,9 @@ class MoveWidget(QWidget):
             if key == Qt.Key_F:
                 z_pos -= 0.3
                 move = False
-
             self.scanner.set_zpos_mm(z_pos)
+        else:
+            z_pos = 0
 
         if move:
             self.scanner.set_pos_mm(*pos)
@@ -167,9 +176,9 @@ class SettingsMoveWidget(QWidget):
 
 
 if __name__ == '__main__':
-    from MessPy.Instruments.sample_holder_PI import SampleHolder
+    from MessPy.Instruments.stage_smartact import SmarActXYZ
 
-    sh = SampleHolder()
+    sh = SmarActXYZ()
     app = QApplication([])
     mwid = MoveWidget(sh)
     mwid.show()
