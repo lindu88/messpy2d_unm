@@ -1,1 +1,1 @@
-from .aom import AOM
+from .aom import AOM, AOMShutter
