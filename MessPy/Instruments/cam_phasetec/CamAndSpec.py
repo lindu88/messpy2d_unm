@@ -202,8 +202,8 @@ class PhaseTecCam(ICam):
                 dp = (dp - self.beta1.T @ dr)
                 dp2 = (dp2 - self.beta2.T @ dr)
 
-                sig = f / LOG10 * np.log1p(dp.mean(1) / probe.mean)
-                sig_pr2 = f / LOG10 * np.log1p(dp2.mean(1) / probe2.mean)
+                sig = -f / LOG10 * np.log1p(dp.mean(1) / probe.mean)
+                sig_pr2 = -f / LOG10 * np.log1p(dp2.mean(1) / probe2.mean)
             else:
                 pu2 = trim_mean(normed2[:, ::2], 0.2, 1)
                 not_pu2 = trim_mean(normed2[:, 1::2], 0.2, 1)
