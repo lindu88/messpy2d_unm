@@ -244,7 +244,8 @@ class AOM(IDevice):
             elif self.chop_mode == "window":
                 wn = THz2cm(self.nu)
                 idx = (wn > self.chop_window[0]) & (wn < self.chop_window[1])
-                mask2 = np.where(idx, masks, 0)
+                mask2 = masks.copy()
+                mask2[idx, :] = 0
                 masks = np.concatenate((mask2, masks), axis=1)
         if self.phase_cycle:
             masks = np.concatenate((masks, -masks), axis=1)
@@ -294,6 +295,7 @@ class AOM(IDevice):
         full_mask = np.zeros(mask.size * 2, dtype=np.int16)
         full_mask[::2] = mask
         full_mask[1::2] = mask1
+        self.full_mask = full_mask
         self.dac.LoadRamBufXD48(0, full_mask.size * 2,
                                 full_mask.ctypes.data, 0)
         self.start_playback()
@@ -301,7 +303,7 @@ class AOM(IDevice):
 
     def start_playback(self):
         """Start playback of the current mask"""
-        self.dac.BeginRamPlaybackXD48(0, self.mask.size * 2, PIXEL * 2 * 2)
+        self.dac.BeginRamPlaybackXD48(0, self.full_mask.size * 2, PIXEL * 2 * 2)
         self.is_running = True
 
     def end_playback(self):

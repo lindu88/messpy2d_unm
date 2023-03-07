@@ -75,8 +75,6 @@ class ShaperControl(QtWidgets.QWidget):
         self.sc2 = QtWidgets.QPushButton("Del spec amp")
         self.sc2.clicked.connect(lambda p: setattr(
             self.aom, 'compensation_amp', None))
-        self.playing_cb = QtWidgets.QCheckBox('Play')
-        self.playing_cb.toggled.connect(self.toggle_playback)
 
         self.disp_param = Parameter.create(name='Dispersion',
                                            type='group',
@@ -93,12 +91,12 @@ class ShaperControl(QtWidgets.QWidget):
                                             type='group',
                                             children=[
                                                 dict(name='Window Mode', type='bool', value=False),
-                                                dict(name='lower wn', type='float', value=0),
-                                                dict(name='upper wn', type='float', value=0),
+                                                dict(name='lower wn', type='float', value=self.aom.chop_window[0]),
+                                                dict(name='upper wn', type='float', value=self.aom.chop_window[1]),
                                             ])
 
 
-        for c in self.disp_param.children():
+        for c in self.chop_params.children():
             c.sigValueChanged.connect(self.update_chop)
 
         self.pt = ParameterTree()
@@ -110,7 +108,6 @@ class ShaperControl(QtWidgets.QWidget):
                             hlay(slider_lbl, self.slider),
                             calib_label,
                             self.chopped,
-                            self.playing_cb,
                             self.pc,
                             self.pt,
                             self.sc,
@@ -128,12 +125,6 @@ class ShaperControl(QtWidgets.QWidget):
         mode = 'window' if self.chop_params['Window Mode'] else 'standard'
         self.aom.chop_mode = mode
         self.aom.generate_waveform()
-
-    def toggle_playback(self, b):
-        if b:
-            self.aom.start_playback()
-        else:
-            self.aom.end_playback()
 
 
 if __name__ == '__main__':

@@ -112,7 +112,7 @@ class Cam:
         bi = np.frombuffer(ba).view('u2')
         MAX_14_BIT = (1 << 14)
 
-        assert self.data
+        assert self.data is not None
 
         if lines is not None:
             self.lines = np.empty((len(lines), 128, self.shots))

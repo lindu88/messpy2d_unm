@@ -14,6 +14,7 @@ class SmarActXYZ(ILissajousScanner):
     name: str = 'SmarAct XYZ'
     handle: int = attr.ib(init=False)
     channels: dict[str, int] = {"x": 1, "y": 2, "z": 0}
+    has_zaxis: bool = True
 
     def __attrs_post_init__(self):
         super(SmarActXYZ, self).__attrs_post_init__()
