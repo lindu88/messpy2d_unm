@@ -11,8 +11,40 @@ from .PlanParameters import DelayParameter
 from ..QtHelpers import vlay, PlanStartDialog, hlay
 from .AOMTwoPlan import AOMTwoDPlan
 from .PlanBase import sample_parameters
+from ..Instruments.signal_processing import cm2THz, THz2cm
 from typing import Callable
 import qasync
+
+@attr.define
+class TwoDMap(GraphicsLayoutWidget):
+    probe_wn: np.ndarray = attr.field()
+    pump_wn: np.ndarray = attr.field()
+    spec2d: PlotItem = attr.field(factory=PlotItem)
+    spec2d_item: ImageItem = attr.field(factory=ImageItem)
+    spec_selector_line: InfiniteLine = attr.field(factory=lambda: InfiniteLine(angle=0, movable=True))
+    spec_plot: PlotItem = attr.field(factory=PlotItem)
+    cur_spec: PlotDataItem = attr.field(factory=PlotDataItem)
+    mean_spec: PlotDataItem = attr.field(factory=PlotDataItem)
+
+    def __attr_post_init__(self):
+        super().__init__()
+        self.addItem(self.spec2d)
+        self.spec2d.addItem(self.spec2d_item)
+        self.spec2d.addItem(self.spec_selector_line)
+        self.nextRow()
+        self.addItem(self.spec_plot)
+        self.spec_plot.addItem(self.cur_spec)
+        self.spec_plot.addItem(self.mean_spec)
+
+
+    @Slot(object)
+    def update_image(self, image):
+        rect = (self.probe_wn.max(), self.pump_wn[-1], -self.probe_wn.ptp(),
+                self.pump_wn[0]-self.pump_wn[-1])
+        self.spec2d_item.setImage(image, rect=rect)
+        self.mean_spec.setData(self.probe_wn, np.mean(image, axis=0))
+
+
 
 class AOMTwoDViewer(QWidget):
     def __init__(self, plan: AOMTwoDPlan, parent=None):
@@ -40,9 +72,9 @@ class AOMTwoDViewer(QWidget):
         #self.addItem(hist)
         #self.ifr_lines: dict[InfiniteLine, PlotDataItem] = {}
         #self.ifr_free_colors = list(range(9))
-        gl.addPlot: Callable[[], PlotItem]
 
-        pw = gl.addPlot()
+
+        pw : PlotItem = gl.addPlot()
         pw.setLabels(bottom='Probe Freq', left='Pump Freq')
         cmap = colormap.get("CET-D1")
 
@@ -70,7 +102,7 @@ class AOMTwoDViewer(QWidget):
         self.spec_mean_line = self.spec_plot.plot()
         gl.ci.nextRow()
         self.info_label = gl.ci.addLabel("Hallo", colspan=4)
-        
+
         self.update_plots()
         self.spec_line.sigPositionChanged.connect(self.update_spec_lines)
         self.plan.sigStepDone.connect(self.update_data)
@@ -158,6 +190,7 @@ class AOMTwoDStarter(PlanStartDialog):
                {'name': 'Phase Cycles', 'type': 'list', 'values': [1, 2, 4]},
                {'name': 'Rot. Frame', 'suffix': 'cm-1', 'type': 'int', 'value': 2000},
                {'name': 'Rot. Frame Fixed', 'suffix': 'cm-1', 'type': 'int', 'value': 0},
+               dict(name='Pump Axis', type='str', readonly=True),
                {'name': 'Mode', 'type': 'list', 'values': ['classic', 'bragg']},
                {'name': 'AOM Amp.', 'type': 'float', 'value': 0.3, 'min': 0, 'max': 0.6},
                {'name': 'Repetitions', 'type': 'int', 'value': 1},
@@ -169,6 +202,14 @@ class AOMTwoDStarter(PlanStartDialog):
         two_d = {'name': 'Exp. Settings', 'type': 'group', 'children': tmp}
         params = [sample_parameters, two_d]
         self.paras = pt.Parameter.create(name='Pump Probe', type='group', children=params)
+        self.paras.child('Exp. Settings').sigTreeStateChanged.connect(self.update_pump_axis)
+
+    def update_pump_axis(self, *args):
+        ex = self.paras.child('Exp. Settings')
+        t1 = np.arange(ex['t1 (+)'], 0, ex['t1 (step)'])
+        THz = np.fft.rfftfreq(t1.size * 2, d=t1[1]-t1[0])
+        freqs =  THz2cm(THz) + self.rot_frame_freq
+        ex.child('Pump Axis').setValue(f'{freqs.min():.2f} - {freqs.max():.2f} cm-1 step {freqs[1]-freqs[0]:.2f} cm-1')
 
     def create_plan(self, controller: Controller):
         p = self.paras.child('Exp. Settings')

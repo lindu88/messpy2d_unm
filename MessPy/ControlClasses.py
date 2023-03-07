@@ -27,6 +27,7 @@ class Cam(QObject):
     shots: int = attrib(config.shots)
 
     back: T.Any = attrib((0, 0))
+    has_ref: bool = attrib(init=False)
     last_read: T.Optional[I.Reading] = attrib(init=False)
 
     wavelengths: np.ndarray = attrib(init=False)
@@ -46,6 +47,8 @@ class Cam(QObject):
         self.lines = c.lines
         self.sig_lines = c.sig_lines
         self.name = c.name
+        self.has_ref = c.has_ref
+
         if c.spectrograph is not None:
             self.changeable_wavelength = c.spectrograph.changeable_wavelength
             c.spectrograph.sigWavelengthChanged.connect(self._update_wl_arrays)
@@ -106,9 +109,13 @@ class Cam(QObject):
         self.cam.remove_background()
 
     def set_slit(self, slit):
-        self.cam.spectrograph.set_slit(slit)
-        slit = self.cam.spectrograph.get_slit()
-        self.sigSlitChanged.emit(slit)
+        if self.cam.spectrograph is not None:
+            
+            self.cam.spectrograph.set_slit(slit)
+            slit = self.cam.spectrograph.get_slit()
+            self.sigSlitChanged.emit(slit)
+        else:
+            raise AttributeError("No slit installed")
 
     def get_slit(self):
         return self.cam.spectrograph.get_slit()

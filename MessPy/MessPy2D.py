@@ -32,7 +32,8 @@ class MainWindow(QMainWindow):
 
         self.setup_toolbar()
 
-        self.cm = CommandMenu(parent=self)
+        self.cm = CommandMenu(controller, self)
+        self.setCentralWidget(self.cm)
         self.timer = QTimer()
         self.timer.timeout.connect(controller.loop)
 
@@ -150,6 +151,7 @@ class MainWindow(QMainWindow):
     def toggle_wl(self, c):
         self.xaxis[c][:] = 1e7 / self.xaxis[c][:]
 
+    @Slot()
     def show_planview(self):
         if self.viewer is not None:
             self.viewer.show()
@@ -177,12 +179,12 @@ class MainWindow(QMainWindow):
 
 
 class CommandMenu(QWidget):
-    def __init__(self, parent=None):
+    def __init__(self, controller, parent=None):
         super(CommandMenu, self).__init__(parent=parent)
         self.setSizePolicy(QSizePolicy.Fixed, QSizePolicy.Fixed)
         self._layout = QFormLayout(self)
-        c = parent.controller  # type: Controller
-
+        c = controller  # type: Controller
+        self.controller = c
         self.add_plan_controls()
 
         gb = CamControls(c)
@@ -211,7 +213,7 @@ class CommandMenu(QWidget):
             self.add_shaper(c.shaper)
 
     def add_plan_controls(self):
-        c = self.parent().controller  # type: Controller
+        c = self.controller  # type: Controller
 
         def ask_stop():
             result = QMessageBox.question(self, "MessPy", "Stop Plan?")

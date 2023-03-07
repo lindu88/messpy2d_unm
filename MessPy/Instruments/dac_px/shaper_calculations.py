@@ -15,7 +15,7 @@ def cm2THz(cm: f) -> f:
 
 
 def double_pulse_mask(
-    nu: np.ndarray, nu_rf: float, tau: float, phi1: float, phi2: float, nu_rf2: float,
+    nu: np.ndarray, nu_rf: float, tau: f, phi1: f, phi2: f, nu_rf2: float,
 ) -> np.ndarray:
     """
     Return the mask to generate a double pulse
@@ -35,7 +35,6 @@ def double_pulse_mask(
     nu_rf2 : float
         rotating frame freq of the fixed pulse in THz
     """
-    print(nu_rf,  nu_rf2)
     double = 0.5 * (
         np.exp(-2j * np.pi * (nu - nu_rf) * tau + 1j * phi1) + np.exp(-2j * np.pi * nu_rf2 * tau+1j * phi2)
     )

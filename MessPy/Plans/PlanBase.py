@@ -119,8 +119,12 @@ class Plan(QObject):
             devices_state[i.name] = i.get_state()
         self.meta['Devices'] = devices_state
 
+    def restore_state(self):
+        pass
+
     @Slot()
     def stop_plan(self):
+        self.restore_state()
         self.sigPlanStopped.emit()
 
 
@@ -170,6 +174,11 @@ class ScanPlan(Plan):
 
     def post_scan(self) -> Generator:
         yield True
+
+
+@attr.s(auto_attribs=True, kw_only=True)
+class SubScan:
+    setters: dict[str, tuple[Callable, list]]
 
 
 @attr.s(auto_attribs=True, kw_only=True)

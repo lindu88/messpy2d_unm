@@ -34,6 +34,7 @@ class PumpProbePlan(Plan):
     rot_at_scan: List[float] = Factory(list)
     time_per_scan: str = ""
     do_ref_calib: bool = True
+    pump_shutter: Optional['IShutter'] = None
     sigStepDone = Signal()
     plan_shorthand = "PumpProbe"
 

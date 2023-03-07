@@ -22,7 +22,7 @@ class PumpProbeShaperPlan(Plan):
     aom: AOM
     controller: Controller
     delays: np.ndarray
-    max_scan: Optional[int] = None
+    max_scan: int = 10_000
     cur_scan: int = 0
     scan_per_reading: int = 10
     is_stopping: bool = False
@@ -59,7 +59,7 @@ class PumpProbeShaperPlan(Plan):
             self.sigStepDone.emit()
         self.sigPlanFinished.emit()
 
-    def measure_point(self):
+    def measure_point(self) -> Generator:
         with concurrent.futures.ThreadPoolExecutor() as executor:
             self.time_tracker.point_starting()
             future = executor.submit(

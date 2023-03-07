@@ -163,7 +163,7 @@ class AOM(IDevice):
         return amp * np.cos(self.pixel[:, None] / f * 2 * np.pi + phase)
 
     def double_pulse(
-        self, taus, rot_frame: float, rot_frame2: float, phase_frames: Literal[1, 2, 4] = 4
+        self, taus: np.ndarray, rot_frame: float, rot_frame2: float, phase_frames: Literal[1, 2, 4] = 4
     ) -> Tuple[np.ndarray, np.ndarray]:
         """
         Calculates the masks for creating a series a double pulses with phase cycling.
@@ -367,8 +367,10 @@ class AOMShutter(IShutter):
     def toggle(self):
         if self.aom.is_running:
             self.aom.end_playback()
+            self.sigShutterToggled.emit(True)
         else:
             self.aom.start_playback()
+            self.sigShutterToggled.emit(False)
 
     def is_open(self) -> bool:
         return self.aom.is_running

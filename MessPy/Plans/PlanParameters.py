@@ -41,7 +41,7 @@ class DelayParameter(GroupParameter):
         self.t_list = t_list
         return t_list
 
-    def format_values(self, *args) -> str:
+    def format_values(self, *args) -> None:
         self.generate_values()
         out_str = f"Time-points: {len(self.t_list)}"
         #for k, v in enumerate(self.t_list):
