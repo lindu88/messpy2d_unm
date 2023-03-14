@@ -98,7 +98,9 @@ elif pc_name == 'DESKTOP-BBLLUO7':
     _shaper.rot2 = r2
     from MessPy.Instruments.shutter_topas import TopasShutter
     from MessPy.Instruments.shutter_phidget import PhidgetShutter
-    _shutter = [TopasShutter(), aom_shutter]
+    from MessPy.Instruments.stage_smartact import SmarActXYZ
+    _shutter = [TopasShutter(), aom_shutter, PhidgetShutter()]
+    _sh = SmarActXYZ()
 else:
     _cam = CamMock()
     _dl = DelayLineMock()
