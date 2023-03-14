@@ -3,7 +3,7 @@ from functools import partial
 import qtawesome as qta
 from pyqtgraph import setConfigOptions
 
-from qtpy.QtCore import QTimer, Qt, QSettings
+from qtpy.QtCore import QTimer, Qt, QSettings, Slot
 from qtpy.QtGui import QIntValidator
 from qtpy.QtWidgets import (QMainWindow, QApplication, QWidget, QDockWidget, QPushButton,
                             QLabel, QSizePolicy, QFormLayout, QMessageBox,
@@ -83,9 +83,8 @@ class MainWindow(QMainWindow):
                 dock_wigdets[2], dock_wigdets[5], Qt.Horizontal)
         self.setCentralWidget(self.cm)
 
-        #self.controller.cam.sigRefCalibrationFinished.connect(self.plot_calib)
+        # self.controller.cam.sigRefCalibrationFinished.connect(self.plot_calib)
         self.readSettings()
-
 
     def setup_toolbar(self):
         self.toolbar = self.addToolBar('Begin Plan')
@@ -273,6 +272,7 @@ class CommandMenu(QWidget):
         self._layout.addWidget(but)
         return
 
+
 class ShutterControls(QGroupBox):
     def __init__(self, c: Controller):
         super(ShutterControls, self).__init__()
@@ -290,7 +290,8 @@ class ShutterControls(QGroupBox):
 class CamControls(QGroupBox):
     def __init__(self, c: Controller):
         super(CamControls, self).__init__()
-        bg_buttons = [('BG', c.cam.get_bg, 'fa5.circle')] # type: list[tuple[str, Callable, str]]
+        # type: list[tuple[str, Callable, str]]
+        bg_buttons = [('BG', c.cam.get_bg, 'fa5.circle')]
         if hasattr(c.cam, 'calibrate_ref'):
             bg_buttons.append(('Refcalib.', c.cam.calibrate_ref, 'fa5.clone'))
         if c.cam2:
@@ -412,7 +413,8 @@ def start_app():
             s += traceback.format_tb(tb)
         emsg.setText('Exception raised')
         emsg.setInformativeText(''.join(s))
-        emsg.setStandardButtons(QMessageBox.Abort | QMessageBox.Ignore) # type: ignore
+        emsg.setStandardButtons(
+            QMessageBox.Abort | QMessageBox.Ignore)  # type: ignore
         result = emsg.exec_()
         if not result == QMessageBox.Ignore:
             sys._excepthook(exctype, value, tb)

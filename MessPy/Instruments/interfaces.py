@@ -13,7 +13,7 @@ from pathlib import Path
 
 import attr
 import numpy as np
-from qtpy.QtCore import Signal, QObject #type: ignore
+from qtpy.QtCore import Signal, QObject  # type: ignore
 from scipy.constants import c
 
 from .signal_processing import Reading, Reading2D, Spectrum
@@ -22,8 +22,10 @@ QObjectType = type(QObject)
 
 T = typing
 
+
 class QABCMeta(QObjectType, abc.ABCMeta):
     pass
+
 
 @attr.s(auto_attribs=True)
 class IDevice(QObject, metaclass=QABCMeta):
@@ -133,6 +135,7 @@ class ICam(IDevice):
     line_names: T.List[str]
     sig_names: T.List[str]
     std_names: T.List[str]
+    has_ref: bool = False
     channels: int
     ext_channels: int
     background: object = None
@@ -299,8 +302,8 @@ class IShutter(IDevice):
 
 @attr.s
 class IRotationStage(IDevice):
-    sigDegreesChanged: typing.ClassVar[Signal] =  Signal(float)
-    sigMovementCompleted: typing.ClassVar[Signal] =  Signal()
+    sigDegreesChanged: typing.ClassVar[Signal] = Signal(float)
+    sigMovementCompleted: typing.ClassVar[Signal] = Signal()
 
     @abc.abstractmethod
     def set_degrees(self, deg: float):
@@ -345,7 +348,7 @@ class ILissajousScanner(IDevice):
         pass
 
     @abc.abstractmethod
-    def set_pos_mm(self, x: typing.Optional[float]=None, y:typing.Optional[float]=None):
+    def set_pos_mm(self, x: typing.Optional[float] = None, y: typing.Optional[float] = None):
         pass
 
     def set_vel_mm(self, xvel=None, yvel=None):
@@ -400,4 +403,3 @@ class DAC(abc.ABC):
     @abc.abstractmethod
     def running(self):
         pass
-

@@ -186,14 +186,12 @@ class RotStageMock(IRotationStage):
 @attr.s(auto_attribs=True)
 class ShutterMock(IShutter):
     name = 'ShutterMock'
-    is_open: bool = True
 
     def is_open(self):
-        return self.is_open
+        return state.shutter
 
     def toggle(self):
-        self.is_open = not self.is_open
-        state.shutter = self.is_open
+        state.shutter = not state.shutter
 
 
 @attr.s(auto_attribs=True)
