@@ -44,7 +44,7 @@ class SmarActXYZ(ILissajousScanner):
     def get_state(self):
         return dict(pos_home=self.pos_home)
 
-    def get_pos_mm(self) -> typing.Tuple[float, float]:
+    def get_pos_mm_abs(self) -> typing.Tuple[float, float]:
         pos = []
         for c in ['x', 'y']:
             position = ctl.GetProperty_i64(
@@ -52,11 +52,22 @@ class SmarActXYZ(ILissajousScanner):
             pos.append(position * 1e-9)
         return tuple(pos)
 
-    def set_pos_mm(self, x=None, y=None):
+    def get_pos_mm(self) -> typing.Tuple[float, float]:
+        x, y = self.get_pos_mm_abs()
+        return x-self.pos_home[0], y-self.pos_home[1]
+
+    def set_pos_mm_abs(self, x=None, y=None):
         if x is not None:
             ctl.Move(self.handle, self.channels['x'], round(x/1e-9), 0)
         if y is not None:
             ctl.Move(self.handle, self.channels['y'], round(y/1e-9), 0)
+
+    def set_pos_mm(self, x: typing.Optional[float]=None, y:typing.Optional[float]=None):
+        if x is not None:
+            x = x + self.pos_home[0]
+        if y is not None:
+            y += self.pos_home[1]
+        self.set_pos_mm_abs(x, y)
 
     def is_moving(self) -> typing.Tuple[bool, bool]:
         state = ctl.GetProperty_i32(
@@ -68,7 +79,7 @@ class SmarActXYZ(ILissajousScanner):
         return bool(x_moving), bool(y_moving)
 
     def set_home(self):
-        x, y = self.get_pos_mm()
+        x, y = self.get_pos_mm_abs()
         self.pos_home = (x, y)
         self.save_state()
 

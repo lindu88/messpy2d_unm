@@ -52,6 +52,9 @@ class MoveWidget(QWidget):
         self.help_button.clicked.connect(self.show_help)
         self.setLayout(vlay([self.home_label, buttons, self.help_button]))
         self.timer = QTimer()
+        self.timer.timeout.connect(self.update_pos)
+        self.timer.start(500)
+
         self.K = 0.1
         self.x_settings = 3
         self.y_settings = [2, 0.2]
@@ -82,6 +85,11 @@ class MoveWidget(QWidget):
             self.scanner.stop_contimove()
             # self.x_settings = None
             # self.y_settings = None
+
+    def update_pos(self):
+        x, y = self.scanner.get_pos_mm()
+        z = self.scanner.get_zpos_mm()
+        self.label_updater((x, y), z)
 
     def keyPressEvent(self, a0: QKeyEvent) -> None:
         key = a0.key()

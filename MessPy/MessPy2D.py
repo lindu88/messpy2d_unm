@@ -3,7 +3,7 @@ from functools import partial
 import qtawesome as qta
 from pyqtgraph import setConfigOptions
 
-from qtpy.QtCore import QTimer, Qt, QSettings
+from qtpy.QtCore import QTimer, Qt, QSettings, Slot
 from qtpy.QtGui import QIntValidator
 from qtpy.QtWidgets import (QMainWindow, QApplication, QWidget, QDockWidget, QPushButton,
                             QLabel, QSizePolicy, QFormLayout, QMessageBox,
