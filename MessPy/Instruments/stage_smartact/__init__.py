@@ -39,6 +39,9 @@ class SmarActXYZ(ILissajousScanner):
             ctl.SetProperty_i32(
                 self.handle, idx, ctl.Property.AMPLIFIER_ENABLED, ctl.TRUE)
 
+    def get_state(self):
+        return dict(pos_home=self.pos_home)
+
     def get_pos_mm(self) -> typing.Tuple[float, float]:
         pos = []
         for c in ['x', 'y']:
@@ -63,7 +66,9 @@ class SmarActXYZ(ILissajousScanner):
         return bool(x_moving), bool(y_moving)
 
     def set_home(self):
-        pass
+        x, y = self.get_pos_mm()
+        self.pos_home = (x, y)
+        self.save_state()
 
     def set_zpos_mm(self, mm: float):
         ctl.Move(self.handle, self.channels['z'], round(mm/1e-9), 0)
