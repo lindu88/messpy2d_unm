@@ -372,34 +372,9 @@ class ILissajousScanner(IDevice):
         raise NotImplementedError
 
 
-@attr.s(kw_only=True)
-class PulseShaper(IDevice):
-    pixel: np.ndarray
-    freqs: np.ndarray
-    nu0: float
+@attr.define(kw_only=True)
+class IPowerMeter(IDevice):
 
     @abc.abstractmethod
-    def set_mask(self, amp, phase):
-        pass
-
-    def set_calibration(self, p0):
-        self.freqs = np.polyval(p0, self.pixel)
-
-
-class DAC(abc.ABC):
-    @abc.abstractmethod
-    def set_power(self, power):
-        pass
-
-    @abc.abstractmethod
-    def get_power(self) -> float:
-        pass
-
-    @abc.abstractmethod
-    def upload(self, masks):
-        pass
-
-    @property
-    @abc.abstractmethod
-    def running(self):
-        pass
+    def read_power(self) -> float:
+        raise NotImplementedError

@@ -2,7 +2,9 @@ import time
 
 import attr
 import sys
-import typing
+import typing, threading
+
+import numpy as np
 
 from smaract import ctl
 
@@ -13,7 +15,7 @@ from MessPy.Instruments.interfaces import ILissajousScanner
 class SmarActXYZ(ILissajousScanner):
     name: str = 'SmarAct XYZ'
     handle: int = attr.ib(init=False)
-    channels: dict[str, int] = {"x": 1, "y": 2, "z": 0}
+    channels: dict[str, int] = {"x": 0, "y": 2, "z": 1}
     has_zaxis: bool = True
 
     def __attrs_post_init__(self):
@@ -35,11 +37,14 @@ class SmarActXYZ(ILissajousScanner):
                 self.handle, idx, ctl.Property.MOVE_VELOCITY, 20_000_000_000)
             # Set move acceleration to 20 mm/s2.
             ctl.SetProperty_i64(
-                self.handle, idx, ctl.Property.MOVE_ACCELERATION, 10000000000000)
+                self.handle, idx, ctl.Property.MOVE_ACCELERATION, 10_000_000_000_000)
             ctl.SetProperty_i32(
                 self.handle, idx, ctl.Property.AMPLIFIER_ENABLED, ctl.TRUE)
 
-    def get_pos_mm(self) -> typing.Tuple[float, float]:
+    def get_state(self):
+        return dict(pos_home=self.pos_home)
+
+    def get_pos_mm_abs(self) -> typing.Tuple[float, float]:
         pos = []
         for c in ['x', 'y']:
             position = ctl.GetProperty_i64(
@@ -47,11 +52,22 @@ class SmarActXYZ(ILissajousScanner):
             pos.append(position * 1e-9)
         return tuple(pos)
 
-    def set_pos_mm(self, x=None, y=None):
+    def get_pos_mm(self) -> typing.Tuple[float, float]:
+        x, y = self.get_pos_mm_abs()
+        return x-self.pos_home[0], y-self.pos_home[1]
+
+    def set_pos_mm_abs(self, x=None, y=None):
         if x is not None:
             ctl.Move(self.handle, self.channels['x'], round(x/1e-9), 0)
         if y is not None:
             ctl.Move(self.handle, self.channels['y'], round(y/1e-9), 0)
+
+    def set_pos_mm(self, x: typing.Optional[float]=None, y:typing.Optional[float]=None):
+        if x is not None:
+            x = x + self.pos_home[0]
+        if y is not None:
+            y += self.pos_home[1]
+        self.set_pos_mm_abs(x, y)
 
     def is_moving(self) -> typing.Tuple[bool, bool]:
         state = ctl.GetProperty_i32(
@@ -63,7 +79,9 @@ class SmarActXYZ(ILissajousScanner):
         return bool(x_moving), bool(y_moving)
 
     def set_home(self):
-        pass
+        x, y = self.get_pos_mm_abs()
+        self.pos_home = (x, y)
+        self.save_state()
 
     def set_zpos_mm(self, mm: float):
         ctl.Move(self.handle, self.channels['z'], round(mm/1e-9), 0)
@@ -86,9 +104,39 @@ class SmarActXYZ(ILissajousScanner):
         )[-1].tb_lineno
         )
 
+    def start_contimove(self, x_mm, y_mm):
+        self.t0 = time.time()
+        self.contimove = True
+        self.set_pos_mm(0, y_mm)
+        while any(self.is_moving()):
+            pass
+        self.conti_thread = threading.Thread(target=self._do_contimove, args=(x_mm, y_mm))
+        self.conti_thread.start()
+        #self._do_contimove(1, 1)
+
+    def stop_contimove(self):
+        self.contimove = False
+
+    def _do_contimove(self, x_mm, y_mm):
+        x = 0
+        while self.contimove:
+            print(self.get_pos_mm())
+            t = time.time() - self.t0
+            #if x == 0:
+            #    x = 1
+            #    y = 3
+            x = y_mm*np.sin(2*np.pi*t/2)
+            y = x_mm*np.cos(2 * np.pi * t / 2)
+            #else:
+            #    x = 0
+            #    y = 0
+            print('jo', x, y)
+            self.set_pos_mm(x, y)
+            time.sleep(0.01)
+
 
 if __name__ == '__main__':
-    stage = SmarActXYZ(name='SmartAct', pos_home=(0, 0, 0))
+    stage = SmarActXYZ(name='SmartAct')
     print(stage.get_pos_mm())
     print(stage.is_moving())
     # stage.set_zpos_mm(0)
@@ -98,8 +146,8 @@ if __name__ == '__main__':
             stage.set_pos_mm(80*j+10, i * 0.1)
             while any(stage.is_moving()):
                 print(stage.get_pos_mm())
-                time.sleep(0.001)
+                time.sleep(0.1)
     print(stage.get_pos_mm())
-    print()
+
     print(stage.is_zmoving())
     print(stage.get_zpos_mm())

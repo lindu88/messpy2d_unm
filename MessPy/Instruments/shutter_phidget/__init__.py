@@ -15,8 +15,8 @@ class PhidgetShutter(IShutter):
 	def _init_servo(self) -> RCServo:
 		servo = RCServo()
 		servo.openWaitForAttachment(5000)
-		pos = servo.getPosition()
-		servo.setTargetPosition(pos)
+
+		servo.setTargetPosition(self.pos_dict['close'])
 		servo.setVelocityLimit(6000)
 		servo.setAcceleration(30000)
 		servo.setDataRate(30)

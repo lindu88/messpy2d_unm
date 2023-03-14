@@ -37,11 +37,13 @@ class MoveWidget(QWidget):
         self.setFocusPolicy(Qt.StrongFocus)
         home_button = QPushButton('Set Home')
         home_button.clicked.connect(lambda: self.scanner.set_home())
+        goto_home = QPushButton('Go Home')
+        goto_home.clicked.connect(lambda: self.scanner.set_pos_mm(0, 0))
         self.move_button = QPushButton('Cont. Move.')
         self.move_button.setCheckable(True)
         self.move_button.setChecked(False)
         self.move_button.toggled.connect(self.mover)
-        buttons = hlay([home_button, self.move_button])
+        buttons = hlay([home_button, goto_home, self.move_button])
         pos_str = str(self.scanner.pos_home)
         self.home_label = QLabel()
         self.label_updater(self.scanner.get_pos_mm(),
@@ -50,6 +52,9 @@ class MoveWidget(QWidget):
         self.help_button.clicked.connect(self.show_help)
         self.setLayout(vlay([self.home_label, buttons, self.help_button]))
         self.timer = QTimer()
+        self.timer.timeout.connect(self.update_pos)
+        self.timer.start(500)
+
         self.K = 0.1
         self.x_settings = 3
         self.y_settings = [2, 0.2]
@@ -76,10 +81,15 @@ class MoveWidget(QWidget):
             self.setwid = SettingsMoveWidget(mw=self)
             self.setwid.show()
 
-        if self.move_button.isChecked() == False:
+        if not self.move_button.isChecked():
             self.scanner.stop_contimove()
             # self.x_settings = None
             # self.y_settings = None
+
+    def update_pos(self):
+        x, y = self.scanner.get_pos_mm()
+        z = self.scanner.get_zpos_mm()
+        self.label_updater((x, y), z)
 
     def keyPressEvent(self, a0: QKeyEvent) -> None:
         key = a0.key()
@@ -134,7 +144,7 @@ class SettingsMoveWidget(QWidget):
         self.x_button = QPushButton('Set x:')
         self.x_button.clicked.connect(self.x_click)
         self.xlim_label = QLabel('X amp.')
-        self.edit_box_x = QLineEdit()
+        self.edit_box_x = QLineEdit('3')
         self.edit_box_x.setMaxLength(3)
         self.edit_box_x.setMaximumWidth(100)
         self.x_limbox = vlay([self.xlim_label, self.edit_box_x])
@@ -147,7 +157,7 @@ class SettingsMoveWidget(QWidget):
         self.y_button = QPushButton('Set y:')
         self.y_button.clicked.connect(self.y_click)
         self.ylim_label = QLabel('y limit')
-        self.edit_box_y = QLineEdit()
+        self.edit_box_y = QLineEdit('3')
         self.edit_box_y.setMaxLength(3)
         self.edit_box_y.setMaximumWidth(100)
         self.y_limbox = vlay([self.ylim_label, self.edit_box_y])

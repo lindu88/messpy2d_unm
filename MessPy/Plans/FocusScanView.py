@@ -17,6 +17,7 @@ class FocusScanView(QWidget):
         super(FocusScanView, self).__init__(*args, **kwargs)
         self.plan = fsPlan
         fs = fsPlan
+        lay = []
         if fsPlan.scan_x:
             self.x_probe_plot = ObserverPlot(
                 obs=[lambda: fs.scan_x.probe],
@@ -29,6 +30,16 @@ class FocusScanView(QWidget):
                 signal=fsPlan.sigStepDone,
                 x=fsPlan.scan_x.pos
             )
+
+            row = [self.x_probe_plot, self.x_ref_plot]
+            if self.plan.pw:
+                self.x_pw_plot = ObserverPlot(
+                    obs=[lambda: fs.scan_x.extra],
+                    signal=fsPlan.sigStepDone,
+                    x=fsPlan.scan_x.pos
+                )
+                row.append(self.x_pw_plot)
+            lay.append(hlay(row))
         if fsPlan.scan_y:
             self.y_probe_plot = ObserverPlot(
                 obs=[lambda: fs.scan_y.probe],
@@ -41,15 +52,17 @@ class FocusScanView(QWidget):
                 signal=fsPlan.sigStepDone,
                 x=fsPlan.scan_y.pos
             )
+            row = [self.y_probe_plot, self.y_ref_plot]
+            if self.plan.pw:
+                self.y_pw_plot = ObserverPlot(
+                    obs=[lambda: fs.scan_y.extra],
+                    signal=fsPlan.sigStepDone,
+                    x=fsPlan.scan_x.pos
+                )
+                row.append(self.y_pw_plot)
+            lay.append(hlay(row))
 
-        if fsPlan.scan_x and fsPlan.scan_y:
-            self.plotlay = vlay([hlay([self.x_probe_plot, self.x_ref_plot]),
-                                 hlay([self.y_probe_plot, self.y_ref_plot])])
-        elif fsPlan.scan_x and not fsPlan.scan_y:
-            self.plotlay = hlay([self.x_probe_plot, self.x_ref_plot])
-        elif fsPlan.scan_y and not fsPlan.scan_x:
-            self.plotlay = hlay([self.y_probe_plot, self.y_ref_plot])
-
+        self.plot_layout = vlay(lay)
         fsPlan.sigFitDone.connect(lambda: self.button.setEnabled(True))
         fsPlan.sigFitDone.connect(self.plot_fit)
         self.button = QPushButton('Save Scan', self)
@@ -81,17 +94,23 @@ class FocusScanView(QWidget):
             self.x_ref_plot.plotItem.addItem(text)
 
         if sx := fsPlan.scan_y:
-            pr, pr_text, ref, ref_txt = sx.analyze()
+            pr, ref, pw = sx.analyze()
             self.y_probe_plot.plot(sx.pos, pr.model, pen=pen)
-            text = pg.TextItem(pr_text, anchor=(0, 1.0))
+            text = pg.TextItem(pr.make_text(), anchor=(0, 1.0))
             text.setPos(sx.pos[int(len(sx.pos) / 2)],
                         (np.max(sx.probe) + np.min(sx.probe)) / 2.)
             self.y_probe_plot.plotItem.addItem(text)
             self.y_ref_plot.plotItem.plot(sx.pos, ref.model, pen=pen)
-            text = pg.TextItem(ref_txt, anchor=(0, 1.0))
+            text = pg.TextItem(ref.make_text(), anchor=(0, 1.0))
             text.setPos(sx.pos[int(len(sx.pos) / 2)],
                         (np.max(sx.ref) + np.min(sx.ref)) / 2.)
             self.y_ref_plot.plotItem.addItem(text)
+            if pw is not None:
+                self.y_probe_plot.plotItem.plot(sx.pos, pw.model)
+                text = pg.TextItem(ref.make_text(), anchor=(0, 1.0))
+                text.setPos(sx.pos[int(len(sx.pos) / 2)],
+                            (np.max(sx.ref) + np.min(sx.ref)) / 2.)
+                self.y_ref_plot.plotItem.addItem(text)
 
 
 class FocusScanStarter(PlanStartDialog):
@@ -142,6 +161,7 @@ class FocusScanStarter(PlanStartDialog):
             x_parameters=x_stepper,
             y_parameters=y_stepper,
             fh=controller.sample_holder,
+            pw=getattr(controller, 'power_meter', None),
         )
         return fs
 
