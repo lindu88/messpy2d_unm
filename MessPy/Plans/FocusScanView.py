@@ -32,7 +32,7 @@ class FocusScanView(QWidget):
             )
 
             row = [self.x_probe_plot, self.x_ref_plot]
-            if self.plan.pw:
+            if self.plan.power_meter:
                 self.x_pw_plot = ObserverPlot(
                     obs=[lambda: fs.scan_x.extra],
                     signal=fsPlan.sigStepDone,
@@ -53,7 +53,7 @@ class FocusScanView(QWidget):
                 x=fsPlan.scan_y.pos
             )
             row = [self.y_probe_plot, self.y_ref_plot]
-            if self.plan.pw:
+            if self.plan.power_meter:
                 self.y_pw_plot = ObserverPlot(
                     obs=[lambda: fs.scan_y.extra],
                     signal=fsPlan.sigStepDone,
@@ -73,7 +73,7 @@ class FocusScanView(QWidget):
             self, 'Results Saved', 'At %s' % str(fname)))
 
         layout = QVBoxLayout(self)
-        layout.addLayout(self.plotlay)
+        layout.addLayout(self.plot_layout)
         layout.addWidget(self.button)
         self.setLayout(layout)
 
@@ -81,17 +81,25 @@ class FocusScanView(QWidget):
         pen = pg.mkPen(color='#e377c2', width=2)
         fsPlan = self.plan
         if sx := fsPlan.scan_x:
-            pr, pr_text, ref, ref_txt = sx.analyze()
+            pr, ref, pw = sx.analyze()
             self.x_probe_plot.plot(sx.pos, pr.model, pen=pen)
-            text = pg.TextItem(pr_text, anchor=(0, 1.0))
+            text = pg.TextItem(pr.make_text(), anchor=(0, 1.0))
             text.setPos(sx.pos[int(len(sx.pos) / 2)],
                         (np.max(sx.probe) + np.min(sx.probe)) / 2.)
             self.x_probe_plot.plotItem.addItem(text)
+
             self.x_ref_plot.plotItem.plot(sx.pos, ref.model, pen=pen)
-            text = pg.TextItem(ref_txt, anchor=(0, 1.0))
+            text = pg.TextItem(ref.make_text(), anchor=(0, 1.0))
             text.setPos(sx.pos[int(len(sx.pos) / 2)],
                         (np.max(sx.ref) + np.min(sx.ref)) / 2.)
             self.x_ref_plot.plotItem.addItem(text)
+
+            if pw is not None:
+                self.x_probe_plot.plotItem.plot(sx.pos, pw.model)
+                text = pg.TextItem(ref.make_text(), anchor=(0, 1.0))
+                text.setPos(sx.pos[int(len(sx.pos) / 2)],
+                            (np.max(sx.ref) + np.min(sx.ref)) / 2.)
+                self.x_ref_plot.plotItem.addItem(text)
 
         if sx := fsPlan.scan_y:
             pr, ref, pw = sx.analyze()
@@ -100,16 +108,18 @@ class FocusScanView(QWidget):
             text.setPos(sx.pos[int(len(sx.pos) / 2)],
                         (np.max(sx.probe) + np.min(sx.probe)) / 2.)
             self.y_probe_plot.plotItem.addItem(text)
+
             self.y_ref_plot.plotItem.plot(sx.pos, ref.model, pen=pen)
             text = pg.TextItem(ref.make_text(), anchor=(0, 1.0))
             text.setPos(sx.pos[int(len(sx.pos) / 2)],
                         (np.max(sx.ref) + np.min(sx.ref)) / 2.)
             self.y_ref_plot.plotItem.addItem(text)
+
             if pw is not None:
                 self.y_probe_plot.plotItem.plot(sx.pos, pw.model)
-                text = pg.TextItem(ref.make_text(), anchor=(0, 1.0))
+                text = pg.TextItem(pw.make_text(), anchor=(0, 1.0))
                 text.setPos(sx.pos[int(len(sx.pos) / 2)],
-                            (np.max(sx.ref) + np.min(sx.ref)) / 2.)
+                            (np.max(sx.extra) + np.min(sx.extra)) / 2.)
                 self.y_ref_plot.plotItem.addItem(text)
 
 
@@ -161,7 +171,7 @@ class FocusScanStarter(PlanStartDialog):
             x_parameters=x_stepper,
             y_parameters=y_stepper,
             fh=controller.sample_holder,
-            pw=getattr(controller, 'power_meter', None),
+            power_meter=getattr(controller, 'power_meter', None),
         )
         return fs
 
@@ -192,3 +202,5 @@ if __name__ == '__main__':
         app.exec_()
     except:
         print('fds')
+
+

@@ -24,7 +24,7 @@ def gauss_int(x, x0, amp, back, w):
 class FitResult:
     name: str
     success: bool
-    fit_res: np.ndarray
+    params: np.ndarray
     model: np.ndarray
 
     def make_text(self):
@@ -48,9 +48,6 @@ class FitResult:
         return cls(success=res[1], params=res[0], model=fit, name=name)
 
 
-
-
-
 @attr.define
 class Scan:
     axis: str
@@ -65,7 +62,7 @@ class Scan:
 
     def analyze(self):
         fit_probe = FitResult.fit_curve(self.pos, self.probe, f'{self.axis} probe')
-        fit_ref = FitResult.fit_curve(self.pos, self.probe, f'{self.axis} ref')
+        fit_ref = FitResult.fit_curve(self.pos, self.ref, f'{self.axis} ref')
         if len(self.extra) > 0:
             fit_extra = FitResult.fit_curve(self.pos, self.probe, f'{self.axis} PW')
         else:
@@ -114,10 +111,10 @@ class FocusScan(Plan):
                                step=self.x_parameters[2],
                                )
         if self.y_parameters:
-            self.scan_y = Scan(axis='x',
-                               start=self.x_parameters[0],
-                               end=self.x_parameters[1],
-                               step=self.x_parameters[2],
+            self.scan_y = Scan(axis='y',
+                               start=self.y_parameters[0],
+                               end=self.y_parameters[1],
+                               step=self.y_parameters[2],
                                )
         self.start_pos = self.fh.pos_home
         gen = self.make_scan_gen()
@@ -155,7 +152,7 @@ class FocusScan(Plan):
         else:
             f = None
         while t.is_alive():
-            yield False, None
+            yield False, None, None
         yield self.cam.last_read.lines.mean(1), self.cam.last_read.lines, f
 
     def save(self):
