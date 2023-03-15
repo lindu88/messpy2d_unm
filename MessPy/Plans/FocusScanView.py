@@ -57,7 +57,7 @@ class FocusScanView(QWidget):
                 self.y_pw_plot = ObserverPlot(
                     obs=[lambda: fs.scan_y.extra],
                     signal=fsPlan.sigStepDone,
-                    x=fsPlan.scan_x.pos
+                    x=fsPlan.scan_y.pos
                 )
                 row.append(self.y_pw_plot)
             lay.append(hlay(row))
@@ -95,11 +95,11 @@ class FocusScanView(QWidget):
             self.x_ref_plot.plotItem.addItem(text)
 
             if pw is not None:
-                self.x_probe_plot.plotItem.plot(sx.pos, pw.model)
-                text = pg.TextItem(ref.make_text(), anchor=(0, 1.0))
+                self.x_pw_plot.plotItem.plot(sx.pos, pw.model, pen=pen)
+                text = pg.TextItem(pw.make_text(), anchor=(0, 1.0))
                 text.setPos(sx.pos[int(len(sx.pos) / 2)],
-                            (np.max(sx.ref) + np.min(sx.ref)) / 2.)
-                self.x_ref_plot.plotItem.addItem(text)
+                            (np.max(sx.extra) + np.min(sx.extra)) / 2.)
+                self.x_pw_plot.plotItem.addItem(text)
 
         if sx := fsPlan.scan_y:
             pr, ref, pw = sx.analyze()
@@ -116,11 +116,11 @@ class FocusScanView(QWidget):
             self.y_ref_plot.plotItem.addItem(text)
 
             if pw is not None:
-                self.y_probe_plot.plotItem.plot(sx.pos, pw.model)
+                self.y_pw_plot.plotItem.plot(sx.pos, pw.model, pen=pen)
                 text = pg.TextItem(pw.make_text(), anchor=(0, 1.0))
                 text.setPos(sx.pos[int(len(sx.pos) / 2)],
                             (np.max(sx.extra) + np.min(sx.extra)) / 2.)
-                self.y_ref_plot.plotItem.addItem(text)
+                self.y_pw_plot.plotItem.addItem(text)
 
 
 class FocusScanStarter(PlanStartDialog):

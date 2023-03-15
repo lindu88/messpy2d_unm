@@ -64,7 +64,7 @@ class Scan:
         fit_probe = FitResult.fit_curve(self.pos, self.probe, f'{self.axis} probe')
         fit_ref = FitResult.fit_curve(self.pos, self.ref, f'{self.axis} ref')
         if len(self.extra) > 0:
-            fit_extra = FitResult.fit_curve(self.pos, self.probe, f'{self.axis} PW')
+            fit_extra = FitResult.fit_curve(self.pos, self.extra, f'{self.axis} PW')
         else:
             fit_extra = None
         return fit_probe, fit_ref, fit_extra
@@ -116,7 +116,7 @@ class FocusScan(Plan):
                                end=self.y_parameters[1],
                                step=self.y_parameters[2],
                                )
-        self.start_pos = self.fh.pos_home
+        self.start_pos = (0, 0) #self.fh.pos_home
         gen = self.make_scan_gen()
         self.make_step = lambda: next(gen)
         self.cam.set_shots(self.shots)
@@ -158,7 +158,7 @@ class FocusScan(Plan):
     def save(self):
         name = self.get_file_name()[0]
         self.save_meta()
-        data = {'cam': self.cam.name}
+        data: dict[str, object] = {'cam': self.cam.name}
 
         if sx := self.scan_x:
             data['scan x'] = np.vstack((sx.pos, sx.probe, sx.ref))

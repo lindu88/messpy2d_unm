@@ -1,7 +1,7 @@
 import platform
 import sys
 from MessPy.Config import config
-from MessPy.Instruments.mocks import CamMock, DelayLineMock, StageMock
+from MessPy.Instruments.mocks import CamMock, DelayLineMock, StageMock, PowerMeterMock
 import logging
 
 TESTING = config.testing
@@ -105,3 +105,4 @@ else:
     _cam = CamMock()
     _dl = DelayLineMock()
     _sh = StageMock()
+    _power_meter = PowerMeterMock()

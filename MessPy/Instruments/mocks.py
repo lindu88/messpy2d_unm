@@ -4,7 +4,7 @@ from typing import Dict, Optional
 import numpy as np
 import attr
 from MessPy.Instruments.interfaces import ICam, IDelayLine, IRotationStage, \
-    IShutter, Reading, ISpectrograph, ILissajousScanner
+    IShutter, Reading, ISpectrograph, ILissajousScanner, IPowerMeter
 import time
 
 
@@ -225,3 +225,17 @@ class StageMock(ILissajousScanner):
             state.stage_pos[0] = x
         if y is not None:
             state.stage_pos[1] = y
+
+
+@attr.s(auto_attribs=True)
+class PowerMeterMock(IPowerMeter):
+    name: str = 'PowerMeterMock'
+
+    def read_power(self) -> float:
+        from math import erfc, sqrt
+        knife_amp = 2-erfc(sqrt(2)*(-state.stage_pos[0]+0.5) / 0.25)
+        knife_amp *= 2 - erfc(sqrt(2) * (-state.stage_pos[1]+0.5) / 0.25)
+        y = (knife_amp/4)
+        y += np.random.normal(loc=0, scale=0.1)
+        return y
+

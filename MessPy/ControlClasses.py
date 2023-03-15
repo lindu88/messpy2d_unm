@@ -12,7 +12,7 @@ from MessPy.Config import config
 import threading
 import time
 import typing as T
-from MessPy.HwRegistry import _cam, _cam2, _dl, _dl2, _rot_stage, _shutter, _sh, _shaper
+from MessPy.HwRegistry import _cam, _cam2, _dl, _dl2, _rot_stage, _shutter, _sh, _shaper, _power_meter
 import MessPy.Instruments.interfaces as I
 if T.TYPE_CHECKING:
     from MessPy.Plans.PlanBase import Plan
@@ -110,7 +110,7 @@ class Cam(QObject):
 
     def set_slit(self, slit):
         if self.cam.spectrograph is not None:
-            
+
             self.cam.spectrograph.set_slit(slit)
             slit = self.cam.spectrograph.get_slit()
             self.sigSlitChanged.emit(slit)
@@ -193,7 +193,7 @@ class Controller(QObject):
     rot_stage: T.Optional[I.IRotationStage] = _rot_stage
     sample_holder: T.Optional[I.ILissajousScanner] = _sh
     shaper: T.Optional[object] = _shaper
-
+    power_meter: T.Optional[I.IPowerMeter] = _power_meter
     async_tasks: list = Factory(list)
     plan: T.Optional[object] = None
     pause_plan: bool = False
