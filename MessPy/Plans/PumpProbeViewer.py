@@ -98,7 +98,8 @@ class PumpProbeDataViewer(QWidget):
         self.signal_ch_selector = QSpinBox()
         self.signal_ch_selector.setMinimum(0)
         self.signal_ch_selector.setMaximum(self.pp_plan.cam.sig_lines-1)
-        self.signal_ch_selector.valueChanged.connect(lambda x: self.update_trans())
+        self.signal_ch_selector.valueChanged.connect(
+            lambda x: self.update_trans())
 
         self.do_show_cur = QCheckBox('Current Scan', self)
         self.do_show_cur.setChecked(True)
@@ -109,7 +110,6 @@ class PumpProbeDataViewer(QWidget):
         self.use_wavenumbers = QCheckBox('Use Wavenumbers', self)
         self.use_wavenumbers.stateChanged.connect(
             self.update_indicator_line_pos)
-
 
         vlay.addWidget(self.info_label)
         vlay.addWidget(self.signal_ch_selector)
@@ -189,7 +189,7 @@ class PumpProbeDataViewer(QWidget):
         <dt>Name:<dd>{p.name}
         <dt>Shots:<dd>{p.shots}
         <dt>Scan:<dd>{s.scan}
-        <dt>Wl pos:<dd>{s.wl_idx + 1}/{len(s.cwl)}        
+        <dt>Wl pos:<dd>{s.wl_idx + 1}/{len(s.cwl)}
         {rot_stage_pos}
         <dt>T pos:<dd>{s.t_idx}/{len(s.t_list)}
         <dt>Time per scan<dd>{p.time_per_scan}
@@ -308,6 +308,10 @@ class PumpProbeStarter(PlanStartDialog):
                 tmp.append(
                     dict(name=f'{name} center wls', type='str', value='0'))
 
+        if len(self.controller.shutter) > 0:
+            tmp.append(dict(name='Pump Shutter', type='list', values=c.shutter,
+                            value=c.shutter[0]))
+
         two_d = {'name': 'Exp. Settings', 'type': 'group', 'children': tmp}
 
         params = [sample_parameters, two_d]
@@ -343,6 +347,10 @@ class PumpProbeStarter(PlanStartDialog):
                 cwls.append([0.])
 
         self.save_defaults()
+        if 'Pump Shutter' in p:
+            p_shutter = p['Pump Shutter']
+        else:
+            p_shutter = None
         p = PumpProbePlan(
             name=p['Filename'],
             meta=make_entry(self.paras),
@@ -350,7 +358,7 @@ class PumpProbeStarter(PlanStartDialog):
             shots=p['Shots'],
             controller=controller,
             center_wl_list=cwls,
-            use_shutter=p['Use Shutter'] and self.controller.shutter,
+            pump_shutter=p_shutter,
             use_rot_stage=p['Use Rotation Stage'],
             rot_stage_angles=angles
         )
