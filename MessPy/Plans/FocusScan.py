@@ -15,9 +15,7 @@ from MessPy.Plans.PlanBase import Plan
 
 
 def gauss_int(x, x0, amp, back, w):
-    return 0.5 * (1 + amp * spec.erf(np.sqrt(2)*(x - x0) / w)) - back
-
-
+    return 0.5 * amp* (1 + amp * spec.erf(np.sqrt(2)*(x - x0) / w)) + back
 
 
 @attr.dataclass
@@ -39,7 +37,7 @@ class FitResult:
         val = np.array(val)
         a = val[np.argmax(pos)]
         b = val[np.argmin(pos)]
-        x0 = [pos[np.argmin(np.abs(val - (a - b) / 2))], a - b, b, 0.1]
+        x0 = [pos[np.argmin(np.abs(val - (a + b) / 2))], a - b, b, 0.2]
 
         def helper(p):
             return np.array(val) - gauss_int(pos, *p)
@@ -123,6 +121,9 @@ class FocusScan(Plan):
         self.cam.set_shots(self.shots)
 
     def make_scan_gen(self):
+        self.fh.set_pos_mm(*self.start_pos)
+        while any(self.fh.is_moving()):
+            yield
         if self.scan_x:
             for _ in self.scan_x.scan(lambda x: self.mover("x", x), self.reader):
                 self.sigStepDone.emit()
