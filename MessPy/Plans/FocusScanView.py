@@ -79,48 +79,21 @@ class FocusScanView(QWidget):
 
     def plot_fit(self):
         pen = pg.mkPen(color='#e377c2', width=2)
-        fsPlan = self.plan
-        if sx := fsPlan.scan_x:
-            pr, ref, pw = sx.analyze()
-            self.x_probe_plot.plot(sx.pos, pr.model, pen=pen)
-            text = pg.TextItem(pr.make_text(), anchor=(0, 1.0))
-            text.setPos(sx.pos[int(len(sx.pos) / 2)],
-                        (np.max(sx.probe) + np.min(sx.probe)) / 2.)
-            self.x_probe_plot.plotItem.addItem(text)
 
-            self.x_ref_plot.plotItem.plot(sx.pos, ref.model, pen=pen)
-            text = pg.TextItem(ref.make_text(), anchor=(0, 1.0))
-            text.setPos(sx.pos[int(len(sx.pos) / 2)],
-                        (np.max(sx.ref) + np.min(sx.ref)) / 2.)
-            self.x_ref_plot.plotItem.addItem(text)
-
-            if pw is not None:
-                self.x_pw_plot.plotItem.plot(sx.pos, pw.model, pen=pen)
-                text = pg.TextItem(pw.make_text(), anchor=(0, 1.0))
-                text.setPos(sx.pos[int(len(sx.pos) / 2)],
-                            (np.max(sx.extra) + np.min(sx.extra)) / 2.)
-                self.x_pw_plot.plotItem.addItem(text)
-
-        if sx := fsPlan.scan_y:
-            pr, ref, pw = sx.analyze()
-            self.y_probe_plot.plot(sx.pos, pr.model, pen=pen)
-            text = pg.TextItem(pr.make_text(), anchor=(0, 1.0))
-            text.setPos(sx.pos[int(len(sx.pos) / 2)],
-                        (np.max(sx.probe) + np.min(sx.probe)) / 2.)
-            self.y_probe_plot.plotItem.addItem(text)
-
-            self.y_ref_plot.plotItem.plot(sx.pos, ref.model, pen=pen)
-            text = pg.TextItem(ref.make_text(), anchor=(0, 1.0))
-            text.setPos(sx.pos[int(len(sx.pos) / 2)],
-                        (np.max(sx.ref) + np.min(sx.ref)) / 2.)
-            self.y_ref_plot.plotItem.addItem(text)
-
-            if pw is not None:
-                self.y_pw_plot.plotItem.plot(sx.pos, pw.model, pen=pen)
-                text = pg.TextItem(pw.make_text(), anchor=(0, 1.0))
-                text.setPos(sx.pos[int(len(sx.pos) / 2)],
-                            (np.max(sx.extra) + np.min(sx.extra)) / 2.)
-                self.y_pw_plot.plotItem.addItem(text)
+        for axis in ('x', 'y'):
+            scan = getattr(self.plan, f'scan_{axis}', None)
+            if scan is not None:
+                pr, ref, pw = scan.analyze()
+                probe_plot, ref_plot, pw_plot = getattr(self, f'{axis}_probe_plot'), getattr(self, f'{axis}_ref_plot'), getattr(self, f'{axis}_pw_plot')
+                probe_plot.plot(scan.pos, pr.model, pen=pen)
+                ref_plot.plot(scan.pos, ref.model, pen=pen)
+                if pw is not None:
+                    pw_plot.plot(scan.pos, pw.model, pen=pen)
+                for plot, data, fit in [(probe_plot, scan.probe, pr), (ref_plot, scan.ref, ref), (pw_plot, scan.extra if pw is not None else None, pw)]:
+                    if data is not None:
+                        text = pg.TextItem(fit.make_text(), anchor=(0, 1.0))
+                        text.setPos(scan.pos[int(len(scan.pos) / 2)], (np.max(data) + np.min(data)) / 2.)
+                        plot.plotItem.addItem(text)
 
 
 class FocusScanStarter(PlanStartDialog):

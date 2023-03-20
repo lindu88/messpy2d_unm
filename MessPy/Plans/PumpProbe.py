@@ -1,6 +1,6 @@
 import time
 import threading
-from typing import Optional, List, Iterable, TYPE_CHECKING
+from typing import Optional, List, Iterable, TYPE_CHECKING, Generator
 import numpy as np
 from attr import attrs, attrib, Factory
 from .PlanBase import Plan
@@ -20,14 +20,14 @@ from qtpy.QtWidgets import QApplication
 class PumpProbePlan(Plan):
     """Plan used for pump-probe experiments"""
     controller: Controller
-    t_list: Iterable[float]
+    t_list: np.ndarray
     shots: int = 1000
     num_scans: int = 0
     t_idx: int = 0
     rot_idx: int = 0
 
     center_wl_list: List[List[float]] = [[0]]
-    use_shutter: bool = False
+    pump_shutter: Optional['IShutter'] = None
     cam_data: List['PumpProbeData'] = attrib(init=False)
     use_rot_stage: bool = False
     rot_stage_angles: Optional[list] = None
@@ -56,60 +56,69 @@ class PumpProbePlan(Plan):
                 cam=c, cwl=cwl, plan=self, t_list=self.t_list))
             c.set_shots(self.shots)
 
-    def make_step_gen(self):
-        c = self.controller
-        rs = self.controller.rot_stage
-        if rs and self.use_rot_stage:
-            rs.set_degrees(self.rot_stage_angles[self.rot_idx])
-            while rs.is_moving():
-                rs.sigDegreesChanged.emit(rs.get_degrees())
-                yield
-        while True:
-
-            # --- Pre Scan
-            if rs and self.use_rot_stage:
+    def move_rot_stage(self, angle):
+        if self.use_rot_stage:
+            rs = self.controller.rot_stage
+            if rs:
+                rs.set_degrees(angle)
                 while rs.is_moving():
                     rs.sigDegreesChanged.emit(rs.get_degrees())
                     yield
-                self.rot_at_scan.append(rs.get_degrees())
-            self.controller.delay_line.set_pos(
-                self.t_list[0] - 2000., do_wait=False)
-            while self.controller.delay_line.moving:
-                yield
 
-            start_t = time.time()
-            self.time_tracker.scan_starting()
-            # -- scan
-            if self.do_ref_calib and False:
-                print('Calibrating Ref')
-                print(f'At t={self.controller.delay_line.get_pos()}')
-                self.cam_data[0].cam.cam.calibrate_ref()
-            for self.t_idx, t in enumerate(self.t_list):
-                c.delay_line.set_pos(t*1000., do_wait=False)
-                while self.controller.delay_line.moving:
-                    yield
-                if self.use_shutter:
-                    self.controller.shutter.open()
-                threads = []
-                self.time_tracker.point_starting()
-                for pp in self.cam_data:
-                    t = threading.Thread(
-                        target=pp.read_point, args=(self.t_idx,))
-                    t.start()
-                    threads.append(t)
-                while any([t.is_alive() for t in threads]):
-                    yield
-                for pp in self.cam_data:
-                    pp.sigStepDone.emit()
-                if self.use_shutter:
-                    self.controller.shutter.close()
-                self.sigStepDone.emit()
-                self.time_tracker.point_ending()
-                yield
+    def move_delay_line(self, t):
+        self.controller.delay_line.set_pos(t, do_wait=False)
+        while self.controller.delay_line.moving:
+            yield
 
-            delta_t = time.time() - start_t
+    def pre_scan(self) -> Generator:
+        rs = self.controller.rot_stage
+        if rs is not None:
+            yield from self.move_rot_stage(self.rot_stage_angles[self.rot_idx])
+            self.rot_at_scan.append(rs.get_degrees())
+        yield from self.move_delay_line(self.t_list[0]-200)
+
+    def scan(self) -> Generator:
+        start_t = time.time()
+        c = self.controller
+        self.time_tracker.scan_starting()
+        # -- scan
+        if self.do_ref_calib and False:
+            print('Calibrating Ref')
+            print(f'At t={self.controller.delay_line.get_pos()}')
+            self.cam_data[0].cam.cam.calibrate_ref()
+        for self.t_idx, t in enumerate(self.t_list):
+            yield from self.move_delay_line(t*1000)
+            if self.pump_shutter:
+                self.pump_shutter.open()
+            threads = []
+            self.time_tracker.point_starting()
+            for pp in self.cam_data:
+                t = threading.Thread(
+                    target=pp.read_point, args=(self.t_idx,))
+                t.start()
+                threads.append(t)
+            while any([t.is_alive() for t in threads]):
+                yield
+            for pp in self.cam_data:
+                pp.sigStepDone.emit()
+            if self.pump_shutter:
+                self.pump_shutter.close()
+            self.sigStepDone.emit()
+            self.time_tracker.point_ending()
+            yield
+        self.time_tracker.scan_ending()
+
+    def make_step_gen(self):
+        c = self.controller
+        rs = self.controller.rot_stage
+
+        while True:
+            yield from self.pre_scan()
+            yield from self.scan()
+            delta_t = self.time_tracker.scan_duration
+            assert delta_t is not None
             self.time_per_scan = '%d:%02d' % (delta_t // 60, delta_t % 60)
-            self.time_tracker.scan_ending()
+
             # --- post scans
             self.num_scans += 1
             self.controller.delay_line.set_pos(self.t_list[0], do_wait=False)
@@ -117,8 +126,10 @@ class PumpProbePlan(Plan):
                 pp.post_scan()
 
             if self.use_rot_stage and (self.num_scans % self.common_mulitple_cwls == 0):
+                assert self.rot_stage_angles is not None
+                assert rs is not None
                 self.rot_idx = (self.rot_idx + 1) % len(self.rot_stage_angles)
-                self.controller.rot_stage.set_degrees(
+                rs.set_degrees(
                     self.rot_stage_angles[self.rot_idx])
 
     def save(self):

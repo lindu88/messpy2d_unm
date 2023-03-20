@@ -93,10 +93,12 @@ class Cam(QObject):
         pass
 
     def set_wavelength(self, wl, timeout=5):
+        assert self.cam.spectrograph is not None
         self.cam.spectrograph.set_wavelength(wl, timeout=timeout)
         self.cam.spectrograph.sigWavelengthChanged.emit(wl)
 
     def get_wavelength(self):
+        assert self.cam.spectrograph is not None
         return self.cam.spectrograph.get_wavelength()
 
     def get_wavelengths(self, center_wl=None):

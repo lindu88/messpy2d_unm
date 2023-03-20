@@ -25,6 +25,7 @@ class FitResult:
     name: str
     success: bool
     params: np.ndarray
+    data: np.ndarray
     model: np.ndarray
 
     def make_text(self):
@@ -45,7 +46,7 @@ class FitResult:
 
         res = opt.leastsq(helper, x0)
         fit = gauss_int(pos, *res[0])
-        return cls(success=res[1], params=res[0], model=fit, name=name)
+        return cls(success=res[1], params=res[0], model=fit, name=name, data=val)
 
 
 @attr.define
@@ -163,7 +164,12 @@ class FocusScan(Plan):
         if sx := self.scan_x:
             data['scan x'] = np.vstack((sx.pos, sx.probe, sx.ref))
             data['full x'] = np.array(sx.full)
+            if len(sx.extra) > 0:
+                data['extra x'] = sx.extra
         if sx := self.scan_y:
             data['scan y'] = np.vstack((sx.pos, sx.probe, sx.ref))
             data['full y'] = np.array(sx.full)
+            if len(sx.extra) > 0:
+                data['extra y'] = sx.extra
+
         np.savez(name, **data)
