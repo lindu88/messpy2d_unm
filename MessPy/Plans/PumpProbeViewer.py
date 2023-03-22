@@ -308,9 +308,11 @@ class PumpProbeStarter(PlanStartDialog):
                 tmp.append(
                     dict(name=f'{name} center wls', type='str', value='0'))
 
-        if len(self.controller.shutter) > 0:
-            tmp.append(dict(name='Pump Shutter', type='list', values=c.shutter,
-                            value=c.shutter[0]))
+
+        if len(self.controller.shutter) > 0 and False:
+            #names = {self.controller.shutter}
+            tmp.append(dict(name='Pump Shutter', type='list', values=self.controller.shutter,
+                            value=self.controller.shutter[0]))
 
         two_d = {'name': 'Exp. Settings', 'type': 'group', 'children': tmp}
 
