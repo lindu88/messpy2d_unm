@@ -1,11 +1,12 @@
+from typing import Optional
 import numpy as np
 import pyqtgraph as pg
 import pyqtgraph.parametertree as pt
 from qtpy.QtWidgets import QWidget, QPushButton
 
-from .FocusScan import FocusScan
+from .FocusScan import FocusScan, Scan
 
-from qtpy.QtWidgets import QVBoxLayout, QMessageBox
+from qtpy.QtWidgets import QVBoxLayout, QMessageBox, QTabWidget
 from qtpy.QtCore import QTimer
 from MessPy.ControlClasses import Controller
 from MessPy.QtHelpers import vlay, hlay, PlanStartDialog, ObserverPlot, make_entry
@@ -14,89 +15,94 @@ from .PlanBase import sample_parameters
 
 class FocusScanView(QWidget):
     def __init__(self, fsPlan: FocusScan, *args, **kwargs):
-        super(FocusScanView, self).__init__(*args, **kwargs)
+        super().__init__(*args, **kwargs)
         self.plan = fsPlan
-        fs = fsPlan
-        lay = []
-        if fsPlan.scan_x:
-            self.x_probe_plot = ObserverPlot(
-                obs=[lambda: fs.scan_x.get_data()[1]],
-                signal=fsPlan.sigStepDone,
-                x=lambda: fsPlan.scan_x.get_data()[0]
-            )
+        self.plot_layout = QVBoxLayout(self)
+        self.obs_plots = {}
+        tab = QTabWidget()
+        self.plot_layout.addWidget(tab)
+        for iz, z in enumerate(self.plan.z_points):
+            tabwidget = QWidget()
+            tabwidget.setLayout(vlay())
+            tab.addTab(tabwidget, f'z = {z:.3f} mm')
+            for axis in ['x', 'y']:
+                scan: Optional[Scan] = fsPlan.scans['%s_%d' % (axis, iz)]
+                print(scan)
+                if scan is not None:
+                    plots = []
 
-            self.x_ref_plot = ObserverPlot(
-                obs=[lambda: fs.scan_x.get_data()[2]],
-                signal=fsPlan.sigStepDone,
-                x=lambda: fsPlan.scan_x.get_data()[0]
-            )
-
-            row = [self.x_probe_plot, self.x_ref_plot]
-            if self.plan.power_meter:
-                self.x_pw_plot = ObserverPlot(
-                    obs=[lambda: fs.scan_x.get_data()[3]],
-                    signal=fsPlan.sigStepDone,
-                    x=lambda: fsPlan.scan_x.get_data()[0]
-                )
-                row.append(self.x_pw_plot)
-            lay.append(hlay(row))
-        if fsPlan.scan_y:
-            self.y_probe_plot = ObserverPlot(
-                obs=[lambda: fs.scan_y.probe],
-                signal=fsPlan.sigStepDone,
-                x=fsPlan.scan_y.pos
-            )
-
-            self.y_ref_plot = ObserverPlot(
-                obs=[lambda: fs.scan_y.ref],
-                signal=fsPlan.sigStepDone,
-                x=fsPlan.scan_y.pos
-            )
-            row = [self.y_probe_plot, self.y_ref_plot]
-            if self.plan.power_meter:
-                self.y_pw_plot = ObserverPlot(
-                    obs=[lambda: fs.scan_y.extra],
-                    signal=fsPlan.sigStepDone,
-                    x=fsPlan.scan_y.pos
-                )
-                row.append(self.y_pw_plot)
-            lay.append(hlay(row))
-
-        self.plot_layout = vlay(lay)
-        fsPlan.sigFitDone.connect(lambda: self.button.setEnabled(True))
-        fsPlan.sigFitDone.connect(self.plot_fit)
+                    def x_func(scan=scan):
+                        return scan.get_data()[0]
+                    n = 2 if fsPlan.power_meter is None else 3
+                    for ix in range(1, n+1):
+                        self.obs_plots["%d_%s_%d" % (iz, axis, ix)] = ObserverPlot(
+                            [lambda ix=ix, scan=scan: scan.get_data()[ix]],
+                            x=x_func, signal=fsPlan.sigStepDone, title=f'{axis} z={z}')
+                        plots.append(
+                            self.obs_plots["%d_%s_%d" % (iz, axis, ix)])
+                    tabwidget.layout().addLayout(hlay(plots))
+        self.tabwidget = tab
         self.button = QPushButton('Save Scan', self)
         self.button.setEnabled(False)
         self.button.clicked.connect(fsPlan.save)
+        fsPlan.sigFitDone.connect(self.plot_fit)
+        fsPlan.sigFitDone.connect(lambda: self.button.setEnabled(True))
         fname = fsPlan.get_file_name()[0]
         self.button.clicked.connect(lambda: QMessageBox.information(
             self, 'Results Saved', 'At %s' % str(fname)))
 
-        layout = QVBoxLayout(self)
-        layout.addLayout(self.plot_layout)
-        layout.addWidget(self.button)
-        self.setLayout(layout)
+        self.plot_layout.addWidget(self.button)
+        if len(self.plan.z_points) > 1:
+            self.vis = pg.GraphicsLayoutWidget()
+            self.summary = {}
+            if self.plan.x_parameters is not None:
+                self.summary['x'] = self.vis.addPlot(title='X')
+            if self.plan.y_parameters is not None:
+                self.summary['y'] = self.vis.addPlot(title='Y')
 
-    def plot_fit(self):
+            self.plot_layout.addWidget(self.vis)
+
+    def plot_fit(self, i):
         pen = pg.mkPen(color='#e377c2', width=2)
-
+        self.tabwidget.setCurrentIndex(i)
         for axis in ('x', 'y'):
-            scan = getattr(self.plan, f'scan_{axis}', None)
+            scan: Optional[Scan] = self.plan.scans['%s_%d' % (axis, i)]
             if scan is not None:
                 pr, ref, pw = scan.analyze()
-                probe_plot, ref_plot = getattr(self, f'{axis}_probe_plot'), getattr(self, f'{axis}_ref_plot')
+                probe_plot, ref_plot = self.obs_plots[f'{i}_{axis}_1'], self.obs_plots[f'{i}_{axis}_2']
                 probe_plot.plot(pr.pos, pr.model, pen=pen)
                 ref_plot.plot(ref.pos, ref.model, pen=pen)
                 if pw is not None:
-                    pw_plot = getattr(self, f'{axis}_pw_plot')
+                    pw_plot = self.obs_plots[f'{i}_{axis}_3']
                     pw_plot.plot(pw.pos, pw.model, pen=pen)
                 else:
                     pw_plot = None
                 for plot, data, fit in [(probe_plot, scan.probe, pr), (ref_plot, scan.ref, ref), (pw_plot, scan.extra if pw is not None else None, pw)]:
                     if data is not None:
-                        text = pg.TextItem(fit.make_text(), anchor=(0, 1.0))
-                        text.setPos(scan.pos[int(len(scan.pos) / 2)], (np.max(data) + np.min(data)) / 2.)
+                        text = pg.TextItem(
+                            fit.make_text(), anchor=(0, 1.0))
+                        text.setPos(
+                            scan.pos[int(len(scan.pos) / 2)], (np.max(data) + np.min(data)) / 2.)
                         plot.plotItem.addItem(text)
+        if len(self.plan.z_points) > 1:
+            for axis in ('x', 'y'):
+                scan = self.plan.scans[f'{axis}_{i}']
+                if scan is not None:
+                    x, y = scan.get_data()[:2]
+                    from scipy.signal import savgol_filter
+                    deriv = np.diff(y)/np.diff(x)
+                    i_max = np.argmax(np.abs(deriv))
+                    if deriv[i_max] < 0:
+                        deriv = -deriv
+                        sign = -1
+                    else:
+                        sign = 1
+                    self.summary[axis].plot(x[1:], deriv, pen='r')
+                    if not self.plan.adaptive:
+                        y = sign*savgol_filter(y, 5, 2,
+                                               deriv=1, delta=x[1]-x[0])
+                        self.summary[axis].plot(
+                            x[1:], y[1:], pen='b')
 
 
 class FocusScanStarter(PlanStartDialog):
@@ -114,8 +120,16 @@ class FocusScanStarter(PlanStartDialog):
                {'name': 'End x', 'type': 'float', 'value': 1, 'step': 0.1},
                {'name': 'Start y', 'type': 'float', 'value': 0, 'step': 0.1},
                {'name': 'End y', 'type': 'float', 'value': 1, 'step': 0.1},
+               {'name': 'Scan z', 'type': 'bool', 'value': True},
+               {'name': 'Start z', 'type': 'float', 'value': 0, 'step': 0.1},
+               {'name': 'End z', 'type': 'float', 'value': 1, 'step': 0.1},
+               {'name': 'Z step', 'type': 'float', 'value': 0.3},
                {'name': 'steps', 'type': 'float', 'value': 0.02, 'step': 0.01},
                {'name': 'Power', 'type': 'bool', 'value': True},
+               {'name': "Adaptive", "type": "bool", "value": True},
+               {'name': "Max rel. change", "type": "float",
+               "value": 0.05, "step": 0.01},
+               {'name': "Min step", "type": "float", "value": 0.01, "step": 0.01},
                ]
 
         self.candidate_cams = {c.cam.name: c for c in self.controller.cam_list}
@@ -139,6 +153,11 @@ class FocusScanStarter(PlanStartDialog):
         if p['Scan y']:
             y_stepper = [p['Start y'], p['End y'], p['steps']]
 
+        if p['Scan z']:
+            z_points = np.arange(p['Start z'], p['End z']+0.0001, p['Z step'])
+        else:
+            z_points = None
+
         self.save_defaults()
         if p['Power']:
             power = getattr(controller, 'power_meter', None)
@@ -151,7 +170,10 @@ class FocusScanStarter(PlanStartDialog):
             shots=p['Shots'],
             x_parameters=x_stepper,
             y_parameters=y_stepper,
-            z_points=None,
+            adaptive=p['Adaptive'],
+            max_rel_change=p['Max rel. change'],
+            min_step=p['Min step'],
+            z_points=z_points,
             fh=controller.sample_holder,
             power_meter=power,
         )
@@ -184,5 +206,3 @@ if __name__ == '__main__':
         app.exec_()
     except:
         print('fds')
-
-

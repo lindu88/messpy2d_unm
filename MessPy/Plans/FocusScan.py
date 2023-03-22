@@ -41,7 +41,6 @@ class FitResult:
         b = val[np.argmin(pos)]
         x0 = [pos[np.argmin(np.abs(val - (a + b) / 2))], a - b, b, 0.1]
 
-
         def helper(p):
             return np.array(val) - gauss_int(pos, *p)
 
@@ -66,10 +65,12 @@ class Scan:
     max_diff: float = 0.1
 
     def analyze(self):
-        fit_probe = FitResult.fit_curve(self.pos, self.probe, f'{self.axis} probe')
+        fit_probe = FitResult.fit_curve(
+            self.pos, self.probe, f'{self.axis} probe')
         fit_ref = FitResult.fit_curve(self.pos, self.ref, f'{self.axis} ref')
         if len(self.extra) > 0:
-            fit_extra = FitResult.fit_curve(self.pos, self.extra, f'{self.axis} PW')
+            fit_extra = FitResult.fit_curve(
+                self.pos, self.extra, f'{self.axis} PW')
         else:
             fit_extra = None
         return fit_probe, fit_ref, fit_extra
@@ -94,7 +95,8 @@ class Scan:
 
     def get_data(self):
         idx = np.argsort(self.pos)
-        p, pr, ref = np.array(self.pos)[idx], np.array(self.probe)[idx], np.array(self.ref)[idx]
+        p, pr, ref = np.array(self.pos)[idx], np.array(
+            self.probe)[idx], np.array(self.ref)[idx]
         if self.extra:
             ex = np.array(self.extra)[idx]
         else:
@@ -112,6 +114,7 @@ class Scan:
         else:
             return False
 
+
 @attr.s(auto_attribs=True, eq=False)
 class FocusScan(Plan):
     """
@@ -124,59 +127,64 @@ class FocusScan(Plan):
     x_parameters: T.Optional[list]
     y_parameters: T.Optional[list]
     z_points: T.Optional[list] = None
+    adaptive: bool = True
+    max_rel_change: float = 0.1
+    min_step: float = 0.005
     shots: int = 100
     sigStepDone: T.ClassVar[Signal] = Signal()
-    sigFitDone: T.ClassVar[Signal] = Signal()
+    sigFitDone: T.ClassVar[Signal] = Signal(int)
 
     scan_x: T.Optional[Scan] = None
     scan_y: T.Optional[Scan] = None
+    scans: T.Dict[str, Scan] = attr.Factory(dict)
     power_meter: T.Optional[IPowerMeter] = None
 
     def __attrs_post_init__(self):
         super(FocusScan, self).__attrs_post_init__()
-        if self.x_parameters:
-            self.scan_x = self.make_x_scan()
-        if self.y_parameters:
-            self.scan_y = self.make_y_scan()
+        if self.z_points is None:
+            self.z_points = [self.fh.get_zpos_mm()]
+        self.scans = {}
+        for i, z_pos in enumerate(self.z_points):
+            if self.x_parameters:
+                self.scans['x_%d' % i] = self.make_scan('x', self.x_parameters)
+            else:
+                self.scans['x_%d' % i] = None
+            if self.y_parameters:
+                self.scans['y_%d' % i] = self.make_scan('y', self.y_parameters)
+            else:
+                self.scans['y_%d' % i] = None
         self.start_pos = (0, 0)  # self.fh.pos_home
         gen = self.make_scan_gen()
         self.make_step = lambda: next(gen)
         self.cam.set_shots(self.shots)
-        if self.z_points is None:
-            self.z_points = [self.fh.get_zpos_mm()]
 
-    def make_x_scan(self):
-        return Scan(axis='x',
-                    start=self.x_parameters[0],
-                    end=self.x_parameters[1],
-                    step=self.x_parameters[2],
-                    )
-
-    def make_y_scan(self):
-        return Scan(axis='y',
-                    start=self.y_parameters[0],
-                    end=self.y_parameters[1],
-                    step=self.y_parameters[2],
+    def make_scan(self, axis, parameters):
+        return Scan(axis=axis,
+                    start=parameters[0],
+                    end=parameters[1],
+                    step=parameters[2],
+                    max_diff=self.max_rel_change if self.adaptive else 100,
+                    min_step=self.min_step,
                     )
 
     def make_scan_gen(self):
-        for z_pos in self.z_points:
+        for i, z_pos in enumerate(self.z_points):
             self.fh.set_pos_mm(*self.start_pos)
             self.fh.set_zpos_mm(z_pos)
             while any(self.fh.is_moving()):
                 yield
-            if self.scan_x:
-                for _ in self.scan_x.scan(lambda x: self.mover("x", x), self.reader):
+            if self.scans[f'x_{i}']:
+                for _ in self.scans[f'x_{i}'].scan(lambda x: self.mover("x", x), self.reader):
                     self.sigStepDone.emit()
                     yield
             self.fh.set_pos_mm(*self.start_pos)
-            if self.scan_y:
-                for _ in self.scan_y.scan(lambda x: self.mover("y", x), self.reader):
+            if self.scans[f'y_{i}']:
+                for _ in self.scans[f'y_{i}'].scan(lambda x: self.mover("y", x), self.reader):
                     self.sigStepDone.emit()
                     yield
 
             self.fh.set_pos_mm(*self.start_pos)
-            self.sigFitDone.emit()
+            self.sigFitDone.emit(i)
         self.sigPlanFinished.emit()
         yield
 
@@ -204,16 +212,13 @@ class FocusScan(Plan):
         name = self.get_file_name()[0]
         self.save_meta()
         data: dict[str, object] = {'cam': self.cam.name}
-
-        if sx := self.scan_x:
-            data['scan x'] = np.vstack((sx.pos, sx.probe, sx.ref))
-            data['full x'] = np.array(sx.full)
-            if len(sx.extra) > 0:
-                data['extra x'] = sx.extra
-        if sx := self.scan_y:
-            data['scan y'] = np.vstack((sx.pos, sx.probe, sx.ref))
-            data['full y'] = np.array(sx.full)
-            if len(sx.extra) > 0:
-                data['extra y'] = sx.extra
-
+        data['z_points'] = self.z_points
+        for i, z_pos in enumerate(self.z_points):
+            for axis in ['x', 'y']:
+                if sx := self.scans[f'{axis}_{i}']:
+                    data[f'z={i} scan {axis}'] = np.vstack(
+                        (sx.pos, sx.probe, sx.ref))
+                    data[f'z={i} full {axis}'] = np.array(sx.full)
+                    if len(sx.extra) > 0:
+                        data[f'z={i} extra {axis}'] = sx.extra
         np.savez(name, **data)
