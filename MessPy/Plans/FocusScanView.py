@@ -20,23 +20,23 @@ class FocusScanView(QWidget):
         lay = []
         if fsPlan.scan_x:
             self.x_probe_plot = ObserverPlot(
-                obs=[lambda: fs.scan_x.probe],
+                obs=[lambda: fs.scan_x.get_data()[1]],
                 signal=fsPlan.sigStepDone,
-                x=fsPlan.scan_x.pos
+                x=lambda: fsPlan.scan_x.get_data()[0]
             )
 
             self.x_ref_plot = ObserverPlot(
-                obs=[lambda: fs.scan_x.ref],
+                obs=[lambda: fs.scan_x.get_data()[2]],
                 signal=fsPlan.sigStepDone,
-                x=fsPlan.scan_x.pos
+                x=lambda: fsPlan.scan_x.get_data()[0]
             )
 
             row = [self.x_probe_plot, self.x_ref_plot]
             if self.plan.power_meter:
                 self.x_pw_plot = ObserverPlot(
-                    obs=[lambda: fs.scan_x.extra],
+                    obs=[lambda: fs.scan_x.get_data()[3]],
                     signal=fsPlan.sigStepDone,
-                    x=fsPlan.scan_x.pos
+                    x=lambda: fsPlan.scan_x.get_data()[0]
                 )
                 row.append(self.x_pw_plot)
             lay.append(hlay(row))
@@ -84,11 +84,14 @@ class FocusScanView(QWidget):
             scan = getattr(self.plan, f'scan_{axis}', None)
             if scan is not None:
                 pr, ref, pw = scan.analyze()
-                probe_plot, ref_plot, pw_plot = getattr(self, f'{axis}_probe_plot'), getattr(self, f'{axis}_ref_plot'), getattr(self, f'{axis}_pw_plot')
-                probe_plot.plot(scan.pos, pr.model, pen=pen)
-                ref_plot.plot(scan.pos, ref.model, pen=pen)
+                probe_plot, ref_plot = getattr(self, f'{axis}_probe_plot'), getattr(self, f'{axis}_ref_plot')
+                probe_plot.plot(pr.pos, pr.model, pen=pen)
+                ref_plot.plot(ref.pos, ref.model, pen=pen)
                 if pw is not None:
-                    pw_plot.plot(scan.pos, pw.model, pen=pen)
+                    pw_plot = getattr(self, f'{axis}_pw_plot')
+                    pw_plot.plot(pw.pos, pw.model, pen=pen)
+                else:
+                    pw_plot = None
                 for plot, data, fit in [(probe_plot, scan.probe, pr), (ref_plot, scan.ref, ref), (pw_plot, scan.extra if pw is not None else None, pw)]:
                     if data is not None:
                         text = pg.TextItem(fit.make_text(), anchor=(0, 1.0))
@@ -111,7 +114,8 @@ class FocusScanStarter(PlanStartDialog):
                {'name': 'End x', 'type': 'float', 'value': 1, 'step': 0.1},
                {'name': 'Start y', 'type': 'float', 'value': 0, 'step': 0.1},
                {'name': 'End y', 'type': 'float', 'value': 1, 'step': 0.1},
-               {'name': 'steps', 'type': 'float', 'value': 0.02, 'step': 0.01}
+               {'name': 'steps', 'type': 'float', 'value': 0.02, 'step': 0.01},
+               {'name': 'Power', 'type': 'bool', 'value': True},
                ]
 
         self.candidate_cams = {c.cam.name: c for c in self.controller.cam_list}
@@ -136,6 +140,10 @@ class FocusScanStarter(PlanStartDialog):
             y_stepper = [p['Start y'], p['End y'], p['steps']]
 
         self.save_defaults()
+        if p['Power']:
+            power = getattr(controller, 'power_meter', None)
+        else:
+            power = None
         fs = FocusScan(
             name=p['Filename'],
             cam=self.candidate_cams[p['Cam']],
@@ -143,8 +151,9 @@ class FocusScanStarter(PlanStartDialog):
             shots=p['Shots'],
             x_parameters=x_stepper,
             y_parameters=y_stepper,
+            z_points=None,
             fh=controller.sample_holder,
-            power_meter=getattr(controller, 'power_meter', None),
+            power_meter=power,
         )
         return fs
 

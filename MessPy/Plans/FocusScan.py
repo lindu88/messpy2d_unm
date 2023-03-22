@@ -1,6 +1,5 @@
 import threading
 import typing as T
-from collections import namedtuple
 
 import attr
 import numpy as np
@@ -10,12 +9,11 @@ from qtpy.QtCore import Signal
 
 from MessPy.ControlClasses import Cam
 from MessPy.Instruments.interfaces import ILissajousScanner, IPowerMeter
-
 from MessPy.Plans.PlanBase import Plan
 
 
 def gauss_int(x, x0, amp, back, w):
-    return 0.5 * amp* (1 + amp * spec.erf(np.sqrt(2)*(x - x0) / w)) + back
+    return 0.5 * amp * (1 + spec.erf(np.sqrt(2) * (x - x0) / w)) + back
 
 
 @attr.dataclass
@@ -23,6 +21,7 @@ class FitResult:
     name: str
     success: bool
     params: np.ndarray
+    pos: np.ndarray
     data: np.ndarray
     model: np.ndarray
 
@@ -33,18 +32,23 @@ class FitResult:
 
     @classmethod
     def fit_curve(cls, pos, val, name):
+
         pos = np.array(pos)
-        val = np.array(val)
+        idx = np.argsort(pos)
+        val = np.array(val)[idx]
+        pos = pos[idx]
         a = val[np.argmax(pos)]
         b = val[np.argmin(pos)]
-        x0 = [pos[np.argmin(np.abs(val - (a + b) / 2))], a - b, b, 0.2]
+        x0 = [pos[np.argmin(np.abs(val - (a + b) / 2))], a - b, b, 0.1]
+
 
         def helper(p):
             return np.array(val) - gauss_int(pos, *p)
 
-        res = opt.leastsq(helper, x0)
-        fit = gauss_int(pos, *res[0])
-        return cls(success=res[1], params=res[0], model=fit, name=name, data=val)
+        res = opt.least_squares(helper, x0)
+        fit = gauss_int(pos, *res.x)
+        print(res.x)
+        return cls(success=res.status > 0, params=res.x, model=fit, name=name, data=val, pos=pos)
 
 
 @attr.define
@@ -58,6 +62,8 @@ class Scan:
     ref: list[float] = attr.Factory(list)
     extra: list[float] = attr.Factory(list)
     full: list[np.ndarray] = attr.Factory(list)
+    min_step: float = 0.005
+    max_diff: float = 0.1
 
     def analyze(self):
         fit_probe = FitResult.fit_curve(self.pos, self.probe, f'{self.axis} probe')
@@ -69,18 +75,42 @@ class Scan:
         return fit_probe, fit_ref, fit_extra
 
     def scan(self, mover, reader):
-        sign = np.sign(self.end - self.end)
-        for x0 in np.arange(self.start, self.end, self.step):
-            yield from mover(x0)
-            for data, lines, pw in reader():
-                yield
-            self.pos.append(x0)
-            self.probe.append(data[0])
-            if pw is not None:
-                self.extra.append(pw)
-            self.ref.append(data[1])
-            self.full.append(lines)
+        sign = np.sign(self.end-self.start)
+        for x0 in np.arange(self.start, self.end, sign*self.step):
+            yield from self.check_point(x0, reader, mover)
+        while (x0 := self.check_for_holes()):
+            yield from self.check_point(x0, reader, mover)
 
+    def check_point(self, x, reader, mover):
+        yield from mover(x)
+        for data, lines, pw in reader():
+            yield
+        self.pos.append(x)
+        self.probe.append(data[0])
+        if pw is not None:
+            self.extra.append(pw)
+        self.ref.append(data[1])
+        self.full.append(lines)
+
+    def get_data(self):
+        idx = np.argsort(self.pos)
+        p, pr, ref = np.array(self.pos)[idx], np.array(self.probe)[idx], np.array(self.ref)[idx]
+        if self.extra:
+            ex = np.array(self.extra)[idx]
+        else:
+            ex = None
+        return p, pr, ref, ex
+
+    def check_for_holes(self):
+        x, y = self.get_data()[:2]
+        xd = np.diff(x)
+        yd = np.diff(y)/y.ptp()
+        i = (np.abs(yd) > self.max_diff) & (xd > self.min_step)
+        if np.any(i):
+            first = np.argmax(i)
+            return (x[first+1]+x[first])/2
+        else:
+            return False
 
 @attr.s(auto_attribs=True, eq=False)
 class FocusScan(Plan):
@@ -93,6 +123,7 @@ class FocusScan(Plan):
     plan_shorthand: T.ClassVar[str] = "FocusScan"
     x_parameters: T.Optional[list]
     y_parameters: T.Optional[list]
+    z_points: T.Optional[list] = None
     shots: int = 100
     sigStepDone: T.ClassVar[Signal] = Signal()
     sigFitDone: T.ClassVar[Signal] = Signal()
@@ -104,38 +135,48 @@ class FocusScan(Plan):
     def __attrs_post_init__(self):
         super(FocusScan, self).__attrs_post_init__()
         if self.x_parameters:
-            self.scan_x = Scan(axis='x',
-                               start=self.x_parameters[0],
-                               end=self.x_parameters[1],
-                               step=self.x_parameters[2],
-                               )
+            self.scan_x = self.make_x_scan()
         if self.y_parameters:
-            self.scan_y = Scan(axis='y',
-                               start=self.y_parameters[0],
-                               end=self.y_parameters[1],
-                               step=self.y_parameters[2],
-                               )
-        self.start_pos = (0, 0) #self.fh.pos_home
+            self.scan_y = self.make_y_scan()
+        self.start_pos = (0, 0)  # self.fh.pos_home
         gen = self.make_scan_gen()
         self.make_step = lambda: next(gen)
         self.cam.set_shots(self.shots)
+        if self.z_points is None:
+            self.z_points = [self.fh.get_zpos_mm()]
+
+    def make_x_scan(self):
+        return Scan(axis='x',
+                    start=self.x_parameters[0],
+                    end=self.x_parameters[1],
+                    step=self.x_parameters[2],
+                    )
+
+    def make_y_scan(self):
+        return Scan(axis='y',
+                    start=self.y_parameters[0],
+                    end=self.y_parameters[1],
+                    step=self.y_parameters[2],
+                    )
 
     def make_scan_gen(self):
-        self.fh.set_pos_mm(*self.start_pos)
-        while any(self.fh.is_moving()):
-            yield
-        if self.scan_x:
-            for _ in self.scan_x.scan(lambda x: self.mover("x", x), self.reader):
-                self.sigStepDone.emit()
+        for z_pos in self.z_points:
+            self.fh.set_pos_mm(*self.start_pos)
+            self.fh.set_zpos_mm(z_pos)
+            while any(self.fh.is_moving()):
                 yield
-        self.fh.set_pos_mm(*self.start_pos)
-        if self.scan_y:
-            for _ in self.scan_y.scan(lambda x: self.mover("y", x), self.reader):
-                self.sigStepDone.emit()
-                yield
+            if self.scan_x:
+                for _ in self.scan_x.scan(lambda x: self.mover("x", x), self.reader):
+                    self.sigStepDone.emit()
+                    yield
+            self.fh.set_pos_mm(*self.start_pos)
+            if self.scan_y:
+                for _ in self.scan_y.scan(lambda x: self.mover("y", x), self.reader):
+                    self.sigStepDone.emit()
+                    yield
 
-        self.fh.set_pos_mm(*self.start_pos)
-        self.sigFitDone.emit()
+            self.fh.set_pos_mm(*self.start_pos)
+            self.sigFitDone.emit()
         self.sigPlanFinished.emit()
         yield
 
@@ -144,6 +185,8 @@ class FocusScan(Plan):
             self.fh.set_pos_mm(self.start_pos[0] + pos, None)
         if axis == 'y':
             self.fh.set_pos_mm(None, self.start_pos[1] + pos)
+        while any(self.fh.is_moving()):
+            yield
         yield
 
     def reader(self):
