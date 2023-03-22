@@ -101,7 +101,7 @@ elif pc_name == 'DESKTOP-BBLLUO7':
     from MessPy.Instruments.stage_smartact import SmarActXYZ
     _shutter = [TopasShutter(), aom_shutter, PhidgetShutter()]
     _sh = SmarActXYZ()
-    try:¶
+    try:
         from MessPy.Instruments.cam_power import PowerCam
         _power_meter = PowerCam()
     except:
