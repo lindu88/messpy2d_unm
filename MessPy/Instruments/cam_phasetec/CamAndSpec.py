@@ -190,43 +190,43 @@ class PhaseTecCam(ICam):
             sig_noref = d['Probe1'].signal
 
         # print(sig.shape, ref_mean.shape, norm_std.shape, probe_mean.shape)
-        if not TWO_PROBES:
-            reading = Reading(lines=np.stack(
-                (probe.mean, ref.mean, probe.max)),
-                stds=np.stack((probe.std, ref.std, norm_std)),
-                signals=np.stack((sig, sig_noref)),
-                valid=True)
+            if not TWO_PROBES:
+                reading = Reading(lines=np.stack(
+                    (probe.mean, ref.mean, probe.max)),
+                    stds=np.stack((probe.std, ref.std, norm_std)),
+                    signals=np.stack((sig, sig_noref)),
+                    valid=True)
 
-        else:
-            probe2 = d['Probe2']
-            normed2 = probe2.data / ref.data
-
-            if self.beta1 is not None:
-                dp = probe.data[:, ::2] - probe.data[:, 1::2]
-                dp2 = probe2.data[:, ::2] - probe2.data[:, 1::2]
-                dr = ref.data[::8, ::2] - ref.data[::8, 1::2]
-                dp = (dp - self.beta1.T @ dr)
-                dp2 = (dp2 - self.beta2.T @ dr)
-
-                sig = -f / LOG10 * np.log1p(dp.mean(1) / probe.mean)
-                sig_pr2 = -f / LOG10 * np.log1p(dp2.mean(1) / probe2.mean)
             else:
-                pu2 = trim_mean(normed2[:, ::2], 0.2, 1)
-                not_pu2 = trim_mean(normed2[:, 1::2], 0.2, 1)
-                sig_pr2 = f * np.log10(pu2 / not_pu2)
+                probe2 = d['Probe2']
+                normed2 = probe2.data / ref.data
 
-            pu2 = trim_mean(probe2.data[:, ::2], 0.2, 1)
-            not_pu2 = trim_mean(probe2.data[:, 1::2], 0.2, 1)
+                if self.beta1 is not None:
+                    dp = probe.data[:, ::2] - probe.data[:, 1::2]
+                    dp2 = probe2.data[:, ::2] - probe2.data[:, 1::2]
+                    dr = ref.data[::8, ::2] - ref.data[::8, 1::2]
+                    dp = (dp - self.beta1.T @ dr)
+                    dp2 = (dp2 - self.beta2.T @ dr)
 
-            sig_pr2_noref = probe2.signal  # f * np.log10(pu2 / not_pu2)
+                    sig = -f / LOG10 * np.log1p(dp.mean(1) / probe.mean)
+                    sig_pr2 = -f / LOG10 * np.log1p(dp2.mean(1) / probe2.mean)
+                else:
+                    pu2 = trim_mean(normed2[:, ::2], 0.2, 1)
+                    not_pu2 = trim_mean(normed2[:, 1::2], 0.2, 1)
+                    sig_pr2 = f * np.log10(pu2 / not_pu2)
 
-            reading = Reading(lines=np.stack(
-                (probe.mean, probe2.mean, ref.mean, probe.max)),
-                stds=np.stack(
-                (probe.std, probe2.std, ref.std, norm_std)),
-                signals=np.stack(
-                (sig_noref, sig, sig_pr2_noref, sig_pr2)),
-                valid=True)            #
+                pu2 = trim_mean(probe2.data[:, ::2], 0.2, 1)
+                not_pu2 = trim_mean(probe2.data[:, 1::2], 0.2, 1)
+
+                sig_pr2_noref = probe2.signal  # f * np.log10(pu2 / not_pu2)
+
+                reading = Reading(lines=np.stack(
+                    (probe.mean, probe2.mean, ref.mean, probe.max)),
+                    stds=np.stack(
+                    (probe.std, probe2.std, ref.std, norm_std)),
+                    signals=np.stack(
+                    (sig_noref, sig, sig_pr2_noref, sig_pr2)),
+                    valid=True)            #
         return reading
 
     def make_2D_reading(self, t2: np.ndarray, rot_frame: float,
