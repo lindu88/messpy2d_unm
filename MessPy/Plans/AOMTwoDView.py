@@ -205,11 +205,14 @@ class AOMTwoDStarter(PlanStartDialog):
         self.paras.child('Exp. Settings').sigTreeStateChanged.connect(self.update_pump_axis)
 
     def update_pump_axis(self, *args):
-        ex = self.paras.child('Exp. Settings')
-        t1 = np.arange(ex['t1 (+)'], 0, ex['t1 (step)'])
-        THz = np.fft.rfftfreq(t1.size * 2, d=t1[1]-t1[0])
-        freqs =  THz2cm(THz) + self.rot_frame_freq
-        ex.child('Pump Axis').setValue(f'{freqs.min():.2f} - {freqs.max():.2f} cm-1 step {freqs[1]-freqs[0]:.2f} cm-1')
+        try:
+            ex = self.paras.child('Exp. Settings')
+            t1 = np.arange(0, ex['t1 (+)'], ex['t1 (step)'])
+            THz = np.fft.rfftfreq(t1.size * 2, d=t1[1]-t1[0])
+            freqs =  THz2cm(THz) + ex['Rot. Frame']
+            ex.child('Pump Axis').setValue(f'{freqs.min():.2f} - {freqs.max():.2f} cm-1 step {freqs[1]-freqs[0]:.2f} cm-1')
+        except (ValueError, IndexError):
+            pass
 
     def create_plan(self, controller: Controller):
         p = self.paras.child('Exp. Settings')
