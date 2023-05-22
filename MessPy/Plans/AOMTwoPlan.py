@@ -208,7 +208,7 @@ class AOMTwoDPlan(ScanPlan):
                     disp_ifr = f.get(
                         f'ifr_data/{line}/{t2_idx}/mean', data.interferogram)
                     self.disp_arrays[line] = disp_2d, disp_ifr
-            self.last_2d = np.array(disp_2d)
+            self.last_2d = np.array(self.disp_arrays['Probe1'][0])
             self.last_ir = np.array(disp_ifr)
 
     def stop_plan(self):
