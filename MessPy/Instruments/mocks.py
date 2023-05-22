@@ -19,6 +19,16 @@ class MockState:
     rot_stage_angle: float = 45
     stage_pos: list[float] = [0, 0, 0]
 
+    def knife_amp(self) -> float:
+        from math import erfc, sqrt
+        z_pos = self.stage_pos[2]+0.5
+        sigma = 0.25 * sqrt(1+(z_pos/0.5)**2)
+        x_pos = self.stage_pos[0]-0.5+0.1*self.stage_pos[2]
+        y_pos = self.stage_pos[1]-0.5
+        knife_amp = 2 - erfc(sqrt(2)*(-x_pos) / sigma)
+        knife_amp *= 2 - erfc(sqrt(2)*(-y_pos) / sigma)
+        return knife_amp
+
 
 state = MockState()
 
@@ -78,16 +88,15 @@ class CamMock(ICam):
         t0 = time.time()
         x = self.get_wavelength_array()
         y = 300*np.exp(-(x-250)**2/50**2/2)
-        from math import erfc, sqrt
-        knife_amp = 2-erfc(sqrt(2)*(-state.stage_pos[0]+0.5) / 0.25)
-        knife_amp *= 2 - erfc(sqrt(2) * (-state.stage_pos[1]+0.5) / 0.25)
+
+        knife_amp = state.knife_amp()
         y = y*(knife_amp/4)
 
         a = np.random.normal(loc=y, scale=3, size=(self.shots, self.channels))
         b = np.random.normal(
             loc=y/2, scale=3, size=(self.shots, self.channels))
         common_noise = np.random.normal(
-            loc=1, scale=0.15, size=(self.shots, 1))
+            loc=1, scale=0.015, size=(self.shots, 1))
 
         a *= common_noise
         b *= common_noise
@@ -100,7 +109,7 @@ class CamMock(ICam):
         y_sig -= 300 * np.exp(-(x - 310) ** 2 / 30 ** 2 / 2)
         a[::2, :] *= 1 + signal * y_sig/300
         dt = time.time() - t0
-        time.sleep(self.shots/1000.-dt)
+        time.sleep(max(self.shots/1000.-dt, 0))
         return a, b, chop, ext
 
     def make_reading(self) -> Reading:
@@ -199,7 +208,7 @@ class StageMock(ILissajousScanner):
     name: str = 'MockSampleStage'
     has_zaxis: bool = True
     _pos: list[float] = [0, 0, 0]
-    pos_home: tuple[float] = (0, 0)
+    pos_home: tuple[float, float] = (0, 0)
 
     def is_moving(self) -> typing.Tuple[bool, bool]:
         return False, False
@@ -209,6 +218,7 @@ class StageMock(ILissajousScanner):
 
     def set_zpos_mm(self, mm: float):
         state.stage_pos[2] = mm
+        print(f"zpos{mm=}")
 
     def get_zpos_mm(self) -> float:
         return state.stage_pos[2]
@@ -232,10 +242,7 @@ class PowerMeterMock(IPowerMeter):
     name: str = 'PowerMeterMock'
 
     def read_power(self) -> float:
-        from math import erfc, sqrt
-        knife_amp = 2-erfc(sqrt(2)*(-state.stage_pos[0]+0.5) / 0.25)
-        knife_amp *= 2 - erfc(sqrt(2) * (-state.stage_pos[1]+0.5) / 0.25)
-        y = (knife_amp/4)
+
+        y = state.knife_amp()/4
         y += np.random.normal(loc=0, scale=0.1)
         return y
-
