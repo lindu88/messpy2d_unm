@@ -101,16 +101,17 @@ elif pc_name == 'DESKTOP-BBLLUO7':
     from MessPy.Instruments.stage_smartact import SmarActXYZ
     _shutter = [TopasShutter(), aom_shutter, PhidgetShutter()]
     _sh = SmarActXYZ()
-    try:
-        from MessPy.Instruments.cam_power import PowerCam
-        _power_meter = PowerCam()
-    except:
-        _power_meter = None
+    _power_meter = None
+    #try:
+    #    from MessPy.Instruments.cam_power import PowerCam
+    #    _power_meter = PowerCam()
+    #except:
+    #    _power_meter = None
     #try:
     #    from MessPy.Instruments.ophire import Starbright
     #    _power_meter = Starbright()
     #except:
-    #    _power_meter = None
+    #_power_meter = None
 else:
     _cam = CamMock()
     _dl = DelayLineMock()
