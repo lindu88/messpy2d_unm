@@ -85,8 +85,9 @@ class IDevice(QObject, metaclass=QABCMeta):
                 d = json.load(f)
             for key, val in d.items():
                 if not hasattr(self, key):
-                    warnings.warn(f"Config file for {self.name} has value for {key}, which is not "
-                                  f"an attribute of the class.")
+                    #warnings.warn(f"Config file for {self.name} has value for {key}, which is not "
+                    #              f"an attribute of the class.")
+                    pass
                 if key not in exclude:
                     setattr(self, key, val)
         except FileNotFoundError:
@@ -226,6 +227,8 @@ class IDelayLine(IDevice):
     home_pos: float = attr.Factory(_try_load)
     pos_sign: float = 1
     beam_passes: int = 2
+    max_pos: float = np.inf
+    min_pos: float = -np.inf
 
     def get_state(self) -> dict:
         return dict(home_pos=self.home_pos)
@@ -244,8 +247,11 @@ class IDelayLine(IDevice):
 
     def move_fs(self, fs, do_wait=False, *args, **kwargs):
         mm = self.pos_sign * fs_to_mm(fs)
-        # print('mm', mm+self.home_pos)
-        self.move_mm(mm / self.beam_passes + self.home_pos, *args, **kwargs)
+        new_pos = mm / self.beam_passes + self.home_pos
+        if not self.min_pos <= new_pos <= self.max_pos:
+            raise ValueError(f"New position {new_pos} is outside of the allowed range "
+                             f"[{self.min_pos}, {self.max_pos}]")
+        self.move_mm(new_pos, *args, **kwargs)
         if do_wait:
             while self.is_moving():
                 time.sleep(0.1)
@@ -372,7 +378,7 @@ class ILissajousScanner(IDevice):
         raise NotImplementedError
 
 
-@attr.define(kw_only=True)
+@attr.s(kw_only=True, auto_attribs=True)
 class IPowerMeter(IDevice):
 
     @abc.abstractmethod

@@ -1,13 +1,16 @@
 import asyncio
 import json
 import time
+import threading
 from asyncio import Task
 from datetime import datetime, timedelta
 from pathlib import Path
-from typing import ClassVar, Tuple, Optional, Callable, Generator
+from typing import ClassVar, Tuple, Optional, Callable, Generator, Any
 
+import h5py
 import attr
-from qtpy.QtCore import QObject, Signal, Slot
+from qtpy.QtCore import QObject, Signal, Slot, QThread
+from numpy import ndarray
 
 from MessPy.Config import config
 from MessPy.Instruments.interfaces import IDevice
@@ -20,6 +23,7 @@ sample_parameters = {'name': 'Sample', 'type': 'group', 'children': [
     dict(name='Annotations', type='str'),
     dict(name='Users:', type='str'),
 ]}
+
 
 
 @attr.s(auto_attribs=True)
@@ -83,16 +87,21 @@ class Plan(QObject):
     creation_dt: datetime = attr.Factory(datetime.now)
     is_async: bool = False
     time_tracker: TimeTracker = attr.Factory(TimeTracker)
-
+    file_name: Tuple[Path, Path] | None = None
     sigPlanFinished: ClassVar[Signal] = Signal()
     sigPlanStarted: ClassVar[Signal] = Signal()
     sigPlanStopped: ClassVar[Signal] = Signal()
 
     def __attrs_post_init__(self):
         super(Plan, self).__init__()
+        self.get_file_name() # check if name is valid
 
     def get_file_name(self) -> Tuple[Path, Path]:
         """Builds the filename and the metafilename"""
+        if self.file_name is not None:
+            return self.file_name
+        if ':;<>"|?*\\/' in self.name:
+            raise ValueError("Plan name contains invalid characters")
         date_str = self.creation_dt.strftime("%y-%m-%d %H_%M")
         name = f"{date_str} {self.plan_shorthand} {self.name}"
         p = Path(config.data_directory)
@@ -127,6 +136,18 @@ class Plan(QObject):
         self.restore_state()
         self.sigPlanStopped.emit()
 
+@attr.s(auto_attribs=True, kw_only=True)
+class H5PySaver:
+    fname: Path = attr.ib()
+    plan: Plan = attr.ib()
+
+    def __attrs_post_init__(self):
+        self.fname.parent.mkdir(parents=True, exist_ok=True)
+
+    def save(self, data: dict):
+        with h5py.File(self.fname, 'w') as f:
+            for k, v in data.items():
+                f.create_dataset(k, data=v)
 
 @attr.s(auto_attribs=True, kw_only=True)
 class ScanPlan(Plan):
@@ -176,10 +197,41 @@ class ScanPlan(Plan):
         yield True
 
 
-@attr.s(auto_attribs=True, kw_only=True)
-class SubScan:
-    setters: dict[str, tuple[Callable, list]]
+from concurrent.futures import ThreadPoolExecutor, Future
 
+
+@attr.s(auto_attribs=True, kw_only=True)
+class PointList:
+    axis: str
+    points: ndarray
+    func: Callable|None = None
+
+@attr.s(auto_attribs=True, kw_only=True)
+class PointScan(ScanPlan):
+    points: dict[str, PointList]
+
+    def move_pos(self, pos) -> Generator:
+        raise NotImplementedError
+
+    def setup_plan(self) -> Generator:
+
+        return super().setup_plan()
+
+    def scan(self):
+        for i, pos in enumerate(self.points):
+            yield from self.move_pos(pos)
+
+            with ThreadPoolExecutor() as executor:
+                future = executor.submit(self.measure_point)
+                while not future.done():
+                    yield True
+                data = future.result()
+                with h5py.File(self.file_name, 'w') as f:
+                    for k, v in data.items():
+                        f.create_dataset(f"{self.cur_scan}/{k}", data=v)
+
+    def measure_point(self) -> dict[str, ndarray]:
+        raise NotImplementedError
 
 @attr.s(auto_attribs=True, kw_only=True)
 class AsyncPlan(Plan):
@@ -200,3 +252,5 @@ class AsyncPlan(Plan):
         if self.task:
             self.task.cancel()
         return super().stop_plan()
+
+

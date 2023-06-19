@@ -13,9 +13,10 @@ from .AOMTwoPlan import AOMTwoDPlan
 from .PlanBase import sample_parameters
 from ..Instruments.signal_processing import cm2THz, THz2cm
 from typing import Callable
+
 import qasync
 
-@attr.define
+@attr.define(auto_attribs=True, weakref_slot=False)
 class TwoDMap(GraphicsLayoutWidget):
     probe_wn: np.ndarray = attr.field()
     pump_wn: np.ndarray = attr.field()
@@ -98,8 +99,8 @@ class AOMTwoDViewer(QWidget):
         #self.trans_plot.setLabels(bottom="Time", left='Signal')
         self.spec_plot = gl.ci.addPlot(colspan=2)
         self.spec_plot.setLabels(bottom="Probe Freq", left='Signal')
-        self.spec_cut_line = self.spec_plot.plot()
-        self.spec_mean_line = self.spec_plot.plot()
+        self.spec_cut_line = self.spec_plot.plot(pen='b')
+        self.spec_mean_line = self.spec_plot.plot(pen='r')
         gl.ci.nextRow()
         self.info_label = gl.ci.addLabel("Hallo", colspan=4)
 
@@ -112,8 +113,8 @@ class AOMTwoDViewer(QWidget):
         self.plan.time_tracker.sigTimesUpdated.connect(self.set_time_str)
         self.pr_1_pb = QRadioButton('Probe1')
         self.pr_2_pb = QRadioButton('Probe2')
-        self.pr_2_pb = QRadioButton('Probe2')
-        self.layout()
+        for pb in (self.pr_1_pb, self.pr_2_pb):
+            pb.toggled.connect(self.update_plots)
 
     @qasync.asyncSlot()
     async def update_data(self, al=True):

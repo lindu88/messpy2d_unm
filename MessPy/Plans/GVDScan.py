@@ -5,7 +5,7 @@ import typing as T
 from pathlib import Path
 
 import attr
-import matplotlib.pyplot as plt
+
 import numpy as np
 from qtpy.QtCore import QObject, Signal
 

@@ -2,7 +2,7 @@ import threading
 import typing as T
 
 import attr
-from matplotlib.figure import Figure
+
 import numpy as np
 from qtpy.QtCore import QObject, Signal
 
@@ -71,11 +71,12 @@ class ScanSpectrum(Plan):
                 'signal': self.signal}
         # data['meta'] = self.meta
         self.save_meta()
-        fig = Figure()
-        ax = fig.add_subplot()
+        name = self.get_file_name()[0]
+        np.savez(name, **data)
+        return
+        #fig = Figure()
+        ##ax = fig.add_subplot()
         ax.plot(self.wls[:, 64], self.probe[:, 64], label='Probe')
         ax.plot(self.wls[:, 64], self.ref[:, 64], label='Ref')
         ax.legend()
-        name = self.get_file_name()[0]
-        np.savez(name, **data)
         fig.savefig(name.with_suffix('.png'))

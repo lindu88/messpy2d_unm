@@ -34,7 +34,7 @@ class PumpProbePlan(Plan):
     rot_at_scan: List[float] = Factory(list)
     time_per_scan: str = ""
     do_ref_calib: bool = True
-    pump_shutter: Optional['IShutter'] = None
+    probe_shutter: Optional['IShutter'] = None
     sigStepDone = Signal()
     plan_shorthand = "PumpProbe"
 
@@ -73,12 +73,12 @@ class PumpProbePlan(Plan):
     def pre_scan(self) -> Generator:
         rs = self.controller.rot_stage
         if rs is not None:
+            assert self.rot_stage_angles is not None
             yield from self.move_rot_stage(self.rot_stage_angles[self.rot_idx])
             self.rot_at_scan.append(rs.get_degrees())
         yield from self.move_delay_line(self.t_list[0]-200)
 
     def scan(self) -> Generator:
-        start_t = time.time()
         c = self.controller
         self.time_tracker.scan_starting()
         # -- scan
@@ -151,7 +151,7 @@ class PumpProbeData(QObject):
     cam: Cam
     plan: PumpProbePlan
     cwl: List[float] = attrib()
-    t_list: Iterable[float]
+    t_list: np.ndarray
     scan: int = 0
     delay_scans: int = 0
     wl_idx: int = 0
