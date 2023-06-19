@@ -104,10 +104,13 @@ class Scan:
         return p, pr, ref, ex
 
     def check_for_holes(self):
-        x, y = self.get_data()[:2]
+        x, y, y3 = self.get_data()[:3]
         xd = np.diff(x)
         yd = np.diff(y)/y.ptp()
+        yd3 = np.diff(y3) / y3.ptp()
         i = (np.abs(yd) > self.max_diff) & (xd > self.min_step)
+        i2 = (np.abs(yd3) > self.max_diff) & (xd > self.min_step)
+        i = np.logical_or(i, i2)
         if np.any(i):
             first = np.argmax(i)
             return (x[first+1]+x[first])/2

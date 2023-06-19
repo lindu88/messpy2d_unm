@@ -92,6 +92,8 @@ class PhaseTecCam(ICam):
 
     def load_state(self):
         super().load_state()
+        if self.shots > 1000:
+            self.shots = 20
         self.set_shots(self.shots)
 
     def set_shots(self, shots: int):
@@ -204,7 +206,7 @@ class PhaseTecCam(ICam):
                 if self.beta1 is not None:
                     dp = probe.data[:, ::2] - probe.data[:, 1::2]
                     dp2 = probe2.data[:, ::2] - probe2.data[:, 1::2]
-                    dr = ref.data[::8, ::2] - ref.data[::8, 1::2]
+                    dr = ref.data[::1, ::2] - ref.data[::1, 1::2]
                     dp = (dp - self.beta1.T @ dr)
                     dp2 = (dp2 - self.beta2.T @ dr)
 
@@ -259,9 +261,11 @@ class PhaseTecCam(ICam):
         probe2 = specs['Probe2'].data
         ref = specs['Ref'].data
 
-        dp1 = probe[:, ::2] - probe[:, 1::2]
-        dp2 = probe2[:, ::2] - probe2[:, 1::2]
-        dr = ref[::8, ::2] - ref[::8, 1::2]
+        #dp1 = probe[:, ::2] - probe[:, 1::2]
+        #dp2 = probe2[:, ::2] - probe2[:, 1::2]
+        dp1 = np.diff(probe, axis=1)
+        dp2 = np.diff(probe2, axis=1)
+        dr = np.diff(ref, axis=1)[::1, :]
 
         self.beta1 = np.linalg.lstsq(dr.T, dp1.T, rcond=-1)[0]
         self.beta2 = np.linalg.lstsq(dr.T, dp2.T, rcond=-1)[0]
