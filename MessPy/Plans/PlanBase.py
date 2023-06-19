@@ -28,6 +28,7 @@ sample_parameters = {'name': 'Sample', 'type': 'group', 'children': [
 
 @attr.s(auto_attribs=True)
 class TimeTracker(QObject):
+    """Class to track times for scans and points."""
     start_time: float = attr.Factory(time.time)
     scan_start_time: float = 0
     scan_end_time: Optional[float] = None
@@ -42,29 +43,35 @@ class TimeTracker(QObject):
 
     @property
     def total_duration(self):
+        """Time elapsed since start of scan."""
         return time.time() - self.start_time
 
     @Slot()
     def scan_starting(self):
+        """Record start time of scan."""
         self.scan_start_time = time.time()
         self.scan_end_time = None
 
     @Slot()
     def scan_ending(self):
+        """Record end time of scan."""
         self.scan_end_time = time.time()
         self.scan_duration = self.scan_end_time - self.scan_start_time
 
     @Slot()
     def point_starting(self):
+        """Record start time of point."""
         self.point_start_time = time.time()
 
     @Slot()
     def point_ending(self):
+        """Record end time of point."""
         self.point_end_time = time.time()
         self.point_duration = self.point_end_time - self.point_start_time
         self.as_string()
 
     def as_string(self) -> str:
+        """Format time information as a string."""
         s = f"""
         <h4>Time-Information</h4>
         Total Time: {timedelta(seconds=self.total_duration)}<br>
@@ -88,6 +95,7 @@ class Plan(QObject):
     is_async: bool = False
     time_tracker: TimeTracker = attr.Factory(TimeTracker)
     file_name: Tuple[Path, Path] | None = None
+    
     sigPlanFinished: ClassVar[Signal] = Signal()
     sigPlanStarted: ClassVar[Signal] = Signal()
     sigPlanStopped: ClassVar[Signal] = Signal()
