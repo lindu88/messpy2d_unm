@@ -32,6 +32,7 @@ class IDevice(QObject, metaclass=QABCMeta):
     name: str
 
     registered_devices: T.ClassVar[T.List['IDevice']] = []
+    interface_type: T.ClassVar[str] = "Generic"
 
     def __attrs_post_init__(self):
         QObject.__init__(self)
@@ -104,6 +105,8 @@ class ISpectrograph(IDevice):
     sigSlitChanged = Signal(float)
     sigGratingChanged = Signal(int)
 
+    interface_type: T.ClassVar[str] = "Spectrograph"
+
     @property
     def gratings(self):
         return [0]
@@ -143,6 +146,8 @@ class ICam(IDevice):
     spectrograph: T.Optional[ISpectrograph] = None
 
     can_validate_pixel: bool = False
+
+    interface_type: T.ClassVar[str] = "Camera"
 
     @property
     def sig_lines(self):
@@ -230,6 +235,8 @@ class IDelayLine(IDevice):
     max_pos: float = np.inf
     min_pos: float = -np.inf
 
+    interface_type: T.ClassVar[str] = "DelayLine"
+
     def get_state(self) -> dict:
         return dict(home_pos=self.home_pos)
 
@@ -311,6 +318,8 @@ class IRotationStage(IDevice):
     sigDegreesChanged: typing.ClassVar[Signal] = Signal(float)
     sigMovementCompleted: typing.ClassVar[Signal] = Signal()
 
+    interface_type: T.ClassVar[str] = "RotationStage"
+
     @abc.abstractmethod
     def set_degrees(self, deg: float):
         pass
@@ -342,6 +351,8 @@ class IRotationStage(IDevice):
 class ILissajousScanner(IDevice):
     pos_home: T.Tuple[float, float] = (0, 0)
     has_zaxis: bool = False
+
+    interface_type: T.ClassVar[str] = "LissajousScanner"
 
     def init_motor(self):
         pass
@@ -380,6 +391,7 @@ class ILissajousScanner(IDevice):
 
 @attr.s(kw_only=True, auto_attribs=True)
 class IPowerMeter(IDevice):
+    interface_type: T.ClassVar[str] = "PowerMeter"
 
     @abc.abstractmethod
     def read_power(self) -> float:
