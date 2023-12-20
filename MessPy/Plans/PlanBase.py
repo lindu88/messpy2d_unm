@@ -36,6 +36,7 @@ class TimeTracker(QObject):
     point_start_time: float = 0
     point_end_time: Optional[float] = None
     point_duration: Optional[float] = None
+
     sigTimesUpdated: ClassVar[Signal] = Signal(str)
 
     def __attrs_post_init__(self):
@@ -95,7 +96,7 @@ class Plan(QObject):
     is_async: bool = False
     time_tracker: TimeTracker = attr.Factory(TimeTracker)
     file_name: Tuple[Path, Path] | None = None
-    
+
     sigPlanFinished: ClassVar[Signal] = Signal()
     sigPlanStarted: ClassVar[Signal] = Signal()
     sigPlanStopped: ClassVar[Signal] = Signal()
