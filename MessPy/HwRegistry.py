@@ -83,10 +83,12 @@ elif pc_name == 'DESKTOP-BBLLUO7':
     _cam = PhaseTecCam()
     #_cam = CamMock()
     _cam2 = None
-    from MessPy.Instruments.delay_line_apt import DelayLine
-    _dl = DelayLine(name="VisDelay")
-    #from MessPy.Instruments.delay_line_newport import NewportDelay
-    #_dl = NewportDelay(name='IR Delay', pos_sign=-1)
+    #from MessPy.Instruments.delay_line_apt import DelayLine
+    #_dl = DelayLine(name="VisDelay")
+    from MessPy.Instruments.delay_dg535 import GeneratorDelayline
+    #_dl = GeneratorDelayline(port='COM10')
+    from MessPy.Instruments.delay_line_newport import NewportDelay
+    _dl = NewportDelay(name='IR Delay', pos_sign=-1)
     from MessPy.Instruments.dac_px import AOM, AOMShutter
     _shaper = AOM(name='AOM')
     aom_shutter = AOMShutter(aom=_shaper)
@@ -98,9 +100,9 @@ elif pc_name == 'DESKTOP-BBLLUO7':
     _shaper.rot2 = r2
     from MessPy.Instruments.shutter_topas import TopasShutter
     from MessPy.Instruments.shutter_phidget import PhidgetShutter
-    from MessPy.Instruments.stage_smartact import SmarActXYZ
+    #from MessPy.Instruments.stage_smartact import SmarActXYZ
     _shutter = [TopasShutter(), aom_shutter, PhidgetShutter()]
-    _sh = SmarActXYZ()
+    #_sh = SmarActXYZ()
     _power_meter = None
     #try:
     #    from MessPy.Instruments.cam_power import PowerCam
