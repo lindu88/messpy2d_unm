@@ -61,7 +61,7 @@ class Cam(QObject):
         self.disp_axis = self.wavelengths.copy()
 
     def _update_wl_arrays(self, cwl=None):
-        self.wavelengths[:] = self.get_wavelengths()
+        self.wavelengths[:] = self.get_wavelengths(cwl)
         self.wavenumbers[:] = 1e7 / self.wavelengths
         if self.disp_wavelengths:
             self.disp_axis[:] = self.wavelengths
@@ -112,10 +112,9 @@ class Cam(QObject):
 
     def set_slit(self, slit):
         if self.cam.spectrograph is not None:
-
             self.cam.spectrograph.set_slit(slit)
             slit = self.cam.spectrograph.get_slit()
-            self.sigSlitChanged.emit(slit)
+            self.cam.spectrograph.sigSlitChanged.emit(slit)
         else:
             raise AttributeError("No slit installed")
 
@@ -205,7 +204,7 @@ class Controller(QObject):
     starting_plan: T.ClassVar[Signal] = Signal(bool)
 
     def __attrs_post_init__(self):
-        super(QObject, self).__init__()
+        super().__init__()
         self.cam = Cam()
         self.shutter = _shutter
         self.cam_list = [self.cam]

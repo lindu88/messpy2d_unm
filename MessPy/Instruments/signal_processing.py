@@ -4,7 +4,7 @@ from typing import Optional, Callable, Union, Literal
 import attr
 import numpy as np
 from scipy.constants import c
-from numba import jit, prange
+from numba import njit, prange
 
 LOG10 = math.log(10)
 f = Union[float, np.ndarray]
@@ -17,7 +17,7 @@ def cm2THz(cm: f) -> f:
     return c * cm / 1e10
 
 
-@jit(cache=True)
+@njit(cache=True)
 def first(arr, val: float) -> int:
     for i, x in enumerate(arr):
         if x > val:
@@ -36,7 +36,7 @@ def stats(probe, probe_max=None):
     return probe_mean, probe_std, probe_max
 
 
-@jit(parallel=True, cache=True)
+@njit(parallel=True, cache=True)
 def fast_stats2d(arr):
     """
     For a given 2-dimensional array calculate mean, std, min_val and max_val along the second dimension
@@ -48,7 +48,7 @@ def fast_stats2d(arr):
         res[i, :] = fast_stats(arr[i, :])
     return res
 
-@jit(fastmath=True, cache=True)
+@njit(fastmath=True, cache=True)
 def fast_stats(arr):
     """
     For a given 1-dimensional array calculate mean, std, min_val and max_val in a single pass.
@@ -73,7 +73,7 @@ def fast_stats(arr):
     std = math.sqrt(var)
     return mean, std, min_val, max_val
 
-@jit(fastmath=True, cache=True)
+@njit(fastmath=True, cache=True)
 def fast_signal(arr):
     sig = 0
     mean = 0
@@ -86,7 +86,7 @@ def fast_signal(arr):
     return 1000/LOG10*sig/mean
 
 
-@jit(parallel=True, cache=True)
+@njit(parallel=True, cache=True)
 def fast_signal2d(arr):
     """
     For a given 2-dimensional array calculate mean, std, min_val and max_val along the second dimension
@@ -99,7 +99,7 @@ def fast_signal2d(arr):
     return res
 
 
-@jit(parallel=True, cache=True)
+@njit(parallel=True, cache=True)
 def fast_col_mean(arr, idx):
     """
     Given a (pixel_a, pixel_b, shots) array together with a index array
@@ -217,4 +217,4 @@ class Reading2D:
         if self.window is not None:
             win = self.window(a.shape[1] * 2)
             a = a * win[None, a.shape[1]:]
-        return np.fft.rfft(a, a.shape[1] * self.upsample, 1).real
+        return np.fft.rfft(a, a.shape[1] * self.upsample, 1).real

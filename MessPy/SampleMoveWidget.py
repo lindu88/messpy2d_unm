@@ -5,13 +5,13 @@ from qtpy.QtGui import QFont, QIntValidator, QKeyEvent, QIcon, QPixmap, QFocusEv
 from qtpy.QtWidgets import (QMainWindow, QApplication, QWidget, QLineEdit, QDockWidget, QShortcut,
                             QPushButton, QLabel, QVBoxLayout, QSizePolicy, QFormLayout,
                             QToolBar, QCheckBox)
-from qtpy.QtSvg import QSvgWidget
+
 from MessPy.QtHelpers import vlay, hlay
 
 from MessPy.Instruments.interfaces import ILissajousScanner
 
 
-@attr.define
+@attr.define(slots=False)
 class ScannerMover(QObject):
     @Slot()
     def move_left(self):

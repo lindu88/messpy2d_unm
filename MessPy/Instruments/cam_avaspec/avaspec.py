@@ -62,7 +62,7 @@ class MeasurmentSettings:
     uint32              m_NrAverages;		   // 4
     DarkCorrectionType  m_CorDynDark;          // 2
     SmoothingType       m_Smoothing;		   // 3
-    uint8               m_SaturationDetection; // 1 
+    uint8               m_SaturationDetection; // 1
     TriggerType         m_Trigger;			   // 3
     ControlSettingsType m_Control;			   // 16
     } MeasConfigType;"""
@@ -165,10 +165,11 @@ class AvantesSpec:
         self.analog_in = np.empty(self.shots, dtype='int')
         self.is_reading = True
         self.count = 0
-        self.ardudino.flushInput()
         Avaspec.AVS_MeasureCallback(hdl, callback, -2)
 
-        self.ardudino.write(b'%d\n' % self.shots)
+        if self.ardudino is not None:
+            self.ardudino.flushInput()
+            self.ardudino.write(b'%d\n' % self.shots)
         #ans = self.ardudino.read_until(b'\r\n')
         #print(ans)
         #assert(ans == '%d\r\n'%self.shots)
@@ -179,10 +180,11 @@ class AvantesSpec:
         def callback(handle, intp):
             scope_data = self.device.GetScopeData()[1]
             self.data[:scope_data.size, self.count] = scope_data#[:self.wl_index[1]-self.wl_index[0]]
-            out = self.ardudino.read(2)
-            c, a = out
-            self.chopper[self.count] = c
-            self.analog_in[self.count] = a
+            if self.ardudino is not None:
+                out = self.ardudino.read(2)
+                c, a = out
+                self.chopper[self.count] = c
+                self.analog_in[self.count] = a
             self.count += 1
 
             if self.count == self.shots:

@@ -287,8 +287,9 @@ class PhaseTecCam(ICam):
     def remove_background(self):
         self.background = None
 
-    def get_wavelength_array(self, center_wl):
-        center_wl = self.spectrograph.get_wavelength()
+    def get_wavelength_array(self, center_wl=None):
+        if center_wl is None:
+            center_wl = self.spectrograph.get_wavelength()
         grating = self.spectrograph._last_grating
         disp = 7.8
         if grating == 1:

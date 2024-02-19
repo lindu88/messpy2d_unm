@@ -393,6 +393,8 @@ class DelayLineControl(QGroupBox):
 
 def start_app():
     import sys
+    import os
+    os.environ['QT_API'] = 'pyside6'
     import qasync
     import asyncio as aio
     import traceback

@@ -1,5 +1,6 @@
 import asyncio
 import matplotlib.pyplot as plt
+
 from pyqtgraph.widgets.PlotWidget import PlotWidget
 from qasync import asyncSlot
 from qtpy.QtWidgets import (

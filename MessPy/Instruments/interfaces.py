@@ -32,6 +32,7 @@ class IDevice(QObject, metaclass=QABCMeta):
     name: str
 
     registered_devices: T.ClassVar[T.List['IDevice']] = []
+    interface_type: T.ClassVar[str] = "Generic"
 
     def __attrs_post_init__(self):
         QObject.__init__(self)
@@ -85,8 +86,9 @@ class IDevice(QObject, metaclass=QABCMeta):
                 d = json.load(f)
             for key, val in d.items():
                 if not hasattr(self, key):
-                    warnings.warn(f"Config file for {self.name} has value for {key}, which is not "
-                                  f"an attribute of the class.")
+                    #warnings.warn(f"Config file for {self.name} has value for {key}, which is not "
+                    #              f"an attribute of the class.")
+                    pass
                 if key not in exclude:
                     setattr(self, key, val)
         except FileNotFoundError:
@@ -102,6 +104,8 @@ class ISpectrograph(IDevice):
     sigWavelengthChanged = Signal(float)
     sigSlitChanged = Signal(float)
     sigGratingChanged = Signal(int)
+
+    interface_type: T.ClassVar[str] = "Spectrograph"
 
     @property
     def gratings(self):
@@ -142,6 +146,8 @@ class ICam(IDevice):
     spectrograph: T.Optional[ISpectrograph] = None
 
     can_validate_pixel: bool = False
+
+    interface_type: T.ClassVar[str] = "Camera"
 
     @property
     def sig_lines(self):
@@ -226,6 +232,10 @@ class IDelayLine(IDevice):
     home_pos: float = attr.Factory(_try_load)
     pos_sign: float = 1
     beam_passes: int = 2
+    max_pos: float = np.inf
+    min_pos: float = -np.inf
+
+    interface_type: T.ClassVar[str] = "DelayLine"
 
     def get_state(self) -> dict:
         return dict(home_pos=self.home_pos)
@@ -244,8 +254,11 @@ class IDelayLine(IDevice):
 
     def move_fs(self, fs, do_wait=False, *args, **kwargs):
         mm = self.pos_sign * fs_to_mm(fs)
-        # print('mm', mm+self.home_pos)
-        self.move_mm(mm / self.beam_passes + self.home_pos, *args, **kwargs)
+        new_pos = mm / self.beam_passes + self.home_pos
+        if not self.min_pos <= new_pos <= self.max_pos:
+            raise ValueError(f"New position {new_pos} is outside of the allowed range "
+                             f"[{self.min_pos}, {self.max_pos}]")
+        self.move_mm(new_pos, *args, **kwargs)
         if do_wait:
             while self.is_moving():
                 time.sleep(0.1)
@@ -305,6 +318,8 @@ class IRotationStage(IDevice):
     sigDegreesChanged: typing.ClassVar[Signal] = Signal(float)
     sigMovementCompleted: typing.ClassVar[Signal] = Signal()
 
+    interface_type: T.ClassVar[str] = "RotationStage"
+
     @abc.abstractmethod
     def set_degrees(self, deg: float):
         pass
@@ -336,6 +351,8 @@ class IRotationStage(IDevice):
 class ILissajousScanner(IDevice):
     pos_home: T.Tuple[float, float] = (0, 0)
     has_zaxis: bool = False
+
+    interface_type: T.ClassVar[str] = "LissajousScanner"
 
     def init_motor(self):
         pass
@@ -372,8 +389,9 @@ class ILissajousScanner(IDevice):
         raise NotImplementedError
 
 
-@attr.define(kw_only=True)
+@attr.s(kw_only=True, auto_attribs=True)
 class IPowerMeter(IDevice):
+    interface_type: T.ClassVar[str] = "PowerMeter"
 
     @abc.abstractmethod
     def read_power(self) -> float:

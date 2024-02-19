@@ -219,14 +219,14 @@ class PlanStarter(Protocol):
         pass
 
 
-class QProtocolMetaMeta(type(QObject), PlanStarter):
+class QProtocolMetaMeta(type(QObject), type(PlanStarter)):
     pass
 
 
 class PlanStartDialog(QDialog, metaclass=QProtocolMetaMeta):
-    experiment_type = ''
-    title = ''
-    icon = ''
+    experiment_type: str = ''
+    title: str = ''
+    icon: str = ''
     paras: pt.Parameter
 
     def __init__(self, controller: 'Controller', *args, **kwargs):
@@ -497,6 +497,8 @@ def make_groupbox(widgets, title=''):
 
 
 def hlay(*widgets, post_stretch=False, pre_stretch=False):
+    """Return a QHBoxLayout with widgets, with optional stretch at the start or end.
+    """
     lay = QHBoxLayout()
     if len(widgets) == 1:
         if isinstance(widgets[0], (list, tuple)):
@@ -516,6 +518,9 @@ def hlay(*widgets, post_stretch=False, pre_stretch=False):
 
 
 def vlay(*widgets, add_stretch=False):
+    """
+    Creates a vertical layout. If add_stretch is True, adds a stretch at the end.
+    """
     lay = QVBoxLayout()
     if len(widgets) == 1:
         if isinstance(widgets[0], (list, tuple)):
@@ -534,11 +539,12 @@ def partial_formatter(val):
     if val == 0:
         return '0'
     else:
-        sign = val/val
+        sign = val/abs(val)
+        sign = ' ' if sign > 0 else '-'
     if math.log10(abs(val)) >= 3:
-        return '%dk' % (val/1000)
+        return sign + '%dk' % (abs(val)/1000)
     else:
-        return str(val)
+        return sign + str(abs(val))
 
 
 def remove_nodes(a):
