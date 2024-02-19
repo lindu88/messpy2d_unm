@@ -11,7 +11,7 @@ class DelayParameter(GroupParameter):
         GroupParameter.__init__(self, **opts)
         time_parameters = [{'name': 'Linear Range (-)', 'suffix': 'ps', 'type': 'float', 'value': -1, 'step': 0.05},
                            {'name': 'Linear Range (+)', 'suffix': 'ps', 'type': 'float', 'value': 1, 'step': 0.05},
-                           {'name': 'Linear Range (step)', 'suffix': 'ps', 'type': 'float', 'min': 0.01, 'step': 0.05},
+                           {'name': 'Linear Range (step)', 'suffix': 'ps', 'type': 'float', 'min': 0.001, 'step': 0.05},
                            {'name': 'Logarithmic Scan', 'type': 'bool'},
                            {'name': 'Logarithmic End', 'type': 'float', 'suffix': 'ps',
                             'min': 0.1, 'value':100},
