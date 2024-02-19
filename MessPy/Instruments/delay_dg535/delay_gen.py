@@ -55,7 +55,7 @@ class DG535:
 
 
 if __name__ == '__main__':
-    dg = DG535()
+    dg = DG535(port='COM10')
     dg.cmd('DS\n')
     for i in range(100):
         for j in range(20):
