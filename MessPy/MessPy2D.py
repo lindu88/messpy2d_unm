@@ -171,10 +171,11 @@ class MainWindow(QMainWindow):
         super(MainWindow, self).closeEvent(*args, **kwargs)
 
     def readSettings(self):
-        settings = QSettings()
-        if settings.contains("geometry"):
-            self.restoreGeometry(settings.value("geometry"))
-            self.restoreState(settings.value("windowState"))
+        pass
+        #settings = QSettings()
+        #if settings.contains("geometry"):
+        #    self.restoreGeometry(settings.value("geometry"))
+        #    self.restoreState(settings.value("windowState"))
 
 
 class CommandMenu(QWidget):
