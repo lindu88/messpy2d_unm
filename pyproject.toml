@@ -1,19 +1,18 @@
-[metadata]
-name = MessPy
-author = Till Stensitzki
-author_email = mail.till@gmx.de
-description = A Python application for ultrafast spectroscopy experimental control.
-
-[options]
-install_requires = [ 
-    lmfit, 
-    matplotlib,
-    numba,
-    numpy, 
-    pyqtgraph 
-    qtawesome 
-    qtpy 
-    scipy
+[project]
+author = "Till Stensitzki"
+author_email = "mail.till@gmx.de"
+dependencies = [
+  "lmfit",
+  "matplotlib",
+  "numba",
+  "numpy",
+  "pyqtgraph",
+  "qtawesome",
+  "qtpy",
+  "scipy",
+  "attrs",
 ]
-packages = find:
-python_requires = >=3.8
+description = "A python application for ultrafast spectroscopy experimental control."
+name = "MessPy"
+readme = "README.md"
+requires_python = ">=3.10"
