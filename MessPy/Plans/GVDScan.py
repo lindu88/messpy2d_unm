@@ -33,6 +33,7 @@ class GVDScan(Plan):
     settings_before: dict = attr.Factory(dict)
 
     sigPointRead = Signal()
+    plan_shorthand: T.ClassVar[str] = 'GVDscan'
 
     def __attrs_post_init__(self):
         super(GVDScan, self).__attrs_post_init__()

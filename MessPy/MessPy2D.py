@@ -435,5 +435,5 @@ def start_app():
     loop = qasync.QEventLoop()
 
     aio.set_event_loop(loop)
-
+    loop.run_forever()
     app.exec()

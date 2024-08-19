@@ -7,7 +7,7 @@ import pyqtgraph as pg
 from qtpy.QtCore import QObject, Signal
 from qtpy.QtWidgets import *
 from qasync import QEventLoop, asyncSlot
-from typing import List, Callable, Tuple
+from typing import List, Callable, Tuple, ClassVar
 from MessPy.Instruments.interfaces import ICam
 import asyncio
 import asyncio as aio
@@ -35,6 +35,7 @@ class CalibPlan(AsyncPlan):
     is_async: bool = True
 
     sigStepDone = Signal()
+    plan_shorthand: ClassVar[str] = 'Calibration'
 
     def __attrs_post_init__(self):
         super(CalibPlan, self).__attrs_post_init__()
