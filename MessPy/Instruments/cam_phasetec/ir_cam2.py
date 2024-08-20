@@ -15,13 +15,13 @@ with open('pt_2dmct.h') as f:
     PT_DLL.cdef(''.join(cdefs))
 """ Binning Modes
   Index	Columns x Rows 	Max. Frame Rate
-  0	128 x 128	(1.610 kHz)
-  1	128 x 64	(2.899 kHz)
-  2	128 x 56	(3.220 kHz)
-  3	128 x 32	(4.830 kHz)
-  4	128 x 16	(7.246 kHz)
-  5	96 x 64	(3.773 kHz)
-  6	96 x 32	(6.289 kHz)
+  0	    128 x 128	    (1.610 kHz)
+  1     128 x 64	    (2.899 kHz)
+  2     128 x 56	    (3.220 kHz)
+  3     128 x 32	    (4.830 kHz)
+  4     128 x 16	    (7.246 kHz)
+  5     96 x 64	        (3.773 kHz)
+  6     96 x 32	        (6.289 kHz)
 """
 
 BINNING_MODES = [(128, 128), (128, 64), (128, 56), (128, 32), (128, 16),
@@ -31,7 +31,7 @@ BINNING_MODES = [(128, 128), (128, 64), (128, 56), (128, 32), (128, 16),
 @attr.s
 class PT_MCT:
     shots: int = attr.ib(50)
-    int_time_us : int = attr.ib(50)
+    int_time_us: int = attr.ib(50)
     binning_mode: int = attr.ib(0)
     gain: int = attr.ib(8)
     offset: int = attr.ib(128)
@@ -66,14 +66,14 @@ class PT_MCT:
         self._errchk(err)
         return TempK[0]
 
-
     def read_cam(self):
         rows, cols = BINNING_MODES[self.binning_mode]
-        #p = PT_DLL.new('Uint16Array***', init=self._data)
+        # p = PT_DLL.new('Uint16Array***', init=self._data)
         self.arr = np.empty((rows, cols, self.shots), dtype=np.uint16)
         p = PT_DLL.from_buffer('uint16_t[]', self.arr)
         t = time.time()
-        self._dll.PT_2DMCT_GetFrames(self.shots, cols, rows, self.use_trigger, p, self.arr.size)
+        self._dll.PT_2DMCT_GetFrames(
+            self.shots, cols, rows, self.use_trigger, p, self.arr.size)
         print("DLL CALL", time.time()-t)
 
 

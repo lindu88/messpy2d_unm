@@ -7,7 +7,7 @@ from pathlib import Path
 import attr
 
 import numpy as np
-from qtpy.QtCore import QObject, Signal
+from PySide6.QtCore import QObject, Signal
 
 from MessPy.Config import config
 from MessPy.ControlClasses import Cam
@@ -24,7 +24,7 @@ class GVDScan(Plan):
     gvd_idx: int = 0
     waiting_time: float = 0.1
     timeout: float = 3
-    scan_mode: T.Literal['GVD', 'TOD', 'FOD'] = 'GVD'
+    scan_mode: T.Literal["GVD", "TOD", "FOD"] = "GVD"
     gvd: float = 0
     tod: float = 0
     fod: float = 0
@@ -33,7 +33,7 @@ class GVDScan(Plan):
     settings_before: dict = attr.Factory(dict)
 
     sigPointRead = Signal()
-    plan_shorthand: T.ClassVar[str] = 'GVDscan'
+    plan_shorthand: T.ClassVar[str] = "GVDscan"
 
     def __attrs_post_init__(self):
         super(GVDScan, self).__attrs_post_init__()
@@ -45,8 +45,8 @@ class GVDScan(Plan):
         self.probe = np.zeros((n_disp, n_pix))
         self.probe2 = np.zeros((n_disp, n_pix))
         self.ref = np.zeros((n_disp, n_pix))
-        self.signal = np.zeros((n_disp,  n_pix, self.cam.sig_lines))
-        self.settings_before['shots'] = self.cam.shots
+        self.signal = np.zeros((n_disp, n_pix, self.cam.sig_lines))
+        self.settings_before["shots"] = self.cam.shots
         gen = self.make_step_gen()
         self.make_step = lambda: next(gen)
 
@@ -57,8 +57,8 @@ class GVDScan(Plan):
         self.cam.set_shots(self.shots)
 
         for self.gvd_idx, value in enumerate(self.gvd_list):
-            #d = {self.scan_mode: value}
-            setattr(self.aom, self.scan_mode.lower(), value*1000)
+            # d = {self.scan_mode: value}
+            setattr(self.aom, self.scan_mode.lower(), value * 1000)
             self.aom.update_dispersion_compensation()
             t = threading.Thread(target=time.sleep, args=(self.waiting_time,))
             t.start()
@@ -83,7 +83,7 @@ class GVDScan(Plan):
 
         self.save()
         yield
-        self.cam.set_shots(self.settings_before['shots'])
+        self.cam.set_shots(self.settings_before["shots"])
         self.sigPlanFinished.emit()
 
     def get_name(self, data_path=False):
@@ -106,24 +106,24 @@ class GVDScan(Plan):
 
     def save(self):
         return
-        data = {'cam': self.cam.name}
+        data = {"cam": self.cam.name}
         # data['meta'] = self.meta
-        data['wl'] = self.wls
-        data['probe'] = self.probe
-        data['ref'] = self.ref
-        data['signal'] = self.signal
+        data["wl"] = self.wls
+        data["probe"] = self.probe
+        data["ref"] = self.ref
+        data["signal"] = self.signal
         fig = plt.figure()
-        plt.plot(self.wls[:, 64], self.probe[:, 64], label='Probe')
-        plt.plot(self.wls[:, 64], self.ref[:, 64], label='Ref')
+        plt.plot(self.wls[:, 64], self.probe[:, 64], label="Probe")
+        plt.plot(self.wls[:, 64], self.ref[:, 64], label="Ref")
         plt.legend()
         fig.show()
         try:
             name = self.get_name(data_path=config.data_directory)
             np.savez(name, **data)
-            fig.savefig(name[:-4] + '.png')
-            print('saved in results')
+            fig.savefig(name[:-4] + ".png")
+            print("saved in results")
         except:
             name = self.get_name()
             np.savez(name, **data)
-            fig.savefig(name[:-4] + '.png')
-            print('saved in local temp')
+            fig.savefig(name[:-4] + ".png")
+            print("saved in local temp")

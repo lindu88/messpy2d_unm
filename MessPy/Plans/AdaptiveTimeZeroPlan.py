@@ -5,7 +5,7 @@ import attr
 import lmfit
 import numpy as np
 from lmfit.model import ModelResult
-from qtpy.QtCore import Signal
+from PySide6.QtCore import Signal
 from scipy.special import erf
 
 from MessPy.ControlClasses import Cam, DelayLine
@@ -28,7 +28,7 @@ def fit_step_function(t, data) -> ModelResult:
     b = data[np.argmin(t)]
     t0 = t[np.argmin(np.abs(data - (a - b) / 2))]
     sigma = 0.1
-    step_amp = a-b
+    step_amp = a - b
     back = b
 
     model = lmfit.Model(gaussian_step)
@@ -40,7 +40,7 @@ def fit_step_function(t, data) -> ModelResult:
 class AdaptiveTimeZeroPlan(AsyncPlan):
     cam: Cam
     delay_line: DelayLine
-    mode: Literal['mean', 'max'] = 'mean'
+    mode: Literal["mean", "max"] = "mean"
     is_running: bool = True
     min_diff: float = 1
     max_diff: float = 4
@@ -50,8 +50,8 @@ class AdaptiveTimeZeroPlan(AsyncPlan):
     current_step: float = 0.2
     shots: int = 100
     min_step: float = 0.05
-    plan_shorthand: ClassVar[str] = 'AutoZero'
-    is_async:  bool = True
+    plan_shorthand: ClassVar[str] = "AutoZero"
+    is_async: bool = True
     positions: list[float] = attr.Factory(list)
     values: list[float] = attr.Factory(list)
 
@@ -61,7 +61,7 @@ class AdaptiveTimeZeroPlan(AsyncPlan):
         dl = self.delay_line
         await self.move_dl(self.start)
         cam = self.cam
-        start_pos = dl.get_pos()/1000.
+        start_pos = dl.get_pos() / 1000.0
         self.cam.set_shots(self.shots)
         cur_signal = await self.read_point()
         self.sigPlanStarted.emit()
@@ -81,11 +81,11 @@ class AdaptiveTimeZeroPlan(AsyncPlan):
     def check_for_holes(self):
         x, y = self.get_data()
         xd = np.diff(x)
-        yd = np.diff(y)/y.ptp()
+        yd = np.diff(y) / y.ptp()
         i = (np.abs(yd) > self.max_diff) & (xd > self.min_step)
         if np.any(i):
             first = np.argmax(i)
-            return (x[first+1]+x[first])/2
+            return (x[first + 1] + x[first]) / 2
         else:
             return False
 
@@ -103,7 +103,7 @@ class AdaptiveTimeZeroPlan(AsyncPlan):
 
     async def move_dl(self, pos):
         loop = asyncio.get_running_loop()
-        await loop.run_in_executor(None, self.delay_line.set_pos, 1000*pos, True)
+        await loop.run_in_executor(None, self.delay_line.set_pos, 1000 * pos, True)
 
     def get_data(self):
         x, y = self.positions, self.values
@@ -117,10 +117,10 @@ class AdaptiveTimeZeroPlan(AsyncPlan):
         self.delay_line.set_pos(pos * 1000)
         self.delay_line.set_home()
         x, y = self.get_data()
-        self.positions = (x-pos).tolist()
+        self.positions = (x - pos).tolist()
 
     def save(self):
         self.save_meta()
         fpath = self.get_file_name()[0]
         x, y = self.get_data()
-        np.savetxt(fpath.with_suffix('.txt'), np.column_stack((x, y)))
+        np.savetxt(fpath.with_suffix(".txt"), np.column_stack((x, y)))

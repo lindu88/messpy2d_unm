@@ -1,10 +1,14 @@
 # from Config import config
 import attr
-from qtpy.QtCore import QTimer, Qt, QThread, QObject, Slot
-from qtpy.QtGui import QFont, QIntValidator, QKeyEvent, QIcon, QPixmap, QFocusEvent
-from qtpy.QtWidgets import (QMainWindow, QApplication, QWidget, QLineEdit, QDockWidget, QShortcut,
-                            QPushButton, QLabel, QVBoxLayout, QSizePolicy, QFormLayout,
-                            QToolBar, QCheckBox)
+from PySide6.QtCore import QTimer, Qt, QObject, Slot
+from PySide6.QtGui import QKeyEvent, QPixmap, QFocusEvent
+from PySide6.QtWidgets import (
+    QApplication,
+    QWidget,
+    QLineEdit,
+    QPushButton,
+    QLabel,
+)
 
 from MessPy.QtHelpers import vlay, hlay
 
@@ -35,24 +39,24 @@ class MoveWidget(QWidget):
         super().__init__()
         self.scanner = sh
         self.setFocusPolicy(Qt.StrongFocus)
-        home_button = QPushButton('Set Home')
+        home_button = QPushButton("Set Home")
         home_button.clicked.connect(lambda: self.scanner.set_home())
-        goto_home = QPushButton('Go Home')
+        goto_home = QPushButton("Go Home")
         goto_home.clicked.connect(lambda: self.scanner.set_pos_mm(0, 0))
-        self.move_button = QPushButton('Cont. Move.')
+        self.move_button = QPushButton("Cont. Move.")
         self.move_button.setCheckable(True)
         self.move_button.setChecked(False)
         self.move_button.toggled.connect(self.mover)
         buttons = hlay([home_button, goto_home, self.move_button])
         pos_str = str(self.scanner.pos_home)
         self.home_label = QLabel()
-        self.label_updater(self.scanner.get_pos_mm(),
-                           self.scanner.get_zpos_mm())
-        self.help_button = QPushButton('Help')
+        self.label_updater(self.scanner.get_pos_mm(), self.scanner.get_zpos_mm())
+        self.help_button = QPushButton("Help")
         self.help_button.clicked.connect(self.show_help)
         self.setLayout(vlay([self.home_label, buttons, self.help_button]))
         self.timer = QTimer()
         self.timer.timeout.connect(self.update_pos)
+        self.timer.setSingleShot(True)
         self.timer.start(500)
 
         self.K = 0.1
@@ -69,7 +73,7 @@ class MoveWidget(QWidget):
 
     def show_help(self):
         self.help_label = QLabel()
-        self.help_label.setPixmap(QPixmap('MotorHelp.png'))
+        self.help_label.setPixmap(QPixmap("MotorHelp.png"))
         self.help_label.setAutoFillBackground(False)
         self.help_label.show()
 
@@ -90,6 +94,9 @@ class MoveWidget(QWidget):
         x, y = self.scanner.get_pos_mm()
         z = self.scanner.get_zpos_mm()
         self.label_updater((x, y), z)
+        app = QApplication.instance()
+        if app:
+            self.timer.singleShot(500, self.update_pos)
 
     def keyPressEvent(self, a0: QKeyEvent) -> None:
         key = a0.key()
@@ -134,40 +141,41 @@ class MoveWidget(QWidget):
 
     def label_updater(self, new_pos, zpos):
         self.home_label.setText(
-            f' x: {new_pos[0]:.3f}, y: {new_pos[1]:.3f}, z: {zpos: .1f}')
+            f" x: {new_pos[0]:.3f}, y: {new_pos[1]:.3f}, z: {zpos: .1f}"
+        )
 
 
 class SettingsMoveWidget(QWidget):
     def __init__(self, mw: MoveWidget, *args, **kwargs):
         super(SettingsMoveWidget, self).__init__(*args, **kwargs)
         self.mw = mw
-        self.x_button = QPushButton('Set x:')
+        self.x_button = QPushButton("Set x:")
         self.x_button.clicked.connect(self.x_click)
-        self.xlim_label = QLabel('X amp.')
-        self.edit_box_x = QLineEdit('3')
+        self.xlim_label = QLabel("X amp.")
+        self.edit_box_x = QLineEdit("3")
         self.edit_box_x.setMaxLength(3)
         self.edit_box_x.setMaximumWidth(100)
         self.x_limbox = vlay([self.xlim_label, self.edit_box_x])
-        #self.xsteps_label = QLabel('x steps')
-        #self.edit_box_xstep = QLineEdit()
+        # self.xsteps_label = QLabel('x steps')
+        # self.edit_box_xstep = QLineEdit()
         # self.edit_box_xstep.setMaxLength(3)
         # self.edit_box_xstep.setMaximumWidth(100)
         self.x_setter = hlay([self.x_button, self.x_limbox])
 
-        self.y_button = QPushButton('Set y:')
+        self.y_button = QPushButton("Set y:")
         self.y_button.clicked.connect(self.y_click)
-        self.ylim_label = QLabel('y limit')
-        self.edit_box_y = QLineEdit('3')
+        self.ylim_label = QLabel("y limit")
+        self.edit_box_y = QLineEdit("3")
         self.edit_box_y.setMaxLength(3)
         self.edit_box_y.setMaximumWidth(100)
         self.y_limbox = vlay([self.ylim_label, self.edit_box_y])
-        #self.ysteps_label = QLabel('y steps')
-        #self.edit_box_ystep = QLineEdit()
+        # self.ysteps_label = QLabel('y steps')
+        # self.edit_box_ystep = QLineEdit()
         # self.edit_box_ystep.setMaxLength(3)
         # self.edit_box_ystep.setMaximumWidth(100)
-        #self.y_stepbox = vlay([self.ysteps_label, self.edit_box_ystep])
+        # self.y_stepbox = vlay([self.ysteps_label, self.edit_box_ystep])
         self.y_setter = hlay([self.y_button, self.y_limbox])
-        self.start_button = QPushButton('Start Movement:')
+        self.start_button = QPushButton("Start Movement:")
         self.start_button.clicked.connect(self.start_move)
         self.setLayout(vlay([self.x_setter, self.y_setter, self.start_button]))
 
@@ -185,7 +193,7 @@ class SettingsMoveWidget(QWidget):
         self.close()
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     from MessPy.Instruments.stage_smartact import SmarActXYZ
 
     sh = SmarActXYZ()

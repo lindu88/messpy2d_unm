@@ -1,5 +1,14 @@
 import threading
-from typing import TYPE_CHECKING, ClassVar, Callable, Literal, Generator, Tuple, Dict, Optional
+from typing import (
+    TYPE_CHECKING,
+    ClassVar,
+    Callable,
+    Literal,
+    Generator,
+    Tuple,
+    Dict,
+    Optional,
+)
 
 import attr
 import numpy as np
@@ -13,7 +22,7 @@ if TYPE_CHECKING:
     pass
 from MessPy.Instruments.dac_px import AOM
 
-from qtpy.QtCore import Signal
+from PySide6.QtCore import Signal
 import h5py
 
 
@@ -26,7 +35,7 @@ class PumpProbeShaperPlan(Plan):
     cur_scan: int = 0
     scan_per_reading: int = 10
     is_stopping: bool = False
-    plan_shorthand = 'PPShaper'
+    plan_shorthand = "PPShaper"
     data: list[np.ndarray] = field(factory=list)
     mean_sig: Optional[np.ndarray] = None
     make_step: Callable = field()
@@ -38,7 +47,7 @@ class PumpProbeShaperPlan(Plan):
         self.aom.chopped = True
         self.aom.phase_cycle = False
         n_frames = self.aom.generate_waveform()
-        self.controller.cam.set_shots(n_frames*self.scan_per_reading)
+        self.controller.cam.set_shots(n_frames * self.scan_per_reading)
 
     @make_step.default
     def _pump(self):
@@ -52,8 +61,9 @@ class PumpProbeShaperPlan(Plan):
             chop_sign = 1 if ext[spectra["Probe2"]][1] > 1 else -1
             for line in ["Probe1", "Probe2"]:
                 spec = spectra[line]
-                signal = -1000*chop_sign * \
-                    np.log10(spec.frames[::2]/spec.frames[1::2])
+                signal = (
+                    -1000 * chop_sign * np.log10(spec.frames[::2] / spec.frames[1::2])
+                )
                 self.data.append(signal)
                 self.mean_sig = np.mean(self.data)
             self.sigStepDone.emit()
@@ -63,7 +73,8 @@ class PumpProbeShaperPlan(Plan):
         with concurrent.futures.ThreadPoolExecutor() as executor:
             self.time_tracker.point_starting()
             future = executor.submit(
-                self.controller.cam.cam.get_spectra, 2*self.delays.size)
+                self.controller.cam.cam.get_spectra, 2 * self.delays.size
+            )
             while not future.done():
                 yield
         self.time_tracker.point_ending()

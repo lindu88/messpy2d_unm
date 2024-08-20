@@ -13,7 +13,8 @@ from pathlib import Path
 
 import attr
 import numpy as np
-from qtpy.QtCore import Signal, QObject  # type: ignore
+from loguru import logger
+from PySide6.QtCore import QThread, Signal, QObject  # type: ignore
 from scipy.constants import c
 
 from .signal_processing import Reading, Reading2D, Spectrum
@@ -31,10 +32,13 @@ class QABCMeta(QObjectType, abc.ABCMeta):
 class IDevice(QObject, metaclass=QABCMeta):
     name: str
 
-    registered_devices: T.ClassVar[T.List['IDevice']] = []
+    registered_devices: T.ClassVar[T.List["IDevice"]] = []
     interface_type: T.ClassVar[str] = "Generic"
 
     def __attrs_post_init__(self):
+        logger.info(
+            f"Initializing {self.name} [{self.interface_type}] CLS {self.__class__}"
+        )
         QObject.__init__(self)
         self.registered_devices.append(self)
         self.load_state()
@@ -44,11 +48,12 @@ class IDevice(QObject, metaclass=QABCMeta):
         pass
 
     @classmethod
-    def create_remote(cls, addr, type='process', *args, **kwargs):
-        '''Creates an instance and puts it into a
+    def create_remote(cls, addr, type="process", *args, **kwargs):
+        """Creates an instance and puts it into a
         xmlrpc server which is started in a separated thread.
 
-        Returns (obj, server, thread)'''
+        Returns (obj, server, thread)"""
+
         def create_obj():
             obj = cls(*args, **kwargs)
             server = rpc.SimpleXMLRPCServer(addr, allow_none=True)
@@ -56,7 +61,7 @@ class IDevice(QObject, metaclass=QABCMeta):
             server.register_introspection_functions()
             server.serve_forever()
 
-        if type == 'process':
+        if type == "process":
             thr = multiprocessing.Process(target=create_obj)
         else:
             thr = threading.Thread(target=create_obj)
@@ -67,10 +72,13 @@ class IDevice(QObject, metaclass=QABCMeta):
         return dict()
 
     def save_state(self):
+        logger.info(f"Saving state for {self.name}")
         d = self.get_state()
-        conf_path = Path(__file__).parent/'config'
+        logger.info(f"State for {self.name}: {d}")
+        conf_path = Path(__file__).parent / "config"
+        logger.info(f"Saving state for {self.name}, {conf_path / (self.name + '.cfg')}")
         if d:
-            with (conf_path / (self.name + '.cfg')).open('w') as f:
+            with (conf_path / (self.name + ".cfg")).open("w") as f:
                 json.dump(d, f, indent=4)
 
     def load_state(self, exclude: T.Optional[T.List[str]] = None):
@@ -81,16 +89,25 @@ class IDevice(QObject, metaclass=QABCMeta):
         if exclude is None:
             exclude = []
         try:
-            conf_path = Path(__file__).parent / 'config'
-            with (conf_path / (self.name + '.cfg')).open('r') as f:
+            conf_path = Path(__file__).parent / "config"
+            logger.info(
+                f"Loading state for {self.name}, {conf_path / (self.name + '.cfg')}"
+            )
+
+            with (conf_path / (self.name + ".cfg")).open("r") as f:
                 d = json.load(f)
             for key, val in d.items():
                 if not hasattr(self, key):
-                    #warnings.warn(f"Config file for {self.name} has value for {key}, which is not "
+                    # warnings.warn(f"Config file for {self.name} has value for {key}, which is not "
                     #              f"an attribute of the class.")
-                    pass
-                if key not in exclude:
+                    logger.info(
+                        f"Config file has value for {key}, which is not an attribute of the class."
+                    )
+                elif key in exclude:
+                    logger.info(f"Skipping {key}")
+                else:
                     setattr(self, key, val)
+                    logger.info(f"Setting {key} to {val}")
         except FileNotFoundError:
             return
 
@@ -101,9 +118,9 @@ class ISpectrograph(IDevice):
     changeable_slit: bool = False
     center_wl: typing.Optional[float] = None
 
-    sigWavelengthChanged = Signal(float)
-    sigSlitChanged = Signal(float)
-    sigGratingChanged = Signal(int)
+    sigWavelengthChanged: T.ClassVar[Signal] = Signal(float)
+    sigSlitChanged: T.ClassVar[Signal] = Signal(float)
+    sigGratingChanged: T.ClassVar[Signal] = Signal(int)
 
     interface_type: T.ClassVar[str] = "Spectrograph"
 
@@ -132,6 +149,17 @@ class ISpectrograph(IDevice):
         raise NotImplementedError
 
 
+class TargetThread(QThread):
+    def __init__(self, target, *args, **kwargs):
+        super().__init__()
+        self.target = target
+        self.args = args
+        self.kwargs = kwargs
+
+    def run(self):
+        self.target(*self.args, **self.kwargs)
+
+
 # Defining a minimal interface for each hardware
 @attr.s(auto_attribs=True, cmp=False, kw_only=True)
 class ICam(IDevice):
@@ -146,19 +174,19 @@ class ICam(IDevice):
     spectrograph: T.Optional[ISpectrograph] = None
 
     can_validate_pixel: bool = False
-
+    reader_thread: T.Optional[TargetThread] = None
     interface_type: T.ClassVar[str] = "Camera"
 
     @property
-    def sig_lines(self):
+    def sig_lines(self) -> int:
         return len(self.sig_names)
 
     @property
-    def std_lines(self):
+    def std_lines(self) -> int:
         return len(self.std_names)
 
     @property
-    def lines(self):
+    def lines(self) -> int:
         return len(self.line_names)
 
     @abc.abstractmethod
@@ -170,11 +198,18 @@ class ICam(IDevice):
         pass
 
     @abc.abstractmethod
-    def get_spectra(self, frames: T.Optional[int]) -> T.Tuple[T.Dict[str, Spectrum], T.Any]:
+    def get_spectra(
+        self, frames: T.Optional[int]
+    ) -> T.Tuple[T.Dict[str, Spectrum], T.Any]:
         pass
 
-    def make_2D_reading(self, t2: np.ndarray, rot_frame: float, repetitions: int = 1,
-                        save_frames: bool = False) -> T.Dict[str, Reading2D]:
+    def make_2D_reading(
+        self,
+        t2: np.ndarray,
+        rot_frame: float,
+        repetitions: int = 1,
+        save_frames: bool = False,
+    ) -> T.Dict[str, Reading2D]:
         raise NotImplementedError
 
     @abc.abstractmethod
@@ -205,31 +240,21 @@ class ICam(IDevice):
         raise NotImplementedError("Should not be called")
 
 
-def mm_to_fs(pos_in_mm):
+def mm_to_fs(pos_in_mm: float) -> float:
     "converts mm to femtoseconds"
-    pos_in_meters = pos_in_mm / 1000.
+    pos_in_meters = pos_in_mm / 1000.0
     pos_sec = pos_in_meters / c
     return pos_sec * 1e15
 
 
-def fs_to_mm(t_fs):
+def fs_to_mm(t_fs: float) -> float:
     pos_m = c * t_fs * 1e-15
-    return pos_m * 1000.
-
-
-def _try_load():
-    import json
-    try:
-        with open("home_pos", 'r') as f:
-            h = json.load(f)['home']
-        return h
-    except FileNotFoundError:
-        return 0
+    return pos_m * 1000.0
 
 
 @attr.s(auto_attribs=True)
 class IDelayLine(IDevice):
-    home_pos: float = attr.Factory(_try_load)
+    home_pos: float = 0
     pos_sign: float = 1
     beam_passes: int = 2
     max_pos: float = np.inf
@@ -250,14 +275,17 @@ class IDelayLine(IDevice):
 
     def get_pos_fs(self) -> float:
         return self.pos_sign * mm_to_fs(
-            (self.get_pos_mm() - self.home_pos) * self.beam_passes)
+            (self.get_pos_mm() - self.home_pos) * self.beam_passes
+        )
 
     def move_fs(self, fs, do_wait=False, *args, **kwargs):
         mm = self.pos_sign * fs_to_mm(fs)
         new_pos = mm / self.beam_passes + self.home_pos
         if not self.min_pos <= new_pos <= self.max_pos:
-            raise ValueError(f"New position {new_pos} is outside of the allowed range "
-                             f"[{self.min_pos}, {self.max_pos}]")
+            raise ValueError(
+                f"New position {new_pos} is outside of the allowed range "
+                f"[{self.min_pos}, {self.max_pos}]"
+            )
         self.move_mm(new_pos, *args, **kwargs)
         if do_wait:
             while self.is_moving():
@@ -279,7 +307,7 @@ class IDelayLine(IDevice):
                 await asyncio.sleep(0.1)
 
 
-@attr.s
+@attr.s(auto_attribs=True)
 class IShutter(IDevice):
     sigShutterToggled: typing.ClassVar[Signal] = Signal(bool)
 
@@ -347,7 +375,7 @@ class IRotationStage(IDevice):
             await asyncio.sleep(0.3)
 
 
-@attr.s
+@attr.s(auto_attribs=True)
 class ILissajousScanner(IDevice):
     pos_home: T.Tuple[float, float] = (0, 0)
     has_zaxis: bool = False
@@ -365,7 +393,9 @@ class ILissajousScanner(IDevice):
         pass
 
     @abc.abstractmethod
-    def set_pos_mm(self, x: typing.Optional[float] = None, y: typing.Optional[float] = None):
+    def set_pos_mm(
+        self, x: typing.Optional[float] = None, y: typing.Optional[float] = None
+    ):
         pass
 
     def set_vel_mm(self, xvel=None, yvel=None):

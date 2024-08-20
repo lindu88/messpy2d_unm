@@ -3,7 +3,7 @@ import matplotlib.pyplot as plt
 
 from pyqtgraph.widgets.PlotWidget import PlotWidget
 from qasync import asyncSlot
-from qtpy.QtWidgets import (
+from PySide6.QtWidgets import (
     QWidget,
     QApplication,
     QHBoxLayout,
@@ -16,7 +16,7 @@ from qtpy.QtWidgets import (
     QSlider,
     QMessageBox,
 )
-from qtpy.QtCore import Qt, Signal
+from PySide6.QtCore import Qt, Signal
 from matplotlib.figure import Figure
 from matplotlib import rcParams, style
 from matplotlib.backends.backend_qt5agg import (
@@ -36,6 +36,7 @@ import MessPy.Instruments.interfaces as I
 from MessPy.Plans.ShaperCalibPlan import CalibPlan
 from MessPy.Config import config
 from MessPy.Instruments.dac_px import AOM
+
 rcParams["font.family"] = "Segoe UI"
 style.use("dark_background")
 
@@ -53,8 +54,7 @@ class CalibScanView(QWidget):
         self.setLayout(QHBoxLayout())
 
         self.children = [
-            dict(name="Start Wavelength (nm)",
-                 type="int", value=5500, step=500),
+            dict(name="Start Wavelength (nm)", type="int", value=5500, step=500),
             dict(name="End Wavelength (nm)", type="int", value=6500, step=500),
             dict(name="Step (nm)", type="float", value=10, step=2),
             dict(name="Shots", type="int", value=90, step=10),
@@ -64,8 +64,9 @@ class CalibScanView(QWidget):
             name="Calibration Scan", type="group", children=self.children
         )
         if (s := "CalibSettings") in config.exp_settings:
-            param.restoreState(config.exp_settings[s],
-                               addChildren=False, removeChildren=False)
+            param.restoreState(
+                config.exp_settings[s], addChildren=False, removeChildren=False
+            )
 
         self.params: Parameter = param
         pt = ParameterTree()
@@ -115,10 +116,10 @@ class CalibScanView(QWidget):
         self.plot.plotItem.plot(x, y[:, 1], pen="g")
         self.plot.plotItem.plot(x, y[:, 2], pen="y")
 
-        self.info_label.setText(f'''
+        self.info_label.setText(f"""
         Point {n}/{len(plan.points)}
         Channel {plan.channel}
-        ''')
+        """)
 
     def analyse(self):
         plan = self.plan
@@ -144,7 +145,8 @@ class CalibScanView(QWidget):
             lambda arg: plan.dac.generate_waveform()
         )
         self._view.sigCalibrationAccepted.connect(
-            lambda: QMessageBox.information(self, "Calib applied", str(plan.dac.calib)))
+            lambda: QMessageBox.information(self, "Calib applied", str(plan.dac.calib))
+        )
         self._view.show()
 
 
@@ -213,12 +215,10 @@ class CalibView(QWidget):
         bb = QDialogButtonBox(QDialogButtonBox.Ok | QDialogButtonBox.Cancel)
         self.row.addWidget(bb)
         # bb.setFixedWidth(400)
-        bb.setSizePolicy(QSizePolicy.MinimumExpanding,
-                         QSizePolicy.MinimumExpanding)
+        bb.setSizePolicy(QSizePolicy.MinimumExpanding, QSizePolicy.MinimumExpanding)
         self.row.setContentsMargins(20, 20, 20, 20)
         self.row.setSpacing(10)
-        bb.accepted.connect(
-            lambda: self.sigCalibrationAccepted.emit(self.coeff))
+        bb.accepted.connect(lambda: self.sigCalibrationAccepted.emit(self.coeff))
         bb.rejected.connect(self.close)
         bb.rejected.connect(self.sigCalibrationCanceled.emit)
         bb.rejected.connect(self.close)
@@ -237,7 +237,6 @@ class CalibView(QWidget):
         self.distance = self.sb_dist.value()
         self.filter = self.sb_filter.value()
         if self.filter > 0:
-
             y_train = gaussian_filter1d(self.y_train, self.filter)
             y_single = gaussian_filter1d(self.y_single, self.filter)
             y_full = gaussian_filter1d(self.y_full, self.filter)
@@ -247,10 +246,8 @@ class CalibView(QWidget):
             y_train = 500 * (y_train / (y_full + 50))
             y_single = 500 * (y_single / (y_full + 50))
 
-        p0, _ = find_peaks(
-            y_train, prominence=self.prominence, distance=self.distance)
-        p1, _ = find_peaks(
-            y_single, prominence=self.prominence, distance=self.distance)
+        p0, _ = find_peaks(y_train, prominence=self.prominence, distance=self.distance)
+        p1, _ = find_peaks(y_single, prominence=self.prominence, distance=self.distance)
 
         self.ax0.cla()
         self.ax2.cla()
@@ -306,12 +303,10 @@ if __name__ == "__main__":
     exit()
     view.sigCalibrationAccepted.connect(aom.set_calib)
     view.sigCalibrationAccepted.connect(
-        lambda x: aom.generate_waveform(
-            np.ones_like(aom.nu), np.ones_like(aom.nu))
+        lambda x: aom.generate_waveform(np.ones_like(aom.nu), np.ones_like(aom.nu))
     )
 
     def set_gvd(x):
-
         aom.gvd = x
         aom.update_dispersion_compensation()
 

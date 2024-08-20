@@ -1,6 +1,6 @@
 import pyqtgraph.functions as fn
 from typing import Protocol
-from abc import ABCMeta, abstractmethod, abstractproperty
+from abc import ABCMeta, abstractmethod
 import datetime
 import math
 import typing as T
@@ -9,32 +9,57 @@ from itertools import cycle
 import pyqtgraph as pg
 import pyqtgraph.parametertree as pt
 from pyqtgraph import PlotItem
-from qtpy.QtCore import Qt, Slot, QTimer, QObject
-from qtpy.QtGui import QPalette, QColor
-from qtpy.QtWidgets import (QWidget, QLineEdit, QLabel, QPushButton, QHBoxLayout,
-                            QFormLayout, QGroupBox, QVBoxLayout, QDialog, QStyleFactory,
-                            QListWidget, QErrorMessage, QSizePolicy, QCheckBox)
+from PySide6.QtCore import Qt, Slot, QTimer, QObject
+from PySide6.QtGui import QPalette, QColor, QIcon
+from PySide6.QtWidgets import (
+    QWidget,
+    QLineEdit,
+    QLabel,
+    QPushButton,
+    QHBoxLayout,
+    QFormLayout,
+    QGroupBox,
+    QVBoxLayout,
+    QDialog,
+    QStyleFactory,
+    QListWidget,
+    QErrorMessage,
+    QSizePolicy,
+    QCheckBox,
+)
+from qtpy.QtWidgets import QLayout
 
 from MessPy.Config import config
 from qtawesome import icon
+
 if T.TYPE_CHECKING:
     from MessPy.ControlClasses import Controller
 
 VEGA_COLORS = {
-    'blue': '#1f77b4',
-    'orange': '#ff7f0e',
-    'green': '#2ca02c',
-    'red': '#d62728',
-    'purple': '#9467bd',
-    'brown': '#8c564b',
-    'pink': '#e377c2',
-    'gray': '#7f7f7f',
-    'olive': '#bcbd22',
-    'cyan': '#17becf'}
+    "blue": "#1f77b4",
+    "orange": "#ff7f0e",
+    "green": "#2ca02c",
+    "red": "#d62728",
+    "purple": "#9467bd",
+    "brown": "#8c564b",
+    "pink": "#e377c2",
+    "gray": "#7f7f7f",
+    "olive": "#bcbd22",
+    "cyan": "#17becf",
+}
 
-col = ['#1f77b4', '#ff7f0e', '#2ca02c', '#d62728',
-       '#9467bd', '#8c564b', '#e377c2', '#7f7f7f',
-       '#bcbd22', '#17becf']
+col = [
+    "#1f77b4",
+    "#ff7f0e",
+    "#2ca02c",
+    "#d62728",
+    "#9467bd",
+    "#8c564b",
+    "#e377c2",
+    "#7f7f7f",
+    "#bcbd22",
+    "#17becf",
+]
 
 
 def make_default_cycle():
@@ -67,8 +92,8 @@ dark_palette = make_palette()
 class LED(QWidget):
     def __init__(self, text, parent=None):
         super(LED, self).__init__(parent=parent)
-        self.led = QLabel('')
-        self.color = 'green'
+        self.led = QLabel("")
+        self.color = "green"
         self.set_color(self.color)
 
         self.led.setFixedSize(20, 20)
@@ -80,7 +105,8 @@ class LED(QWidget):
     def set_color(self, color):
         self.color = color
         self.led.setStyleSheet(
-            f"background-color:  qradialgradient(cx: 0.5, cy: 0.5, radius: 2, fx: 0.5, fy: 0.5, stop: 0 {self.color}, stop: 1 white);")
+            f"background-color:  qradialgradient(cx: 0.5, cy: 0.5, radius: 2, fx: 0.5, fy: 0.5, stop: 0 {self.color}, stop: 1 white);"
+        )
 
 
 class ControlFactory(QWidget):
@@ -118,11 +144,21 @@ class ControlFactory(QWidget):
 
     """
 
-    def __init__(self, name, apply_fn, update_signal=None, parent=None,
-                 format_str='%.1f', presets=None, preset_func=None, preset_rows=4, extra_buttons=None):
+    def __init__(
+        self,
+        name,
+        apply_fn,
+        update_signal=None,
+        parent=None,
+        format_str="%.1f",
+        presets=None,
+        preset_func=None,
+        preset_rows=4,
+        extra_buttons=None,
+    ):
         super(ControlFactory, self).__init__(parent=parent)
         self.setContentsMargins(0, 0, 0, 0)
-        self.apply_button = QPushButton('Set')
+        self.apply_button = QPushButton("Set")
         self.apply_fn = apply_fn
         self.presets_per_row = preset_rows
 
@@ -133,16 +169,16 @@ class ControlFactory(QWidget):
         self.edit_box.setMaxLength(12)
         self.edit_box.setMaximumWidth(100)
         # self.edit_box.setValidator(QDoubleValidator())
-        self.edit_box.returnPressed.connect(
-            lambda: apply_fn(self.edit_box.text()))
-        self.apply_button.clicked.connect(
-            lambda: apply_fn(self.edit_box.text()))
+        self.edit_box.returnPressed.connect(lambda: apply_fn(self.edit_box.text()))
+        self.apply_button.clicked.connect(lambda: apply_fn(self.edit_box.text()))
 
         self._layout = QFormLayout(self)
         self._layout.setLabelAlignment(Qt.AlignRight)
 
-        for w in [(QLabel('<b>%s</b>' % name), self.cur_value_label),
-                  (self.apply_button, self.edit_box)]:
+        for w in [
+            (QLabel("<b>%s</b>" % name), self.cur_value_label),
+            (self.apply_button, self.edit_box),
+        ]:
             self._layout.addRow(*w)
 
         l = []
@@ -185,9 +221,12 @@ class ControlFactory(QWidget):
                 self._layout.addRow(hlay)
                 hlay = QHBoxLayout()
                 len_row = 0
-            self._layout.addRow(hlay)
+        self._layout.addRow(hlay)
 
-    def setup_extra_buttons(self, extra_buttons):
+    def setup_extra_buttons(
+        self,
+        extra_buttons: list[tuple[str, T.Callable] | tuple[str, T.Callable, "QIcon"]],
+    ):
         row_cnt = 0
         hlay = QHBoxLayout()
         self._layout.addRow(hlay)
@@ -224,12 +263,12 @@ class QProtocolMetaMeta(type(QObject), type(PlanStarter)):
 
 
 class PlanStartDialog(QDialog, metaclass=QProtocolMetaMeta):
-    experiment_type: str = ''
-    title: str = ''
-    icon: str = ''
+    experiment_type: str = ""
+    title: str = ""
+    icon: str = ""
     paras: pt.Parameter
 
-    def __init__(self, controller: 'Controller', *args, **kwargs):
+    def __init__(self, controller: "Controller", *args, **kwargs):
         super(PlanStartDialog, self).__init__(*args, **kwargs)
         self.controller = controller
         self.setMinimumWidth(800)
@@ -240,21 +279,25 @@ class PlanStartDialog(QDialog, metaclass=QProtocolMetaMeta):
         self.recent_settings_list = QListWidget()
         self.recent_settings_list.currentRowChanged.connect(self.load_recent)
 
-        start_button = QPushButton('Start Plan')
+        start_button = QPushButton("Start Plan")
         start_button.clicked.connect(self.accept)
-        cancel_button = QPushButton('Cancel')
+        cancel_button = QPushButton("Cancel")
         cancel_button.clicked.connect(self.reject)
 
         self.setLayout(
-            hlay([vlay([self.treeview, hlay([start_button, cancel_button])]),
-                  vlay([QLabel('Recent Settings'), self.recent_settings_list])])
+            hlay(
+                [
+                    vlay([self.treeview, hlay([start_button, cancel_button])]),
+                    vlay([QLabel("Recent Settings"), self.recent_settings_list]),
+                ]
+            )
         )
 
         self.setup_paras()
         self.setup_recent_list()
         self.treeview.setParameters(self.paras)
         self.treeview.setPalette(self.style().standardPalette())
-        self.treeview.setStyle(QStyleFactory.create('Fusion'))
+        self.treeview.setStyle(QStyleFactory.create("Fusion"))
         self.treeview.setStyleSheet("")
         n = len(self.treeview.listAllItems())
 
@@ -268,16 +311,16 @@ class PlanStartDialog(QDialog, metaclass=QProtocolMetaMeta):
         raise NotImplemented
 
     @abstractmethod
-    def create_plan(self, controller: 'Controller'):
+    def create_plan(self, controller: "Controller"):
         raise NotImplemented
 
     def load_defaults(self, fname=None):
         pass
 
     def save_defaults(self, fname=None):
-        d = self.paras.saveState(filter='user')
-        d['date'] = datetime.datetime.now().isoformat()
-        name = self.paras.child('Exp. Settings')['Filename']
+        d = self.paras.saveState(filter="user")
+        d["date"] = datetime.datetime.now().isoformat()
+        name = self.paras.child("Exp. Settings")["Filename"]
         conf_dict = config.exp_settings.setdefault(self.experiment_type, {})
 
         conf_dict[name] = d
@@ -291,20 +334,18 @@ class PlanStartDialog(QDialog, metaclass=QProtocolMetaMeta):
         if self.experiment_type not in config.exp_settings:
             return
         conf_dict = config.exp_settings.setdefault(self.experiment_type, {})
-        self.recent_settings = sorted(
-            conf_dict.items(), key=lambda kv: kv[1]['date'])
+        self.recent_settings = sorted(conf_dict.items(), key=lambda kv: kv[1]["date"])
 
-        for (name, r) in self.recent_settings:
+        for name, r in self.recent_settings:
             self.recent_settings_list.addItem(name)
 
-        self.recent_settings_list.setCurrentRow(len(self.recent_settings)-1)
+        self.recent_settings_list.setCurrentRow(len(self.recent_settings) - 1)
         self.load_recent(-1)
 
     def load_recent(self, new):
         settings = self.recent_settings[new][1].copy()
-        settings.pop('date')
-        self.paras.restoreState(
-            settings, removeChildren=False, addChildren=False)
+        settings.pop("date")
+        self.paras.restoreState(settings, removeChildren=False, addChildren=False)
 
     @classmethod
     def start_plan(cls, controller, parent=None):
@@ -315,7 +356,7 @@ class PlanStartDialog(QDialog, metaclass=QProtocolMetaMeta):
         except ValueError as e:
             emsg = QErrorMessage(parent=parent)
             emsg.setWindowModality(Qt.WindowModal)
-            emsg.showMessage('Plan creation failed' + str(e))
+            emsg.showMessage("Plan creation failed" + str(e))
             emsg.exec_()
             plan = None
 
@@ -326,20 +367,19 @@ class PlanStartDialog(QDialog, metaclass=QProtocolMetaMeta):
 class MonkeyCurveItem(pg.PlotCurveItem):
     def __init__(self, *args, **kwds):
         super().__init__(*args, **kwds)
-        self.monkey_mode = 'PolyLine'
+        self.monkey_mode = "PolyLine"
 
     def setMethod(self, param, value):
         self.monkey_mode = value
 
     def paint(self, painter, opt, widget):
-        if self.monkey_mode not in ['drawPolyline']:
+        if self.monkey_mode not in ["drawPolyline"]:
             return super().paint(painter, opt, widget)
 
-        painter.setRenderHint(
-            painter.RenderHint.Antialiasing, self.opts['antialias'])
-        painter.setPen(pg.mkPen(self.opts['pen']))
+        painter.setRenderHint(painter.RenderHint.Antialiasing, self.opts["antialias"])
+        painter.setPen(pg.mkPen(self.opts["pen"]))
 
-        if self.monkey_mode == 'drawPolyline':
+        if self.monkey_mode == "drawPolyline":
             painter.drawPolyline(fn.arrayToQPolygonF(self.xData, self.yData))
 
 
@@ -439,7 +479,7 @@ class ObserverPlot(pg.PlotWidget):
 
 
 class ObserverPlotWithControls(QWidget):
-    def __init__(self,  names, obs, signal, x=None, parent=None, **kwargs):
+    def __init__(self, names, obs, signal, x=None, parent=None, **kwargs):
         super(ObserverPlotWithControls, self).__init__()
         self.obs_plot = ObserverPlot(obs, signal, x, parent)
         line_controls = QWidget()
@@ -448,7 +488,7 @@ class ObserverPlotWithControls(QWidget):
         line_controls.setLayout(form_layout)
         for i, n in enumerate(names):
             line = self.obs_plot.lines[self.obs_plot.observed[i]]
-            col = line.opts['pen'].color()
+            col = line.opts["pen"].color()
             lb = QLabel('<font color="%s">%s</font>' % (col.name(), n))
             cb = QCheckBox()
             cb.setChecked(True)
@@ -461,88 +501,83 @@ class ObserverPlotWithControls(QWidget):
 
 
 class ValueLabels(QWidget):
-    def __init__(self, obs, fmt: str = '%.1f', parent=None):
+    def __init__(self, obs, fmt: str = "%.1f", parent=None):
         super(ValueLabels, self).__init__(parent=parent)
         lay = QFormLayout()
-        self.setStyleSheet('''
-        QLabel { font-size: 14pt;}''')
+        self.setStyleSheet("""
+        QLabel { font-size: 14pt;}""")
         self.setLayout(lay)
         self.obs = {}
         self.fmt = fmt
         for name, getter in obs:
-            self.obs[name] = QLabel('0'), getter
-            lay.addRow(name + ':', self.obs[name][0])
+            self.obs[name] = QLabel("0"), getter
+            lay.addRow(name + ":", self.obs[name][0])
 
     def update_labels(self):
         for lbl, getter in self.obs.values():
             lbl.setText(self.fmt % getter())
 
 
-def make_groupbox(widgets, title=''):
+def make_groupbox(widgets, title="") -> QGroupBox:
     """Puts given widgets into a groupbox"""
     gb = QGroupBox()
     gb.setContentsMargins(0, 0, 0, 0)
     gb.setSizeIncrement(0, 0)
     vl = QVBoxLayout()
     gb.setLayout(vl)
-    #vl.setContentsMargins(0, 0, 0, 0)
+    # vl.setContentsMargins(0, 0, 0, 0)
     for i in widgets:
         if isinstance(i, QWidget):
             vl.addWidget(i)
-        else:
+        elif isinstance(i, QLayout):
+            print("Adding layout GB")
             vl.addLayout(i)
     if title:
         gb.setTitle(title)
     return gb
 
 
-def hlay(*widgets, post_stretch=False, pre_stretch=False):
-    """Return a QHBoxLayout with widgets, with optional stretch at the start or end.
-    """
-    lay = QHBoxLayout()
-    if len(widgets) == 1:
-        if isinstance(widgets[0], (list, tuple)):
-            widgets = widgets[0]
+def create_layout(
+    layout_class, *widgets, pre_stretch=False, post_stretch=False
+) -> QLayout:
+    """Create a layout with the given class and widgets, with optional stretch at the start or end."""
+    lay = layout_class()
+    if len(widgets) == 1 and isinstance(widgets[0], (list, tuple)):
+        widgets = widgets[0]
 
     if pre_stretch:
         lay.addStretch(1)
     for w in widgets:
-        try:
+        if isinstance(w, QWidget):
             lay.addWidget(w)
-        except TypeError:
+        elif isinstance(w, QLayout):
+            print("Adding layout")
             lay.addLayout(w)
-
     if post_stretch:
         lay.addStretch(1)
     return lay
 
 
+def hlay(*widgets, post_stretch=False, pre_stretch=False):
+    """Return a QHBoxLayout with widgets, with optional stretch at the start or end."""
+    return create_layout(
+        QHBoxLayout, *widgets, pre_stretch=pre_stretch, post_stretch=post_stretch
+    )
+
+
 def vlay(*widgets, add_stretch=False):
-    """
-    Creates a vertical layout. If add_stretch is True, adds a stretch at the end.
-    """
-    lay = QVBoxLayout()
-    if len(widgets) == 1:
-        if isinstance(widgets[0], (list, tuple)):
-            widgets = widgets[0]
-    for w in widgets:
-        try:
-            lay.addWidget(w)
-        except TypeError:
-            lay.addLayout(w)
-    if add_stretch:
-        lay.addStretch(1)
-    return lay
+    """Creates a QVBoxLayout with widgets, with optional stretch at the end."""
+    return create_layout(QVBoxLayout, *widgets, post_stretch=add_stretch)
 
 
-def partial_formatter(val):
+def partial_formatter(val: float) -> str:
     if val == 0:
-        return '0'
+        return "0"
     else:
-        sign = val/abs(val)
-        sign = ' ' if sign > 0 else '-'
+        sign = val / abs(val)
+        sign = " " if sign > 0 else "-"
     if math.log10(abs(val)) >= 3:
-        return sign + '%dk' % (abs(val)/1000)
+        return sign + "%dk" % (abs(val) / 1000)
     else:
         return sign + str(abs(val))
 
@@ -563,4 +598,4 @@ def remove_nodes(a):
 
 def make_entry(paras):
     plan_settings = remove_nodes(paras.getValues())
-    return {'Plan Settings': plan_settings}
+    return {"Plan Settings": plan_settings}

@@ -1,7 +1,9 @@
 import pyqtgraph as pg
 import time
-from qtpy.QtWidgets import (QWidget,)
-from qtpy.QtCore import Slot
+from PySide6.QtWidgets import (
+    QWidget,
+)
+from PySide6.QtCore import Slot
 import MessPy.QtHelpers as qh
 from MessPy.ControlClasses import Controller
 
@@ -39,7 +41,7 @@ class AlignmentHelper(QWidget):
     @Slot()
     def update_plots(self):
         t = time.time()
-        self.times.append(t-self.t0)
+        self.times.append(t - self.t0)
 
         if self.times[-1] - self.times[0] > self.time_max:
             self.times = self.times[1:]
@@ -60,7 +62,7 @@ class AlignmentHelper(QWidget):
             p.setData(self.times, data)
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     c = Controller()
 
     app = pg.mkQApp()
@@ -71,6 +73,7 @@ if __name__ == '__main__':
             c.loop()
 
     import threading
+
     t = threading.Thread(target=looper)
     t.start()
     app.aboutToQuit.conenct(t.s)

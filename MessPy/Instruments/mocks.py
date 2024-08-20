@@ -3,8 +3,16 @@ from typing import Dict, Optional
 
 import numpy as np
 import attr
-from MessPy.Instruments.interfaces import ICam, IDelayLine, IRotationStage, \
-    IShutter, Reading, ISpectrograph, ILissajousScanner, IPowerMeter
+from MessPy.Instruments.interfaces import (
+    ICam,
+    IDelayLine,
+    IRotationStage,
+    IShutter,
+    Reading,
+    ISpectrograph,
+    ILissajousScanner,
+    IPowerMeter,
+)
 import time
 
 
@@ -21,12 +29,13 @@ class MockState:
 
     def knife_amp(self) -> float:
         from math import erfc, sqrt
-        z_pos = self.stage_pos[2]+0.5
-        sigma = 0.25 * sqrt(1+(z_pos/0.5)**2)
-        x_pos = self.stage_pos[0]-0.5+0.1*self.stage_pos[2]
-        y_pos = self.stage_pos[1]-0.5
-        knife_amp = 2 - erfc(sqrt(2)*(-x_pos) / sigma)
-        knife_amp *= 2 - erfc(sqrt(2)*(-y_pos) / sigma)
+
+        z_pos = self.stage_pos[2] + 0.5
+        sigma = 0.25 * sqrt(1 + (z_pos / 0.5) ** 2)
+        x_pos = self.stage_pos[0] - 0.5 + 0.1 * self.stage_pos[2]
+        y_pos = self.stage_pos[1] - 0.5
+        knife_amp = 2 - erfc(sqrt(2) * (-x_pos) / sigma)
+        knife_amp *= 2 - erfc(sqrt(2) * (-y_pos) / sigma)
         return knife_amp
 
 
@@ -35,15 +44,15 @@ state = MockState()
 
 @attr.s(auto_attribs=True)
 class MockSpectrograph(ISpectrograph):
-    name: str = 'MockSpec'
+    name: str = "MockSpec"
     changeable_wavelength: bool = True
     center_wl: float = 300
     _cur_grating: int = 0
 
     def get_state(self) -> dict:
         return {
-            'grating': self.gratings[self._cur_grating],
-            'current wavelength': self.center_wl,
+            "grating": self.gratings[self._cur_grating],
+            "current wavelength": self.center_wl,
         }
 
     def set_wavelength(self, wl: float, timeout=3):
@@ -68,18 +77,18 @@ class MockSpectrograph(ISpectrograph):
 
 @attr.s(auto_attribs=True)
 class CamMock(ICam):
-    name: str = 'MockCam'
+    name: str = "MockCam"
     shots: int = 20
-    line_names: list = ['Probe', 'Ref']
-    sig_names: list = ['Probe Normed', 'Probe']
-    std_names: list = ['Probe', 'Ref', 'Normed']
+    line_names: list = ["Probe", "Ref"]
+    sig_names: list = ["Probe Normed", "Probe"]
+    std_names: list = ["Probe", "Ref", "Normed"]
     channels: int = 200
     ext_channels: int = 3
     background: Optional[np.ndarray] = None
     spectrograph: Optional[ISpectrograph] = attr.Factory(MockSpectrograph)
 
     def get_state(self) -> dict:
-        return {'shots': self.shots}
+        return {"shots": self.shots}
 
     def set_shots(self, shots):
         self.shots = shots
@@ -87,29 +96,30 @@ class CamMock(ICam):
     def read_cam(self):
         t0 = time.time()
         x = self.get_wavelength_array()
-        y = 300*np.exp(-(x-250)**2/50**2/2)
+        y = 300 * np.exp(-((x - 250) ** 2) / 50**2 / 2)
 
         knife_amp = state.knife_amp()
-        y = y*(knife_amp/4)
+        y = y * (knife_amp / 4)
 
         a = np.random.normal(loc=y, scale=3, size=(self.shots, self.channels))
-        b = np.random.normal(
-            loc=y/2, scale=3, size=(self.shots, self.channels))
-        common_noise = np.random.normal(
-            loc=1, scale=0.015, size=(self.shots, 1))
+        b = np.random.normal(loc=y / 2, scale=3, size=(self.shots, self.channels))
+        common_noise = np.random.normal(loc=1, scale=0.015, size=(self.shots, 1))
 
         a *= common_noise
         b *= common_noise
         ext = np.random.normal(size=(self.shots, self.ext_channels))
-        chop = np.zeros(self.shots, 'bool')
+        chop = np.zeros(self.shots, "bool")
         chop[::2] = True
-        signal = 0.1 * \
-            np.exp(-state.t/3000) if state.t > 0 else 0.1*np.exp(state.t/100)
-        y_sig = 300 * np.exp(-(x - 250) ** 2 / 30 ** 2 / 2)
-        y_sig -= 300 * np.exp(-(x - 310) ** 2 / 30 ** 2 / 2)
-        a[::2, :] *= 1 + signal * y_sig/300
+        signal = (
+            0.1 * np.exp(-state.t / 3000)
+            if state.t > 0
+            else 0.1 * np.exp(state.t / 100)
+        )
+        y_sig = 300 * np.exp(-((x - 250) ** 2) / 30**2 / 2)
+        y_sig -= 300 * np.exp(-((x - 310) ** 2) / 30**2 / 2)
+        a[::2, :] *= 1 + signal * y_sig / 300
         dt = time.time() - t0
-        time.sleep(max(self.shots/1000.-dt, 0))
+        time.sleep(max(self.shots / 1000.0 - dt, 0))
         return a, b, chop, ext
 
     def make_reading(self) -> Reading:
@@ -117,22 +127,24 @@ class CamMock(ICam):
         if self.background is not None:
             a -= self.background[0, ...]
             b -= self.background[1, ...]
-        tmp = np.stack((a, b, a/b))
+        tmp = np.stack((a, b, a / b))
         tm = tmp.mean(1)
-        ts = 100 * tmp.std(1)/tm
+        ts = 100 * tmp.std(1) / tm
 
         with np.errstate(all="ignore"):
-            signal = -1000 * \
-                np.log10(np.nanmean(a[chopper, :], 0) /
-                         np.nanmean(a[~chopper, :], 0))
-            signal2 = -1000 * \
-                np.log10(np.nanmean((a/b)[chopper, :], 0) /
-                         np.nanmean((a/b)[~chopper, :], 0))
+            signal = -1000 * np.log10(
+                np.nanmean(a[chopper, :], 0) / np.nanmean(a[~chopper, :], 0)
+            )
+            signal2 = -1000 * np.log10(
+                np.nanmean((a / b)[chopper, :], 0) / np.nanmean((a / b)[~chopper, :], 0)
+            )
         return Reading(
             lines=tm[:2, :],
             stds=ts,
             signals=np.stack((signal2, signal)),
             valid=True,
+            full_data=tmp,
+            shots=self.shots,
         )
 
     def get_spectra(self, frames):
@@ -144,15 +156,15 @@ class CamMock(ICam):
     def get_wavelength_array(self, center_wl=None):
         if not center_wl:
             center_wl = self.spectrograph.center_wl
-        x = (np.arange(self.channels)-self.channels//2)
-        return x*0.5 + center_wl
+        x = np.arange(self.channels) - self.channels // 2
+        return x * 0.5 + center_wl
 
 
 @attr.s(auto_attribs=True)
 class DelayLineMock(IDelayLine):
-    name: str = 'MockDelayStage'
-    pos_mm: float = 0.
-    mock_speed: float = 6.
+    name: str = "MockDelayStage"
+    pos_mm: float = 0.0
+    mock_speed: float = 6.0
     moving: bool = False
     current_move: tuple = None
 
@@ -178,7 +190,7 @@ class DelayLineMock(IDelayLine):
 
 @attr.s(auto_attribs=True)
 class RotStageMock(IRotationStage):
-    name: str = 'Rotation Mock'
+    name: str = "Rotation Mock"
     deg: float = 0
 
     def set_degrees(self, deg: float):
@@ -194,7 +206,7 @@ class RotStageMock(IRotationStage):
 
 @attr.s(auto_attribs=True)
 class ShutterMock(IShutter):
-    name = 'ShutterMock'
+    name = "ShutterMock"
 
     def is_open(self):
         return state.shutter
@@ -205,7 +217,7 @@ class ShutterMock(IShutter):
 
 @attr.s(auto_attribs=True)
 class StageMock(ILissajousScanner):
-    name: str = 'MockSampleStage'
+    name: str = "MockSampleStage"
     has_zaxis: bool = True
     _pos: list[float] = [0, 0, 0]
     pos_home: tuple[float, float] = (0, 0)
@@ -239,10 +251,9 @@ class StageMock(ILissajousScanner):
 
 @attr.s(auto_attribs=True)
 class PowerMeterMock(IPowerMeter):
-    name: str = 'PowerMeterMock'
+    name: str = "PowerMeterMock"
 
     def read_power(self) -> float:
-
-        y = state.knife_amp()/4
+        y = state.knife_amp() / 4
         y += np.random.normal(loc=0, scale=0.1)
         return y

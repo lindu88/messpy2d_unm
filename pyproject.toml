@@ -1,18 +1,27 @@
+[build-system]
+build-backend = "hatch"
+requires = ["hatch"]
+
 [project]
-author = "Till Stensitzki"
-author_email = "mail.till@gmx.de"
-dependencies = [
-  "lmfit",
-  "matplotlib",
-  "numba",
-  "numpy",
-  "pyqtgraph",
-  "qtawesome",
-  "qtpy",
-  "scipy",
-  "attrs",
-]
-description = "A python application for ultrafast spectroscopy experimental control."
-name = "MessPy"
-readme = "README.md"
-requires_python = ">=3.10"
+authors = [{name = "Till Stensitzki", email = "mail.till@gmx.de"}] 
+description = "A python application for ultrafast spectroscopy experimental control." 
+name = "MessPy" 
+readme = "README.md" 
+requires-python = ">=3.10" 
+version = "0.1.0" # Add your project version
+
+[project.dependencies]
+attrs = "*"
+cffi = "*"
+lmfit = "*"
+matplotlib = "*"
+numba = "*"
+numpy = "*"
+pyqtgraph = "*"
+qtawesome = "*"
+qtpy = "*"
+scipy = "*"
+
+[project.optional-dependencies]
+# Add optional dependencies if any
+nicelib = "*"

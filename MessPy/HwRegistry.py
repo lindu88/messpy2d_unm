@@ -2,8 +2,9 @@ import platform
 import sys
 from MessPy.Config import config
 from MessPy.Instruments.mocks import CamMock, DelayLineMock, StageMock, PowerMeterMock
-import logging
+from loguru import logger
 
+logger.info("Init HwRegistry")
 TESTING = config.testing
 _cam = None  # CamMock()
 _cam2 = None  # CamMock(name="Mock2")
@@ -15,107 +16,97 @@ _sh = None
 _shaper = None
 
 pc_name = platform.node()
+
 if len(sys.argv) > 1:
     arg = sys.argv[1]
 else:
-    arg = 'vis'
+    arg = "vis"
 
 
-if pc_name == '2dir-PC':
-    from MessPy.Instruments.delay_line_mercury import dl
-    _dl = dl
-    hp = config.__dict__.get('Delay 1 Home Pos.', 8.80)
-    _dl.home_pos = hp
+logger.info(f"Running on {pc_name}")
 
-    from MessPy.Instruments.delay_line_gmc2 import dl
-    _dl2 = dl
-    #hp = config.__dict__.get('Delay 2 Home Pos.', 8.80)
-    #_dl2.home_pos = hp
-    #_dl2 = None
-    from MessPy.Instruments.sample_holder_PI import SampleHolder
-    _sh = SampleHolder()
-    #from MessPy.Instruments.FringeCounter import fc
-    #_fc = fc
-elif pc_name == 'ir-2d':
-    from MessPy.Instruments.cam_phasetec import _ircam as _cam
-    _cam2 = None
-    #from MessPy.Instruments.delay_line_gmc2 import DelayL
-    #from MessPy.Instruments.delay_line_mercury import dl
-    from MessPy.Instruments.delay_line_xmlrpc import _dl
-    #hp = config.__dict__.get('Delay 1 Home Pos.', 8.80)
-    #_dl.home_pos = hp
-    logging.info("Init RotationStage and Shutter (rpc)")
-    from MessPy.Instruments.shutter import sh
-    _shutter = sh
-    from MessPy.Instruments.RotationStage import rs
-    _rot_stage = rs
-    from MessPy.Instruments.remotes import Faulhaber
-    _sh = Faulhaber()
-    _sh.set_pos_mm(*_sh.pos_home)
-
-
-elif pc_name == 'helmholm' and not TESTING:
-    from MessPy.Instruments.stresing_cam.ESLS import Cam
-    #from MessPy.Instruments.delay_line_serial import dl as _dl
-    from MessPy.Instruments.delay_line_xmlrpc import dl as _dl
-    #from MessPy.Instruments.delay_line_mercury import dl as _dl
-    logging.info("Init ESLS Cam")
-    _cam = Cam()
-    #from MessPy.Instruments.ircam_64_remote import cam
-    _cam2 = None
-    logging.info("Init RotationStage and Shutter (rpc)")
-    from MessPy.Instruments.remotes import RotationStage, Shutter
-    #_rot_stage = RotationStage()
-    _shutter = Shutter()
-
-
-elif pc_name == 'DESKTOP-RMRQA8D':
+if pc_name == "DESKTOP-RMRQA8D":
+    logger.info("Importing and initializing AvaSpec")
     from MessPy.Instruments.cam_avaspec import AvaCam
-    from MessPy.Instruments.delay_dg535 import GeneratorDelayline
+
     _cam = AvaCam()
-    _cam2 = None
-    #from MessPy.Instruments.delay_line_apt import DelayLine
-    #_dl = DelayLine(name="VisDelay")
+
+    logger.info("Importing and initializing GeneratorDelayline")
+    from MessPy.Instruments.delay_dg535 import GeneratorDelayline
+
     _dl = GeneratorDelayline()
 
-elif pc_name == 'DESKTOP-BBLLUO7':
-    from MessPy.Instruments.cam_phasetec import PhaseTecCam
-    _cam = PhaseTecCam()
-    #_cam = CamMock()
     _cam2 = None
-    #from MessPy.Instruments.delay_line_apt import DelayLine
-    #_dl = DelayLine(name="VisDelay")
-    from MessPy.Instruments.delay_dg535 import GeneratorDelayline
-    #_dl = GeneratorDelayline(port='COM10')
+
+    # from MessPy.Instruments.delay_line_apt import DelayLine
+    # _dl = DelayLine(name="VisDelay")
+
+elif pc_name == "DESKTOP-BBLLUO7":
+    logger.info("Importing and initializing PhaseTecCam")
+    from MessPy.Instruments.cam_phasetec import PhaseTecCam
+
+    _cam = PhaseTecCam()
+    # _cam = CamMock()
+    _cam2 = None
+    # from MessPy.Instruments.delay_line_apt import DelayLine
+    # _dl = DelayLine(name="VisDelay")
+    # from MessPy.Instruments.delay_dg535 import GeneratorDelayline
+
+    # _dl = GeneratorDelayline(port='COM10')
+    logger.info("Importing and initializing NewportDelay")
     from MessPy.Instruments.delay_line_newport import NewportDelay
-    _dl = NewportDelay(name='IR Delay', pos_sign=-1)
+
+    _dl = NewportDelay(name="IR Delay", pos_sign=-1)
+
+    logger.info("Importing and initializing AOM")
     from MessPy.Instruments.dac_px import AOM, AOMShutter
-    _shaper = AOM(name='AOM')
+
+    _shaper = AOM(name="AOM")
     aom_shutter = AOMShutter(aom=_shaper)
+    _shutter.append(aom_shutter)
+    logger.info("Importing and initializing RotationStage")
     from MessPy.Instruments.RotationStage import RotationStage
+
     r1 = RotationStage(name="Grating1", comport="COM5")
     r2 = RotationStage(name="Grating2", comport="COM6")
-
     _shaper.rot1 = r1
     _shaper.rot2 = r2
-    from MessPy.Instruments.shutter_topas import TopasShutter
-    from MessPy.Instruments.shutter_phidget import PhidgetShutter
-    #from MessPy.Instruments.stage_smartact import SmarActXYZ
-    _shutter = [TopasShutter(), aom_shutter, PhidgetShutter()]
-    #_sh = SmarActXYZ()
+
+    logger.info("Importing and initializing TopasShutter")
+    try:
+        from MessPy.Instruments.shutter_topas import TopasShutter
+
+        _shutter.append(TopasShutter())
+    except ImportError:
+        logger.warning("TopasShutter import failed")
+
+    logger.info("Importing and initializing PhidgetShutter")
+    try:
+        from MessPy.Instruments.shutter_phidget import PhidgetShutter
+
+        _shutter.append(PhidgetShutter())
+    except ImportError:
+        logger.warning("PhidgetShutter import failed")
+
+    # from MessPy.Instruments.stage_smartact import SmarActXYZ
+
+    # _sh = SmarActXYZ()
     _power_meter = None
-    #try:
+    # try:
     #    from MessPy.Instruments.cam_power import PowerCam
     #    _power_meter = PowerCam()
-    #except:
+    # except:
     #    _power_meter = None
-    #try:
+    # try:
     #    from MessPy.Instruments.ophire import Starbright
     #    _power_meter = Starbright()
-    #except:
-    #_power_meter = None
+    # except:
+    # _power_meter = None
 else:
+    logger.info("Unknown PC, using mocks")
     _cam = CamMock()
     _dl = DelayLineMock()
-    _sh = StageMock()
+    # _sh = StageMock()
     _power_meter = PowerMeterMock()
+
+logger.info("HwRegistry initialized")

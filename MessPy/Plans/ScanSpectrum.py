@@ -4,7 +4,7 @@ import typing as T
 import attr
 
 import numpy as np
-from qtpy.QtCore import QObject, Signal
+from PySide6.QtCore import QObject, Signal
 
 from MessPy.ControlClasses import Cam
 from MessPy.Plans.PlanBase import Plan
@@ -36,9 +36,9 @@ class ScanSpectrum(Plan):
         self.sigPlanStarted.emit()
         self.cam.set_wavelength(self.wl_list[0])
         for self.wl_idx, wl in enumerate(self.wl_list):
-
             t = threading.Thread(
-                target=self.cam.set_wavelength, args=(wl, self.timeout))
+                target=self.cam.set_wavelength, args=(wl, self.timeout)
+            )
             t.start()
             while t.is_alive():
                 yield False
@@ -64,19 +64,21 @@ class ScanSpectrum(Plan):
         yield True
 
     def save(self):
-        data = {'cam': self.cam.name,
-                'wl': self.wls,
-                'probe': self.probe,
-                'ref': self.ref,
-                'signal': self.signal}
+        data = {
+            "cam": self.cam.name,
+            "wl": self.wls,
+            "probe": self.probe,
+            "ref": self.ref,
+            "signal": self.signal,
+        }
         # data['meta'] = self.meta
         self.save_meta()
         name = self.get_file_name()[0]
         np.savez(name, **data)
         return
-        #fig = Figure()
+        # fig = Figure()
         ##ax = fig.add_subplot()
-        ax.plot(self.wls[:, 64], self.probe[:, 64], label='Probe')
-        ax.plot(self.wls[:, 64], self.ref[:, 64], label='Ref')
+        ax.plot(self.wls[:, 64], self.probe[:, 64], label="Probe")
+        ax.plot(self.wls[:, 64], self.ref[:, 64], label="Ref")
         ax.legend()
-        fig.savefig(name.with_suffix('.png'))
+        fig.savefig(name.with_suffix(".png"))

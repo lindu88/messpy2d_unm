@@ -14,7 +14,7 @@ Created on Tue Jun 03 15:41:22 2014
 
 
 from MessPy.Instruments.interfaces import IRotationStage
-from qtpy.QtCore import QObject, Signal, QTimer
+from PySide6.QtCore import QObject, Signal, QTimer
 import serial
 import attr
 import time
@@ -58,8 +58,8 @@ class RotSignals(QObject):
 
 @attr.s(auto_attribs=True)
 class RotationStage(IRotationStage):
-    name: str = 'Rotation Stage'
-    comport: str = 'COM11'
+    name: str = "Rotation Stage"
+    comport: str = "COM11"
     rot: serial.Serial = attr.ib()
     offset: float = 180
     last_pos: float = 0
@@ -75,22 +75,22 @@ class RotationStage(IRotationStage):
         super(RotationStage, self).__attrs_post_init__()
         state = self.controller_state()
         print(state)
-        if state.startswith('DISABLE'):
-            self.w('1MM1')
+        if state.startswith("DISABLE"):
+            self.w("1MM1")
 
             print(self.controller_state())
         elif state.startswith("NOT REFERENCED"):
-            self.w(b'1RS')
-            self.rot.write(b'1OR\r\n')
-            while self.controller_state().startswith('HOMING'):
+            self.w(b"1RS")
+            self.rot.write(b"1OR\r\n")
+            while self.controller_state().startswith("HOMING"):
                 time.sleep(0.3)
 
         if self.last_pos != 0:
             self.set_degrees(self.last_pos)
 
     def w(self, x):
-        writer_str = f'{x}\r\n'
-        self.rot.write(writer_str.encode('utf-8'))
+        writer_str = f"{x}\r\n"
+        self.rot.write(writer_str.encode("utf-8"))
         self.rot.timeout = 1
 
     def set_degrees(self, pos):
@@ -98,8 +98,8 @@ class RotationStage(IRotationStage):
         cur_pos = self.get_degrees()
         if isinstance(pos, str):
             pos = float(pos)
-        setter_str = f'1PA{pos+self.offset}\r\n'
-        self.rot.write(setter_str.encode('utf-8'))
+        setter_str = f"1PA{pos+self.offset}\r\n"
+        self.rot.write(setter_str.encode("utf-8"))
         self.rot.timeout = 3
         self.last_pos = pos
         if self.signals.thread().eventDispatcher() != 0:
@@ -121,35 +121,36 @@ class RotationStage(IRotationStage):
         return dict(last_pos=self.last_pos)
 
     def controller_state(self) -> str:
-        self.w('1MM?')
-        ans = self.rot.read_until(b'\r\n').decode()
-        state = ans[ans.find("MM") + 2:-2].upper()
-        state = state.replace(' ', '0')
+        self.w("1MM?")
+        ans = self.rot.read_until(b"\r\n").decode()
+        state = ans[ans.find("MM") + 2 : -2].upper()
+        state = state.replace(" ", "0")
         return controller_states[state]
 
     def get_degrees(self):
         """Returns the position"""
-        self.w('1TP')
+        self.w("1TP")
         self.rot.timeout = 0.5
-        ans = self.rot.read_until(b'\r\n')
+        ans = self.rot.read_until(b"\r\n")
         ans = ans.decode()
-        return float(ans[ans.find("TP") + 2:-2])-self.offset
+        return float(ans[ans.find("TP") + 2 : -2]) - self.offset
 
     def is_moving(self):
-        return self.controller_state().startswith('MOVING')
+        return self.controller_state().startswith("MOVING")
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     import time
-    rs = RotationStage(comport='COM6')
-    print('change first')
+
+    rs = RotationStage(comport="COM6")
+    print("change first")
     rs.set_degrees(0)
     time.sleep(8)
     deg = rs.get_degrees()
-    print(f'first pol:{deg}')
+    print(f"first pol:{deg}")
     rs.set_degrees(80)
     time.sleep(8)
     deg = rs.get_degrees()
-    print(f'second pol:{deg}')
+    print(f"second pol:{deg}")
 
 # rs.set_pos(1)

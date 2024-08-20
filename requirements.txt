@@ -11,7 +11,7 @@ pytest
 pandas
 nicelib
 pyzmq
-
+loguru
 wrapt
 nidaqmx
 cffi

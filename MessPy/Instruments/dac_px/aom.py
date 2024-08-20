@@ -1,6 +1,6 @@
 from MessPy.Instruments.interfaces import IDevice
-from qtpy.QtCore import Signal
-from logging import getLogger
+from PySide6.QtCore import Signal
+from loguru import logger
 from pathlib import Path
 from typing import Optional, Literal
 from typing import TYPE_CHECKING, Tuple
@@ -8,15 +8,18 @@ from typing import TYPE_CHECKING, Tuple
 import attr
 import numpy as np
 
-from MessPy.Instruments.dac_px.shaper_calculations import double_pulse_mask, delay_scan_mask, cm2THz, THz2cm
+from MessPy.Instruments.dac_px.shaper_calculations import (
+    double_pulse_mask,
+    delay_scan_mask,
+    cm2THz,
+    THz2cm,
+)
 
 if TYPE_CHECKING:
     from MessPy.Instruments.dac_px.pxdac import PXDAC
 
 PIXEL = 4096 * 3  # 12288
 MAX_16_Bit = (1 << 13) - 1
-
-log = getLogger(__file__)
 
 
 def default_dac():
@@ -95,6 +98,7 @@ class AOM(IDevice):
     def setup_dac(self):
         dac = self.dac
         dac.SetDacSampleSizeXD48(2)
+        log = logger
         log.info("Size: %s ", dac.GetDacSampleSizeXD48(1))
         log.info("Format: %s", dac.GetDacSampleFormatXD48(1))
 
@@ -116,12 +120,11 @@ class AOM(IDevice):
         x = self.nu - self.nu0_THz
         x *= (2 * np.pi) / 1000  # PHz -> disp params in fs^-n (n=2,3,4)
         coef = np.array([self.delay, self.gvd, self.tod, self.fod])
-        coef = coef/np.array([1, 2, 6, 24])
-        phase = x * coef[0] + x ** 2 * coef[1] + \
-            x ** 3 * coef[2] + x ** 4 * coef[3]
+        coef = coef / np.array([1, 2, 6, 24])
+        phase = x * coef[0] + x**2 * coef[1] + x**3 * coef[2] + x**4 * coef[3]
         self.do_dispersion_compensation = True
         self.compensation_phase = -phase[:, None]
-        log.info(
+        logger.info(
             "Updating dispersion compensation %1.f %.2f %.2e %.2e %.2e",
             self.nu0_THz,
             self.delay,
@@ -163,18 +166,18 @@ class AOM(IDevice):
         return amp * np.cos(self.pixel[:, None] / f * 2 * np.pi + phase)
 
     def double_pulse(
-        self, taus: np.ndarray, rot_frame: float, rot_frame2: float, phase_frames: Literal[1, 2, 4] = 4
+        self,
+        taus: np.ndarray,
+        rot_frame: float,
+        rot_frame2: float,
+        phase_frames: Literal[1, 2, 4] = 4,
     ) -> Tuple[np.ndarray, np.ndarray]:
         """
         Calculates the masks for creating a series a double pulses with phase cycling.
         """
         if self.nu is None:
-            raise ValueError(
-                "Spectral calibration is required to calculate the masks.")
-        phase = np.pi * np.array([(1, 1),
-                                  (1, 0),
-                                  (0, 0),
-                                  (0, 1)])
+            raise ValueError("Spectral calibration is required to calculate the masks.")
+        phase = np.pi * np.array([(1, 1), (1, 0), (0, 0), (0, 1)])
         phase = phase[:phase_frames, :]
         phase = np.tile(phase, (taus.shape[0], 1))
         phi1 = phase[:, 0]
@@ -182,9 +185,11 @@ class AOM(IDevice):
         taus = taus.repeat(phase_frames)
         masks = double_pulse_mask(
             self.nu[:, None],
-            rot_frame, taus[None, :],
-            phi1[None, :], phi2[None, :],
-            rot_frame2
+            rot_frame,
+            taus[None, :],
+            phi1[None, :],
+            phi2[None, :],
+            rot_frame2,
         )
 
         self.set_amp_and_phase(np.abs(masks), np.angle(masks))
@@ -198,7 +203,9 @@ class AOM(IDevice):
         mask = delay_scan_mask(self.nu[:, None], taus[None, :], phi[None, :])
         return np.ones(PIXEL), mask
 
-    def set_amp_and_phase(self, amp: Optional[np.ndarray] = None, phase: Optional[np.ndarray] = None):
+    def set_amp_and_phase(
+        self, amp: Optional[np.ndarray] = None, phase: Optional[np.ndarray] = None
+    ):
         """
         Sets the amplitude and/or the phase of the spectral map.
         Notice that the compensation dispersion phase will be added separately.
@@ -213,7 +220,7 @@ class AOM(IDevice):
             self.amp = amp
 
     def generate_waveform(self) -> int:
-        """"
+        """
         Actually generates the waveform from set phase and amp. If turned on,
         it will also add the dispersion compensation phase in addition.
         Depending on the `mode` attribute, it will either use a bragg corrected
@@ -229,14 +236,14 @@ class AOM(IDevice):
         self.total_phase = phase
 
         if self.compensation_amp is not None:
-            amp = self.amp * self.compensation_amp
+            total_amp = self.amp * self.compensation_amp
         else:
-            amp = self.amp
+            total_amp = self.amp
 
         if self.mode == "bragg" and self.calib is not None:
-            masks = self.bragg_wf(amp, self.total_phase)
+            masks = self.bragg_wf(total_amp, self.total_phase)
         else:
-            masks = self.classic_wf(amp, self.total_phase)
+            masks = self.classic_wf(total_amp, self.total_phase)
 
         if self.chopped:
             if self.chop_mode == "standard":
@@ -248,7 +255,7 @@ class AOM(IDevice):
                 mask2[idx, :] = 0
                 masks = np.concatenate((mask2, masks), axis=1)
         if self.phase_cycle:
-            masks = np.concatenate((masks, -masks), axis=1)
+            masks = np.concatenate((masks, -1 * masks), axis=1)
         return self.load_mask(masks)
 
     def voltage(self, i: int):
@@ -281,8 +288,8 @@ class AOM(IDevice):
             self.mask = mask
 
         if len(self.mask.shape) == 2:
-            assert(self.mask.shape[0] == PIXEL)
-            self.mask = self.mask.ravel(order='F')
+            assert self.mask.shape[0] == PIXEL
+            self.mask = self.mask.ravel(order="F")
 
         mask = (self.amp_fac * MAX_16_Bit * self.mask).astype("int16")
         self.scaled_mask = mask
@@ -296,8 +303,7 @@ class AOM(IDevice):
         full_mask[::2] = mask
         full_mask[1::2] = mask1
         self.full_mask = full_mask
-        self.dac.LoadRamBufXD48(0, full_mask.size * 2,
-                                full_mask.ctypes.data, 0)
+        self.dac.LoadRamBufXD48(0, full_mask.size * 2, full_mask.ctypes.data, 0)
         self.start_playback()
         return frames
 
@@ -319,14 +325,14 @@ class AOM(IDevice):
         m = np.zeros_like(full_mask)
         cur_pos = single
         while cur_pos < PIXEL:
-            m += np.exp(-0.5 * (self.pixel - cur_pos) ** 2 / width ** 2)
+            m += np.exp(-0.5 * (self.pixel - cur_pos) ** 2 / width**2)
             cur_pos += separation
         cur_pos = single - separation
         while cur_pos > 0:
-            m += np.exp(-0.5 * (self.pixel - cur_pos) ** 2 / width ** 2)
+            m += np.exp(-0.5 * (self.pixel - cur_pos) ** 2 / width**2)
             cur_pos -= separation
-        pulse_train_mask = m*full_mask
-        m = np.exp(-0.5 * (self.pixel - single) ** 2 / width ** 2)
+        pulse_train_mask = m * full_mask
+        m = np.exp(-0.5 * (self.pixel - single) ** 2 / width**2)
         single_mask = m * full_mask
         mask = np.stack((pulse_train_mask, single_mask, full_mask), axis=1)
         return mask
@@ -348,22 +354,20 @@ class AOM(IDevice):
         x0 = 1650
         x0_nu = cm2THz(x0)
         width = 50
-        xw = abs(x0_nu - cm2THz(x0+width))
+        xw = abs(x0_nu - cm2THz(x0 + width))
         print(x0_nu, xw)
         amp_f = np.zeros_like(self.nu)
-        amp_f[(self.nu < x0_nu+xw) & (self.nu > x0_nu-xw)] = 1
-        amp = np.exp(-0.5*(self.nu-x0_nu)**2/xw**2)[:, None]
-        self.compensation_amp = amp#[:, None]
-
-
-
+        amp_f[(self.nu < x0_nu + xw) & (self.nu > x0_nu - xw)] = 1
+        amp = np.exp(-0.5 * (self.nu - x0_nu) ** 2 / xw**2)[:, None]
+        self.compensation_amp = amp  # [:, None]
 
 
 from MessPy.Instruments.interfaces import IShutter
 
+
 @attr.dataclass(kw_only=True)
 class AOMShutter(IShutter):
-    name: str = 'AOM Playback'
+    name: str = "AOM Playback"
     aom: AOM = attr.ib()
 
     def toggle(self):
@@ -384,45 +388,45 @@ if __name__ == "__main__":
     width = 40
     seperation = 400
     amp, phase = [], []
-    for i in Path('C:\PhaseTech\masks').glob('*'):
+    for i in Path("C:\PhaseTech\masks").glob("*"):
         d = np.loadtxt(i)
         amp.append(d[:, 0])
         phase.append(d[:, 1])
     amp = np.array(amp).T
     phase = np.array(phase).T
-    np.save('pt_masks_amp_2000_50.npy', amp)
-    np.save('pt_masks_amp_2000_50.npy', phase)
+    np.save("pt_masks_amp_2000_50.npy", amp)
+    np.save("pt_masks_amp_2000_50.npy", phase)
     A.do_dispersion_compensation = False
     A.compensation_phase = None
     A.chopped = False
     A.phase_cycle = False
-    A.mode = 'classic'
+    A.mode = "classic"
     A.nu0_THz = cm2THz(2010)
     A.set_amp_and_phase(amp, phase)
     A.generate_waveform()
     exit()
     for i in np.arange(1960, 2060, 10):
         full_mask = np.cos(np.arange(PIXEL) / 16 * 2 * np.pi)
-        full_mask *= np.exp(-0.5*(THz2cm(A.nu)-i)**2/5**2)
+        full_mask *= np.exp(-0.5 * (THz2cm(A.nu) - i) ** 2 / 5**2)
         # A.load_mask(full_mask)
         # time.sleep(0.1)
-    #full_mask += np.exp(-0.5*(THz2cm(A.nu)-2000)**2/5**2) * np.cos(np.arange(PIXEL) / 16 * 2 * np.pi)
-    #m = A.make_calib_mask(separation=300, width=40)
-    #A.load_mask(m[:, 0])
+    # full_mask += np.exp(-0.5*(THz2cm(A.nu)-2000)**2/5**2) * np.cos(np.arange(PIXEL) / 16 * 2 * np.pi)
+    # m = A.make_calib_mask(separation=300, width=40)
+    # A.load_mask(m[:, 0])
     om = 2 * np.pi * A.nu[:, None]
-    #masks = np.cos(om * taus / 2) * np.exp(1j * om * taus)
+    # masks = np.cos(om * taus / 2) * np.exp(1j * om * taus)
     A.do_dispersion_compensation = False
     A.compensation_phase = None
     A.chopped = False
     A.phase_cycle = False
-    A.mode = 'classic'
+    A.mode = "classic"
     A.nu0_THz = cm2THz(2010)
     A.double_pulse(np.arange(0, 2.03, 0.05), 2, 2)
 
     print(A.amp.shape)
 
-    #amp = np.float64(abs(THz2cm(A.nu)-1940) < 10)[:, None]
-    #A.set_amp_and_phase(amp=amp, phase=np.zeros_like(amp))
+    # amp = np.float64(abs(THz2cm(A.nu)-1940) < 10)[:, None]
+    # A.set_amp_and_phase(amp=amp, phase=np.zeros_like(amp))
     A.generate_waveform()
     # print(f"{amp.shape=}")
 

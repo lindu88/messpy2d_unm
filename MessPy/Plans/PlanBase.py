@@ -1,4 +1,5 @@
 import asyncio
+from functools import cached_property
 import json
 import time
 import threading
@@ -9,26 +10,30 @@ from typing import ClassVar, Tuple, Optional, Callable, Generator, Any
 
 import h5py
 import attr
-from qtpy.QtCore import QObject, Signal, Slot, QThread
+from PySide6.QtCore import QObject, Signal, Slot, QThread
 from numpy import ndarray
 
 from MessPy.Config import config
 from MessPy.Instruments.interfaces import IDevice
 
-sample_parameters = {'name': 'Sample', 'type': 'group', 'children': [
-    dict(name='Sample', type='str', value=''),
-    dict(name='Solvent', type='str', values=''),
-    dict(name='Excitation', type='str'),
-    dict(name='Thickness', type='str'),
-    dict(name='Annotations', type='str'),
-    dict(name='Users:', type='str'),
-]}
-
+sample_parameters = {
+    "name": "Sample",
+    "type": "group",
+    "children": [
+        dict(name="Sample", type="str", value=""),
+        dict(name="Solvent", type="str", value=""),
+        dict(name="Excitation", type="str"),
+        dict(name="Thickness", type="str"),
+        dict(name="Annotations", type="str"),
+        dict(name="Users:", type="str"),
+    ],
+}
 
 
 @attr.s(auto_attribs=True)
 class TimeTracker(QObject):
     """Class to track times for scans and points."""
+
     start_time: float = attr.Factory(time.time)
     scan_start_time: float = 0
     scan_end_time: Optional[float] = None
@@ -89,9 +94,9 @@ class TimeTracker(QObject):
 class Plan(QObject):
     plan_shorthand: ClassVar[str]
 
-    name: str = ''
+    name: str = ""
     meta: dict = attr.Factory(dict)
-    status: str = ''
+    status: str = ""
     creation_dt: datetime = attr.Factory(datetime.now)
     is_async: bool = False
     time_tracker: TimeTracker = attr.Factory(TimeTracker)
@@ -103,7 +108,7 @@ class Plan(QObject):
 
     def __attrs_post_init__(self):
         super(Plan, self).__init__()
-        self.get_file_name() # check if name is valid
+        self.get_file_name()  # check if name is valid
 
     def get_file_name(self) -> Tuple[Path, Path]:
         """Builds the filename and the metafilename"""
@@ -116,26 +121,26 @@ class Plan(QObject):
         p = Path(config.data_directory)
         if not p.exists():
             raise IOError("Data path in config not existing")
-        if (p / name).with_suffix('.json').exists():
+        if (p / name).with_suffix(".json").exists():
             name = name + "_0"
-        return (p / name).with_suffix('.messpy'), (p / name).with_suffix('.json')
+        return (p / name).with_suffix(".messpy"), (p / name).with_suffix(".json")
 
     def save_meta(self):
         """Saves the metadata in the metafile"""
         self.get_app_state()
         if self.meta is not None:
             _, meta_file = self.get_file_name()
-            with meta_file.open('w') as f:
+            with meta_file.open("w") as f:
                 json.dump(self.meta, f, indent=4)
 
     def get_app_state(self):
         """Collects all devices states."""
-        self.meta['Saved at'] = datetime.now().isoformat()
-        self.meta['Started at'] = self.creation_dt.isoformat()
+        self.meta["Saved at"] = datetime.now().isoformat()
+        self.meta["Started at"] = self.creation_dt.isoformat()
         devices_state = {}
         for i in IDevice.registered_devices:
             devices_state[i.name] = i.get_state()
-        self.meta['Devices'] = devices_state
+        self.meta["Devices"] = devices_state
 
     def restore_state(self):
         pass
@@ -144,6 +149,7 @@ class Plan(QObject):
     def stop_plan(self):
         self.restore_state()
         self.sigPlanStopped.emit()
+
 
 @attr.s(auto_attribs=True, kw_only=True)
 class H5PySaver:
@@ -154,9 +160,10 @@ class H5PySaver:
         self.fname.parent.mkdir(parents=True, exist_ok=True)
 
     def save(self, data: dict):
-        with h5py.File(self.fname, 'w') as f:
+        with h5py.File(self.fname, "w") as f:
             for k, v in data.items():
                 f.create_dataset(k, data=v)
+
 
 @attr.s(auto_attribs=True, kw_only=True)
 class ScanPlan(Plan):
@@ -166,10 +173,9 @@ class ScanPlan(Plan):
     cur_scan: int = 0
     max_scan: int = 1_000_000
     stop_after_scan: bool = False
-    make_step: Callable = attr.ib()
 
-    @make_step.default
-    def _prime_gen(self):
+    @cached_property
+    def make_step(self) -> Callable:
         return self.make_step_generator().__next__
 
     def __attrs_post_init__(self):
@@ -213,7 +219,8 @@ from concurrent.futures import ThreadPoolExecutor, Future
 class PointList:
     axis: str
     points: ndarray
-    func: Callable|None = None
+    func: Callable | None = None
+
 
 @attr.s(auto_attribs=True, kw_only=True)
 class PointScan(ScanPlan):
@@ -223,7 +230,6 @@ class PointScan(ScanPlan):
         raise NotImplementedError
 
     def setup_plan(self) -> Generator:
-
         return super().setup_plan()
 
     def scan(self):
@@ -235,12 +241,13 @@ class PointScan(ScanPlan):
                 while not future.done():
                     yield True
                 data = future.result()
-                with h5py.File(self.file_name, 'w') as f:
+                with h5py.File(self.file_name, "w") as f:
                     for k, v in data.items():
                         f.create_dataset(f"{self.cur_scan}/{k}", data=v)
 
     def measure_point(self) -> dict[str, ndarray]:
         raise NotImplementedError
+
 
 @attr.s(auto_attribs=True, kw_only=True)
 class AsyncPlan(Plan):
@@ -261,5 +268,3 @@ class AsyncPlan(Plan):
         if self.task:
             self.task.cancel()
         return super().stop_plan()
-
-

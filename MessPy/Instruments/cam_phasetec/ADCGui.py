@@ -3,32 +3,39 @@ from typing import Dict
 import numpy as np
 import pyqtgraph.parametertree as pt
 
-from pyqtgraph import PlotWidget, ImageItem, PlotCurveItem, LinearRegionItem, mkBrush, colormap
-from qtpy.QtCore import QTimer, QObject, Signal, QThread
-from qtpy.QtWidgets import (QApplication, QWidget)
+from pyqtgraph import (
+    PlotWidget,
+    ImageItem,
+    PlotCurveItem,
+    LinearRegionItem,
+    mkBrush,
+    colormap,
+)
+from PySide6.QtCore import QTimer, QObject, Signal, QThread
+from PySide6.QtWidgets import QApplication, QWidget
 
 from MessPy.QtHelpers import hlay, vlay
-#from imaq_nicelib import Cam
+
+# from imaq_nicelib import Cam
 from MessPy.Instruments.cam_phasetec import PhaseTecCam
 
-row_paras = {'type': 'int', 'step': 1, 'min': 0, 'max': 128,
-             'readonly': True}
+row_paras = {"type": "int", "step": 1, "min": 0, "max": 128, "readonly": True}
 params = [
-    {'name': 'Shots', 'type': 'int', 'value': 30, 'min': 10, 'max': 5000},
-    {'name': 'Top Probe', 'value': 35, **row_paras},
-    {'name': 'Bot. Probe', 'value': 30, **row_paras},
-    {'name': 'Top Ref', 'value': 103, **row_paras},
-    {'name': 'Bot. Ref', 'value': 93, **row_paras},
-    {'name': 'Top Probe2', 'value': 60, **row_paras},
-    {'name': 'Bot. Probe2', 'value': 50, **row_paras},
-    {'name': 'Record BG', 'type': 'action'},
-    {'name': 'Delete BG', 'type': 'action'},
-    {'name': "Mode", "type": 'list', 'limits': ('norm', 'rel_std', 'abs_std')}
+    {"name": "Shots", "type": "int", "value": 30, "min": 10, "max": 5000},
+    {"name": "Top Probe", "value": 35, **row_paras},
+    {"name": "Bot. Probe", "value": 30, **row_paras},
+    {"name": "Top Ref", "value": 103, **row_paras},
+    {"name": "Bot. Ref", "value": 93, **row_paras},
+    {"name": "Top Probe2", "value": 60, **row_paras},
+    {"name": "Bot. Probe2", "value": 50, **row_paras},
+    {"name": "Record BG", "type": "action"},
+    {"name": "Delete BG", "type": "action"},
+    {"name": "Mode", "type": "list", "limits": ("norm", "rel_std", "abs_std")},
 ]
 
 x = np.arange(128)
 y = np.arange(128)
-map = colormap.get('CET-L9')
+map = colormap.get("CET-L9")
 lut = map.getLookupTable()
 MAX_VAL = 1 << 14
 
@@ -47,12 +54,11 @@ class Worker(QObject):
 
 
 class CamOptions(QWidget):
-    def __init__(self, cam: PhaseTecCam,  standalone=False, parent=None):
+    def __init__(self, cam: PhaseTecCam, standalone=False, parent=None):
         super(CamOptions, self).__init__(parent=parent)
         self.standalone = standalone
         self.cam = cam
-        p = pt.Parameter.create(name='ADC Settings',
-                                type='group', children=params)
+        p = pt.Parameter.create(name="ADC Settings", type="group", children=params)
         self.param_tree = pt.ParameterTree(self)
         self.param_tree.setParameters(p)
 
@@ -65,13 +71,15 @@ class CamOptions(QWidget):
         self.mean_lines: Dict[str, PlotCurveItem] = {}
         self.std_lines: Dict[str, PlotCurveItem] = {}
 
-        self.cam_attrs = ['probe_rows', 'probe2_rows', 'ref_rows']
+        self.cam_attrs = ["probe_rows", "probe2_rows", "ref_rows"]
 
-        for i, line in enumerate(['Probe', 'Probe2', 'Ref']):
-            p[f'Top {line}'] = getattr(cam, self.cam_attrs[i])[0]
-            p[f'Bot. {line}'] = getattr(cam, self.cam_attrs[i])[1]
-            region = LinearRegionItem(orientation=LinearRegionItem.Horizontal,
-                                      values=(p[f'Bot. {line}'], p[f'Top {line}']))
+        for i, line in enumerate(["Probe", "Probe2", "Ref"]):
+            p[f"Top {line}"] = getattr(cam, self.cam_attrs[i])[0]
+            p[f"Bot. {line}"] = getattr(cam, self.cam_attrs[i])[1]
+            region = LinearRegionItem(
+                orientation=LinearRegionItem.Horizontal,
+                values=(p[f"Bot. {line}"], p[f"Top {line}"]),
+            )
             region.setZValue(10)
             region.setBrush(mkBrush([0, 0, 0, 0]))
             self.regions[line] = region
@@ -84,17 +92,18 @@ class CamOptions(QWidget):
             self.std_lines[line] = std_line
             self.stdPlotWidget.plotItem.addItem(std_line)
 
-        self.left_line = PlotCurveItem(pen='r')
-        self.right_line = PlotCurveItem(pen='b')
+        self.left_line = PlotCurveItem(pen="r")
+        self.right_line = PlotCurveItem(pen="b")
 
         self.plotWidget.plotItem.addItem(self.left_line)
         self.plotWidget.plotItem.addItem(self.right_line)
 
-        self.std_lines['Norm'] = PlotCurveItem(pen='w')
-        self.stdPlotWidget.plotItem.addItem(self.std_lines['Norm'])
+        self.std_lines["Norm"] = PlotCurveItem(pen="w")
+        self.stdPlotWidget.plotItem.addItem(self.std_lines["Norm"])
 
         self.setLayout(
-            hlay([self.param_tree, vlay([self.plotWidget, self.stdPlotWidget])]))
+            hlay([self.param_tree, vlay([self.plotWidget, self.stdPlotWidget])])
+        )
         self.params = p
         self.setup_connections()
 
@@ -102,21 +111,20 @@ class CamOptions(QWidget):
         p = self.params
         pm = self.cam
 
-        p.child('Shots').sigValueChanged.connect(
-            lambda val: pm.set_shots(val.value()))
+        p.child("Shots").sigValueChanged.connect(lambda val: pm.set_shots(val.value()))
 
-        for i, line in enumerate(['Probe', 'Probe2', 'Ref']):
+        for i, line in enumerate(["Probe", "Probe2", "Ref"]):
+
             def update_pr_regions(reg: LinearRegionItem):
                 mi, ma = sorted(reg.getRegion())
-                p.child(f'Top {line}').setValue(ma)
-                p.child(f'Bot. {line}').setValue(mi)
+                p.child(f"Top {line}").setValue(ma)
+                p.child(f"Bot. {line}").setValue(mi)
                 setattr(self.cam, self.cam_attrs[i], (ma, mi))
-            self.regions[line].sigRegionChangeFinished.connect(
-                update_pr_regions)
 
-        p.child('Record BG').sigActivated.connect(
-            lambda: self.cam.set_background())
-        p.child('Delete BG').sigActivated.connect(self.cam.remove_background)
+            self.regions[line].sigRegionChangeFinished.connect(update_pr_regions)
+
+        p.child("Record BG").sigActivated.connect(lambda: self.cam.set_background())
+        p.child("Delete BG").sigActivated.connect(self.cam.remove_background)
 
     def update(self):
         pm = self.cam
@@ -124,13 +132,13 @@ class CamOptions(QWidget):
         if pm.background is not None:
             img = data.mean(2) - pm.background
             data = data - pm.background[:, :, None]
-            if self.params['Mode'] == 'rel_std':
+            if self.params["Mode"] == "rel_std":
                 img = 100 * data.std(2) / data.mean(2)
                 levels = [0, 3]
-            elif self.params['Mode'] == 'norm':
+            elif self.params["Mode"] == "norm":
                 img = data.mean(2) - pm.background
                 levels = [0, MAX_VAL]
-            elif self.params["Mode"] == 'abs_std':
+            elif self.params["Mode"] == "abs_std":
                 img = data.std(2)
                 levels = [0, 100]
         else:
@@ -141,25 +149,25 @@ class CamOptions(QWidget):
         self.left_line.setData(x=-(img[:, 0] / MAX_VAL * 100), y=y)
         self.right_line.setData(x=-(img[:, -1] / MAX_VAL * 100), y=y)
         data_dict = {}
-        for i, line in enumerate(['Probe', 'Probe2', 'Ref']):
-            a, b = int(self.params[f'Top {line}']), int(
-                self.params[f'Bot. {line}'])
+        for i, line in enumerate(["Probe", "Probe2", "Ref"]):
+            a, b = int(self.params[f"Top {line}"]), int(self.params[f"Bot. {line}"])
             probe = data[b:a, :, :].sum(0)
             self.mean_lines[line].setData(
-                x=x, y=img[b:a, :].mean(0) / MAX_VAL * 100 + 128)
-            self.std_lines[line].setData(
-                x=x, y=100 * probe.std(1) / probe.mean(1))
+                x=x, y=img[b:a, :].mean(0) / MAX_VAL * 100 + 128
+            )
+            self.std_lines[line].setData(x=x, y=100 * probe.std(1) / probe.mean(1))
             data_dict[line] = probe
 
-        norm = data_dict['Probe'] / data_dict['Ref']
-        self.std_lines['Norm'].setData(x=x, y=100 * norm.std(1) / norm.mean(1))
+        norm = data_dict["Probe"] / data_dict["Ref"]
+        self.std_lines["Norm"].setData(x=x, y=100 * norm.std(1) / norm.mean(1))
 
     def get_best_pixel(self):
         pass
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     import sys
+
     sys._excepthook = sys.excepthook
 
     def exception_hook(exctype, value, traceback):

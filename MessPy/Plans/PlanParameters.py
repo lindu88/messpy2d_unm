@@ -19,7 +19,8 @@ class DelayParameter(GroupParameter):
                            dict(name="Add pre-zero times", type='bool', value=False),
                            dict(name="Num pre-zero points", type='int', value=10, min=0, max=20),
                            dict(name="Pre-Zero pos", type='float', value=-60., suffix='ps'),
-                           dict(name='Time-points', type='str', readonly=True)]
+                           dict(name='Time-points', type='str', readonly=True),
+                           ]
         self.addChildren(time_parameters)
         self.out_str = self.child('Time-points')
         self.sigTreeStateChanged.connect(self.format_values)

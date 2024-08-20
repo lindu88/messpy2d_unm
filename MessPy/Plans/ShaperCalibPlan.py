@@ -4,8 +4,8 @@ from MessPy.Instruments.dac_px import AOM
 import numpy as np
 from pyqtgraph.parametertree import Parameter, ParameterTree
 import pyqtgraph as pg
-from qtpy.QtCore import QObject, Signal
-from qtpy.QtWidgets import *
+from PySide6.QtCore import QObject, Signal
+from PySide6.QtWidgets import *
 from qasync import QEventLoop, asyncSlot
 from typing import List, Callable, Tuple, ClassVar
 from MessPy.Instruments.interfaces import ICam
@@ -35,7 +35,7 @@ class CalibPlan(AsyncPlan):
     is_async: bool = True
 
     sigStepDone = Signal()
-    plan_shorthand: ClassVar[str] = 'Calibration'
+    plan_shorthand: ClassVar[str] = "Calibration"
 
     def __attrs_post_init__(self):
         super(CalibPlan, self).__attrs_post_init__()
@@ -52,12 +52,15 @@ class CalibPlan(AsyncPlan):
                 None, self.cam.cam.spectrograph.set_wavelength, 0, 10
             )
             reading, ch = await loop.run_in_executor(None, self.cam.cam.get_spectra, 3)
-            pump_spec = reading['Probe2']
+            pump_spec = reading["Probe2"]
             self.channel = np.argmax(pump_spec.mean)  # typing: ignore
 
         self.single_spectra = np.zeros((self.cam.channels, len(self.points)))
-        self.dac.load_mask(self.dac.make_calib_mask(
-            width=self.width, separation=self.separation, single=self.single))
+        self.dac.load_mask(
+            self.dac.make_calib_mask(
+                width=self.width, separation=self.separation, single=self.single
+            )
+        )
         for i, p in enumerate(self.points):
             await self.read_point(i, p)
             self.sigStepDone.emit()

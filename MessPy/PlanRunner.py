@@ -1,14 +1,14 @@
 from typing import ClassVar, Optional, Literal
 
 from attr import define, Factory
-from qtpy.QtCore import Signal, Slot, QObject, QThread, QTimer
+from PySide6.QtCore import Signal, Slot, QObject
 from MessPy.Plans.PlanBase import Plan
 
 
 @define
 class PlanRunner(QObject):
     plan: Optional[Plan] = None
-    state: Literal['running', 'paused', 'no_plan'] = 'no_plan'
+    state: Literal["running", "paused", "no_plan"] = "no_plan"
 
     sigPlanStopped: ClassVar[Signal] = Signal(bool)
     sigPlanStarted: ClassVar[Signal] = Signal(bool)
@@ -20,7 +20,7 @@ class PlanRunner(QObject):
     @Slot(Plan)
     def start_plan(self, plan: Plan):
         self.plan = plan
-        self.state = 'running'
+        self.state = "running"
         self.sigPlanStarted.emit(True)
         if not plan.is_async:
             pass
@@ -28,13 +28,13 @@ class PlanRunner(QObject):
     @Slot()
     def pause_plan(self):
         if self.plan:
-            self.state = 'paused'
+            self.state = "paused"
             self.sigPlanPaused.emit(True)
 
     @Slot()
     def resume_plan(self):
         if self.plan:
-            self.state = 'running'
+            self.state = "running"
             self.sigPlanPaused.emit(False)
 
     @Slot
@@ -42,4 +42,4 @@ class PlanRunner(QObject):
         if self.plan:
             self.plan.stop_plan()
             self.sigPlanStopped.emit(True)
-            self.state = 'no_plan'
+            self.state = "no_plan"

@@ -1,19 +1,36 @@
 import math
-from typing import Optional, Callable, Union, Literal
+from typing import Optional, Callable, Union, overload, Self
 
 import attr
 import numpy as np
+from numpy.typing import NDArray
 from scipy.constants import c
 from numba import njit, prange
 
 LOG10 = math.log(10)
-f = Union[float, np.ndarray]
 
-def THz2cm(nu: f) -> f:
+
+@overload
+def THz2cm(nu: float) -> float: ...
+
+
+@overload
+def THz2cm(nu: np.ndarray) -> np.ndarray: ...
+
+
+def THz2cm(nu):
     return (nu * 1e10) / c
 
 
-def cm2THz(cm: f) -> f:
+@overload
+def cm2THz(cm: float) -> float: ...
+
+
+@overload
+def cm2THz(cm: np.ndarray) -> np.ndarray: ...
+
+
+def cm2THz(cm):
     return c * cm / 1e10
 
 
@@ -48,8 +65,9 @@ def fast_stats2d(arr):
         res[i, :] = fast_stats(arr[i, :])
     return res
 
+
 @njit(fastmath=True, cache=True)
-def fast_stats(arr):
+def fast_stats(arr: NDArray[np.float64]) -> tuple[float, float, float, float]:
     """
     For a given 1-dimensional array calculate mean, std, min_val and max_val in a single pass.
     """
@@ -63,31 +81,35 @@ def fast_stats(arr):
         else:
             continue
         s += x
-        sq_sum += x*x
+        sq_sum += x * x
         if x > max_val:
             max_val = x
         elif x < min_val:
             min_val = x
-    mean = s/n
-    var = (sq_sum - s*s/n) / n
+    mean = s / n
+    var = (sq_sum - s * s / n) / n
     std = math.sqrt(var)
     return mean, std, min_val, max_val
 
+
 @njit(fastmath=True, cache=True)
-def fast_signal(arr):
+def fast_signal(arr: NDArray[np.float64]) -> float:
+    """
+    For a given 1-dimensional array calculate the signal.
+    """
     sig = 0
     mean = 0
     n = arr.shape[0]
 
     for i in range(0, n, 2):
-        sig += (arr[i] - arr[i+1])
+        sig += arr[i] - arr[i + 1]
         mean += arr[i]
 
-    return 1000/LOG10*sig/mean
+    return 1000 / LOG10 * sig / mean
 
 
 @njit(parallel=True, cache=True)
-def fast_signal2d(arr):
+def fast_signal2d(arr) -> NDArray:
     """
     For a given 2-dimensional array calculate mean, std, min_val and max_val along the second dimension
     in a single pass.
@@ -100,7 +122,7 @@ def fast_signal2d(arr):
 
 
 @njit(parallel=True, cache=True)
-def fast_col_mean(arr, idx):
+def fast_col_mean(arr, idx) -> NDArray[np.float64]:
     """
     Given a (pixel_a, pixel_b, shots) array together with a index array
     (pixel_a, pixel_b), return the mean value along the pixel_a (rows)
@@ -130,7 +152,9 @@ class Spectrum:
     signal: Optional[np.ndarray] = None
 
     @classmethod
-    def create(cls, data, data_max=None, name=None, frames=None, first_frame=None):
+    def create(
+        cls, data, data_max=None, name=None, frames=None, first_frame=None
+    ) -> Self:
         mean, std, max = stats(data, data_max)
         signal = None
         if frames is not None:
@@ -141,35 +165,42 @@ class Spectrum:
                 frame_data[:, i] = np.nanmean(data[:, i::frames], 1)
             frame_data = np.roll(frame_data, -first_frame, 1)
             if frames == 2:
-                with np.errstate(invalid='ignore'):
-                    signal = 1000 / LOG10 * np.log1p(
-                        frame_data[:, 0] / frame_data[:, 1] - 1)
+                with np.errstate(invalid="ignore"):
+                    signal = (
+                        1000 / LOG10 * np.log1p(frame_data[:, 0] / frame_data[:, 1] - 1)
+                    )
         else:
             frame_data = None
 
-        return cls(data=data,
-                   mean=mean,
-                   std=std,
-                   name=name,
-                   max=max,
-                   signal=signal,
-                   frames=frames,
-                   frame_data=frame_data,
-                   first_frame=first_frame)
+        return cls(
+            data=data,
+            mean=mean,
+            std=std,
+            name=name,
+            max=max,
+            signal=signal,
+            frames=frames,
+            frame_data=frame_data,
+            first_frame=first_frame,
+        )
 
 
 @attr.s(auto_attribs=True, cmp=False)
 class Reading:
-    """Each array has the shape (n_type, pixel)"""
+    """Each array has the shape (n_type, pixel), except for full_data which has the shape (n_type, pixel, shots)"""
+
     lines: np.ndarray
     stds: np.ndarray
     signals: np.ndarray
+    full_data: np.ndarray
+    shots: int
     valid: bool
 
 
 @attr.s(auto_attribs=True, cmp=False)
 class Reading2D:
     """Has the shape (pixel, t2)"""
+
     spectra: Spectrum
     interferogram: np.ndarray
     t2_ps: np.ndarray
@@ -182,32 +213,44 @@ class Reading2D:
     ref_frames: Optional[np.ndarray] = None
 
     @classmethod
-    def from_spectrum(cls, s: Spectrum, t2_ps: np.ndarray,
-                      rot_frame: float, save_frame_enabled: bool,
-                      ref_frames: Optional[np.ndarray] = None,  **kwargs) -> 'Reading2D':
+    def from_spectrum(
+        cls,
+        s: Spectrum,
+        t2_ps: np.ndarray,
+        rot_frame: float,
+        save_frame_enabled: bool,
+        ref_frames: Optional[np.ndarray] = None,
+        **kwargs,
+    ) -> "Reading2D":
         assert s.frame_data is not None
         f = s.frame_data
         n = s.frame_data.shape[1] / len(t2_ps)
         if n == 1:
             sig = f
         elif n == 2:
-            sig = (f[:, 0::2] - f[:, 1::2])*(-1000/LOG10)
-            sig /= 0.5*(f[:, 0::2]+f[:, 1::2])
+            sig = (f[:, 0::2] - f[:, 1::2]) * (-1000 / LOG10)
+            sig /= 0.5 * (f[:, 0::2] + f[:, 1::2])
         elif n == 4:
-            sig = ((f[:, 0::4] - f[:, 1::4]) + (f[:, 2::4] - f[:, 3::4]))*(-1000/LOG10) #type: np.ndarray
+            sig = ((f[:, 0::4] - f[:, 1::4]) + (f[:, 2::4] - f[:, 3::4])) * (
+                -1000 / LOG10
+            )  # type: np.ndarray
             sig /= f[:, 0::4] + f[:, 1::4] + f[:, 2::4] + f[:, 3::4]
         else:
             raise ValueError(f"Invalid number of frames {n}")
-        assert (sig.shape[1] == len(t2_ps))
+        assert sig.shape[1] == len(t2_ps)
         if save_frame_enabled:
-            kwargs['frames'] = f
+            kwargs["frames"] = f
             if ref_frames is not None:
-                kwargs['ref_frames'] = ref_frames
-        return cls(spectra=s, interferogram=sig, t2_ps=t2_ps, rot_frame=rot_frame, **kwargs)
+                kwargs["ref_frames"] = ref_frames
+        return cls(
+            spectra=s, interferogram=sig, t2_ps=t2_ps, rot_frame=rot_frame, **kwargs
+        )
 
     @freqs.default
     def calc_freqs(self):
-        freqs = np.fft.rfftfreq(len(self.t2_ps) * self.upsample, self.t2_ps[1] - self.t2_ps[0])
+        freqs = np.fft.rfftfreq(
+            len(self.t2_ps) * self.upsample, self.t2_ps[1] - self.t2_ps[0]
+        )
         return THz2cm(freqs) + self.rot_frame
 
     @signal_2D.default
@@ -216,5 +259,5 @@ class Reading2D:
         a[:, 0] *= 0.5
         if self.window is not None:
             win = self.window(a.shape[1] * 2)
-            a = a * win[None, a.shape[1]:]
-        return np.fft.rfft(a, a.shape[1] * self.upsample, 1).real
+            a = a * win[None, a.shape[1] :]
+        return np.fft.rfft(a, a.shape[1] * self.upsample, 1).real

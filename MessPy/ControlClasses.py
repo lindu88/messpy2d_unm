@@ -5,15 +5,28 @@ from asyncio import Task
 import numpy as np
 from attr import attrs, attrib, Factory, define
 import os
+from loguru import logger
 
-from qtpy.QtWidgets import QApplication
-from qtpy.QtCore import QThread, QTimer, QObject, Signal
+from PySide6.QtWidgets import QApplication
+from PySide6.QtCore import QTimer, QObject, Signal
+from qasync import Slot
 from MessPy.Config import config
 import threading
 import time
 import typing as T
-from MessPy.HwRegistry import _cam, _cam2, _dl, _dl2, _rot_stage, _shutter, _sh, _shaper, _power_meter
+from MessPy.HwRegistry import (
+    _cam,
+    _cam2,
+    _dl,
+    _dl2,
+    _rot_stage,
+    _shutter,
+    _sh,
+    _shaper,
+    _power_meter,
+)
 import MessPy.Instruments.interfaces as I
+
 if T.TYPE_CHECKING:
     from MessPy.Plans.PlanBase import Plan
 
@@ -41,6 +54,8 @@ class Cam(QObject):
 
     def __attrs_post_init__(self):
         QObject.__init__(self)
+        if self.shots > 1000:
+            self.set_shots(20)
         self.read_cam()
         c = self.cam
         self.channels = c.channels
@@ -83,7 +98,6 @@ class Cam(QObject):
             pass
 
     def read_cam(self, two_dim=False):
-
         rd = self.cam.make_reading()
         self.last_read = rd
         # self.sigReadCompleted.emit()
@@ -131,7 +145,8 @@ class DelayLine(QObject):
     pos: float = 0
     moving: bool = False
     _dl: I.IDelayLine = _dl
-    _thread: T.Optional[object] = attrib(None)
+    _thread: T.Optional[object] = None
+
     sigPosChanged: T.ClassVar[Signal] = Signal(float)
 
     def __attrs_post_init__(self):
@@ -174,7 +189,7 @@ class DelayLine(QObject):
     def set_home(self):
         self._dl.home_pos = self._dl.get_pos_mm()
         self._dl.def_home()
-        config.__dict__['Delay 1 Home Pos.'] = self._dl.get_pos_mm()
+        config.__dict__["Delay 1 Home Pos."] = self._dl.get_pos_mm()
         config.save()
         self.sigPosChanged.emit(self.get_pos())
 
@@ -185,6 +200,7 @@ arr_factory = Factory(lambda: np.zeros(16))
 @define(slots=False, auto_attribs=True)
 class Controller(QObject):
     """Class which controls the main loop."""
+
     cam: Cam = attrib(init=False)
     delay_line: DelayLine = Factory(lambda: DelayLine(dl=_dl))
     delay_line_second: T.Optional[DelayLine] = None
@@ -214,29 +230,37 @@ class Controller(QObject):
             self.cam_list.append(self.cam2)
         else:
             self.cam2 = None
+        self.t1 = None
+
+    @Slot()
+    def start_standard_read(self):
+        # t0 = time.time()
+        self.t1 = threading.Thread(target=self.cam.read_cam)
+        self.t1.start()
+        if self.cam2:
+            self.t2 = threading.Thread(target=self.cam2.read_cam)
+            self.t2.start()
+
+    def standard_read_running(self):
+        return self.t1.is_alive()
 
     def standard_read(self):
-        # t0 = time.time()
-        t1 = threading.Thread(target=self.cam.read_cam)
-        t1.start()
-        t2 = threading.Thread()
-        if self.cam2:
-            t2 = threading.Thread(target=self.cam2.read_cam)
-            t2.start()
-
-        while t1.is_alive() or t2.is_alive():
-            QApplication.instance().processEvents()
+        self.t1.join()
         self.cam.sigReadCompleted.emit()
         # print((time.time()-t0)*1000)
-        if self.cam2:
-            self.cam2.sigReadCompleted.emit()
-        t1.join()
-        if self.cam2:
-            t2.join()
 
+        if self.cam2:
+            self.t2.join()
+            self.cam2.sigReadCompleted.emit()
+        self.t1 = None
+
+    @Slot()
     def loop(self):
         if self.plan is None or self.pause_plan:
-            self.standard_read()
+            if self.t1 is None:
+                self.start_standard_read()
+            elif not self.standard_read_running():
+                self.standard_read()
         elif getattr(self.plan, "is_async", False) and self.plan.task:
             t = self.plan.task
             t: aio.Task
@@ -248,13 +272,14 @@ class Controller(QObject):
                     raise t.exception()
                 else:
                     self.plan.task = None
-        elif hasattr(self.plan, 'make_step'):
+        elif hasattr(self.plan, "make_step"):
             try:
                 self.plan.make_step()
             except StopIteration:
                 self.pause_plan = True
         self.loop_finished.emit()
 
+    @Slot(object)
     def start_plan(self, plan):
         self.plan = plan
         self.pause_plan = False
@@ -264,6 +289,7 @@ class Controller(QObject):
     def add_task(self, task: Task):
         self.async_tasks.append(task)
 
+    @Slot()
     def stop_plan(self):
         if self.plan:
             self.plan.stop_plan()
@@ -271,6 +297,6 @@ class Controller(QObject):
             self.stopping_plan.emit(True)
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     c = Controller()
     print(c)

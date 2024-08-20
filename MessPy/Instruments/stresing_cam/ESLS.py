@@ -17,71 +17,72 @@ from wrapt import synchronized
 
 
 class ESLS(NiceLib):
-    _info_ = load_lib('esls', __package__)
-    _prefix_ = 'DLL'
+    _info_ = load_lib("esls", __package__)
+    _prefix_ = "DLL"
 
     GetProcessCount = Sig()
     GetThreadCount = Sig()
     ErrMsgBoxOn = Sig()
     ErrMsgBoxOff = Sig()
-    CCDDrvInit = Sig('in')
+    CCDDrvInit = Sig("in")
 
-    ReadRingBlock = Sig('in', 'in', 'in')
+    ReadRingBlock = Sig("in", "in", "in")
     StartFetchRingBuf = Sig()
-    RingValid = Sig('in')
+    RingValid = Sig("in")
     StopRingReadThread = Sig()
-    FetchLastRingLine = Sig('in')
+    FetchLastRingLine = Sig("in")
     RingThreadIsOFF = Sig()
 
     class CCDDrv(NiceObject):
-        _init_ = 'CCDDrvInit'
-        _buflen_ = 2048*4
-        CCDDrvExit = Sig('in')
-        InitBoard = Sig('in', 'in', 'in', 'in',  'in', 'in', 'in', 'in', 'in')
+        _init_ = "CCDDrvInit"
+        _buflen_ = 2048 * 4
+        CCDDrvExit = Sig("in")
+        InitBoard = Sig("in", "in", "in", "in", "in", "in", "in", "in", "in")
 
         # Trigger functions
-        HighSlope = Sig('in')
-        LowSlope = Sig('in')
-        BothSlope = Sig('in')
-        OutTrigHigh = Sig('in')
-        OutTrigLow = Sig('in')
-        OutTrigPulse = Sig('in', 'in')
-        WaitTrigger = Sig('in', 'in', 'in', 'in')
+        HighSlope = Sig("in")
+        LowSlope = Sig("in")
+        BothSlope = Sig("in")
+        OutTrigHigh = Sig("in")
+        OutTrigLow = Sig("in")
+        OutTrigPulse = Sig("in", "in")
+        WaitTrigger = Sig("in", "in", "in", "in")
 
-        OpenShutter = Sig('in')
-        CloseShutter = Sig('in')
-        VOn = Sig('in')
-        VOff = Sig('in')
-        ReadKeyPort = Sig('in')
-        ActMouse = Sig('in')
-        DeactMouse = Sig('in')
+        OpenShutter = Sig("in")
+        CloseShutter = Sig("in")
+        VOn = Sig("in")
+        VOff = Sig("in")
+        ReadKeyPort = Sig("in")
+        ActMouse = Sig("in")
+        DeactMouse = Sig("in")
 
-        Cal16Bit = Sig('in', 'ignore')
-        SetOvsmpl = Sig('in', 'in')
-        ClrRead = Sig('in', 'in', 'in', 'in')
-        ClrShCam = Sig('in', 'in')
+        Cal16Bit = Sig("in", "ignore")
+        SetOvsmpl = Sig("in", "in")
+        ClrRead = Sig("in", "in", "in", "in")
+        ClrShCam = Sig("in", "in")
 
-        SetupVCLK = Sig('in', 'in', 'in')
+        SetupVCLK = Sig("in", "in", "in")
 
-        StartTimer = Sig('in', 'in')
-        SWTrig = Sig('in')
-        StopFFTimer = Sig('in')
-        FFValid = Sig('in')
-        FlagXCKI = Sig('in')
-        RSFifo = Sig('in')
-        SetExtTrig = Sig('in')
-        SetIntTrig = Sig('in')
-        ReadFFCounter = Sig('in')
-        DisableFifo = Sig('in')
-        EnableFifo = Sig('in')
-        FFOvl = Sig('in')
-        StartRingReadThread = Sig('in', 'in', 'in', 'in')
-        ReadRingCounter = Sig('in')
-        ReadFFLoop = Sig('in', 'in',  'in', 'in', 'in', 'in', 'in', 'in',
-                         'in', 'in', 'in', 'in', 'in')
+        StartTimer = Sig("in", "in")
+        SWTrig = Sig("in")
+        StopFFTimer = Sig("in")
+        FFValid = Sig("in")
+        FlagXCKI = Sig("in")
+        RSFifo = Sig("in")
+        SetExtTrig = Sig("in")
+        SetIntTrig = Sig("in")
+        ReadFFCounter = Sig("in")
+        DisableFifo = Sig("in")
+        EnableFifo = Sig("in")
+        FFOvl = Sig("in")
+        StartRingReadThread = Sig("in", "in", "in", "in")
+        ReadRingCounter = Sig("in")
+        ReadFFLoop = Sig(
+            "in", "in", "in", "in", "in", "in", "in", "in", "in", "in", "in", "in", "in"
+        )
 
-        SetISPDA = Sig('in', 'in')
-        SetISFFT = Sig('in', 'in')
+        SetISPDA = Sig("in", "in")
+        SetISFFT = Sig("in", "in")
 
 
 ESLS.ErrMsgBoxOff()
@@ -92,9 +93,9 @@ drv = ESLS.CCDDrv(1)
 class Cam(ICam):
     name: str = "Stresing CCD"
     shots: int = 100
-    line_names: List[str] = ['Probe', 'Pump']
-    sig_names: List[str] = ['Probe']
-    std_names: List[str] = ['Probe', 'Pump']
+    line_names: List[str] = ["Probe", "Pump"]
+    sig_names: List[str] = ["Probe"]
+    std_names: List[str] = ["Probe", "Pump"]
     ext_channels: int = 0
     channels: int = 390
     changeable_wavelength = False
@@ -129,7 +130,7 @@ class Cam(ICam):
         ESLS.ReadRingBlock(arr.view(np.uint32), 0, self.shots)
         x = arr
         x = x.view(np.uint16)
-        x = x.ravel()[:x.size//2]
+        x = x.ravel()[: x.size // 2]
         x = x.reshape(self.shots, 2, 2400)
 
         a = x[:, 0, 100:-100]
@@ -143,13 +144,13 @@ class Cam(ICam):
 
             a = a.reshape(a.shape[0], -1, n_downsample).mean(-1)
             b = b.reshape(b.shape[0], -1, n_downsample).mean(-1)
-            a = a - 1*a[:, 400:].mean(keepdims=True)
-            b = b - 1*b[:, 400:].mean(keepdims=True)
+            a = a - 1 * a[:, 400:].mean(keepdims=True)
+            b = b - 1 * b[:, 400:].mean(keepdims=True)
             a, b = a[:, :390], b[:, :390]
             ext = np.empty((self.shots, 0))
             first = b[0, :390].sum() > b[1, :390].sum()
 
-            chopper = np.ones(self.shots, dtype='bool')
+            chopper = np.ones(self.shots, dtype="bool")
         if first:
             chopper[::2] = False
         else:
@@ -167,11 +168,11 @@ class Cam(ICam):
 
         even = st.trim_mean(a[::2, :], 0.05, 0)
         odd = st.trim_mean(a[1::2, :], 0.05, 0)
-        signal = 0.5*fac * np.log10(even/odd)
+        signal = 0.5 * fac * np.log10(even / odd)
 
         return Reading(
             lines=tm,
-            stds=100*tmp.std(1)/tm,
+            stds=100 * tmp.std(1) / tm,
             signals=signal[None, :],
             valid=True,
         )
@@ -194,25 +195,26 @@ class Cam(ICam):
         drv.CCDDrvExit()
 
 
-#import context
-#plt.ylim(6900, 7000)
+# import context
+# plt.ylim(6900, 7000)
 # plt.plot(a.ravel())
-#plt.xlim(0, 5000)
-if __name__ == '__main__':
-    #import qtpy.QtGui as g
+# plt.xlim(0, 5000)
+if __name__ == "__main__":
+    # import PySide6.QtGui as g
     cam = Cam()
     cam.start_ring_thread()
     # cam.read_ring()
 
     # cam.stop_ring_thread()
 
-# def bla():
+    # def bla():
     import pyqtgraph as pg
+
     app = pg.mkQApp()
 
-    import qtpy.QtWidgets as qw
+    import PySide6.QtWidgets as qw
 
-    import qtpy.QtCore as qtc
+    import PySide6.QtCore as qtc
 
     win = qw.QWidget()
     lay = qw.QHBoxLayout(win)
@@ -225,33 +227,32 @@ if __name__ == '__main__':
     lay.addWidget(pl2)
     win.setLayout(lay)
     mypl2 = pl2.plotItem.plot([1, 2, 3], pen="y")
-    #mypl3 = pl.plotItem.plot([1,2,3], pen="r")
+    # mypl3 = pl.plotItem.plot([1,2,3], pen="r")
     timer = qtc.QTimer()
 
     def update():
         try:
-
             a, b = cam.read_ring_downsampled()
 
-            #x1 = x[0][:, :].ravel(order='f')
-            #x1 = x[0][:, 1::2].mean(-1)-x[0][:, 2::2].mean(-1)
+            # x1 = x[0][:, :].ravel(order='f')
+            # x1 = x[0][:, 1::2].mean(-1)-x[0][:, 2::2].mean(-1)
 
-            #x2 = x[1]
+            # x2 = x[1]
             print(a.shape)
-        #x = x[:, 1200:1800]
+            # x = x[:, 1200:1800]
             # a = a.mean(0
-            a = a-a[:, -20:].mean(1, keepdims=1)
+            a = a - a[:, -20:].mean(1, keepdims=1)
             # mypl.setData(bm-bm[-20:].mean())
             mypl.setData(b[0, :])
-            #sig = 1000*np.log10(a[::2, :].mean(0)/a[1::2, :].mean(0))
+            # sig = 1000*np.log10(a[::2, :].mean(0)/a[1::2, :].mean(0))
             mypl1.setData(b[1, :])
             # mypl2.setData(100*a.std(0)/a.mean(0))
             # mypl2.setData(x.ravel().view(np.uint16))
-            #mypl2.setData(a[:, 120])
-            #np.savetxt('krlamp_140.txt',x[0][:, :].mean(1))
-            #mypl3.setData(x[5, :, 1])
+            # mypl2.setData(a[:, 120])
+            # np.savetxt('krlamp_140.txt',x[0][:, :].mean(1))
+            # mypl3.setData(x[5, :, 1])
 
-            #mypl3.setData(3*x[-1][1050, :]-x[-1][250, :])
+            # mypl3.setData(3*x[-1][1050, :]-x[-1][250, :])
             # mypl2.setData(100*a.std(0)/bm)
 
             # timer.stop()
@@ -260,7 +261,7 @@ if __name__ == '__main__':
         except:
             timer.stop()
             cam.stop_ring_thread()
-            #del cam
+            # del cam
             raise
 
     timer.timeout.connect(update)
