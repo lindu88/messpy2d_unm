@@ -412,7 +412,7 @@ class ObserverPlot(pg.PlotWidget):
 
     def add_observed(self, single_obs):
         self.observed.append(single_obs)
-        pen = pg.mkPen(color=next(self.color_cycle), width=4)
+        pen = pg.mkPen(color=next(self.color_cycle), width=1)
         curve = self.plotItem.plot(pen=pen, antialias=self.antialias)
         self.lines[single_obs] = curve
 
@@ -422,6 +422,7 @@ class ObserverPlot(pg.PlotWidget):
         if not self.timer.isActive():
             self.timer.start(1000 // 60)
 
+    @Slot()
     def update_data(self):
         if not self.do_update:
             return

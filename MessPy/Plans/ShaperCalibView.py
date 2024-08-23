@@ -91,6 +91,8 @@ class CalibScanView(QWidget):
         )
         config.save()
 
+        self.params.setReadonly(True)
+        self.params.child("Start Calibration").setEnabled(False)
         self.plan = CalibPlan(
             cam=self.cam,
             dac=self.dac,
@@ -98,13 +100,13 @@ class CalibScanView(QWidget):
             num_shots=self.params["Shots"],
         )
         self.sigPlanCreated.emit(self.plan)
-        self.params.setReadonly(True)
 
         self.plan.sigPlanFinished.connect(self.analyse)
         self.plan.sigStepDone.connect(self.update_view)
 
     @asyncSlot()
     async def update_view(self):
+        assert self.plan is not None
         plan = self.plan
 
         self.plot.plotItem.clear()

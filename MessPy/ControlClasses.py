@@ -1,14 +1,13 @@
 import asyncio as aio
-import asyncio
 from asyncio import Task
+from re import S
 
 import numpy as np
 from attr import attrs, attrib, Factory, define
-import os
+
 from loguru import logger
 
-from PySide6.QtWidgets import QApplication
-from PySide6.QtCore import QTimer, QObject, Signal
+from PySide6.QtCore import QThread, QTimer, QObject, Signal, Slot
 from qasync import Slot
 from MessPy.Config import config
 import threading
@@ -87,8 +86,10 @@ class Cam(QObject):
         self.disp_wavelengths = not use_wl
         self._update_wl_arrays()
 
+    @Slot(int)
     def set_shots(self, shots):
         """Sets the number of shots recorded"""
+        logger.info(f"Setting shots to {shots}")
         try:
             self.shots = int(shots)
             self.cam.set_shots(self.shots)
@@ -97,7 +98,9 @@ class Cam(QObject):
         except ValueError:
             pass
 
+    @Slot()
     def read_cam(self, two_dim=False):
+        logger.trace("Reading cam")
         rd = self.cam.make_reading()
         self.last_read = rd
         # self.sigReadCompleted.emit()
@@ -106,7 +109,9 @@ class Cam(QObject):
     def start_two_reading(self):
         pass
 
+    @Slot(float)
     def set_wavelength(self, wl, timeout=5):
+        logger.info(f"Setting wavelength to {wl}")
         assert self.cam.spectrograph is not None
         self.cam.spectrograph.set_wavelength(wl, timeout=timeout)
         self.cam.spectrograph.sigWavelengthChanged.emit(wl)
@@ -118,33 +123,44 @@ class Cam(QObject):
     def get_wavelengths(self, center_wl=None):
         return self.cam.get_wavelength_array(center_wl)
 
+    @Slot()
     def get_bg(self):
+        logger.info("Getting new background")
         self.cam.set_background(self.shots)
 
+    @Slot()
     def remove_bg(self):
+        logger.info("Removing background")
         self.cam.remove_background()
 
+    @Slot(float)
     def set_slit(self, slit):
         if self.cam.spectrograph is not None:
+            logger.info(f"Setting slit to {slit}")
             self.cam.spectrograph.set_slit(slit)
             slit = self.cam.spectrograph.get_slit()
             self.cam.spectrograph.sigSlitChanged.emit(slit)
         else:
             raise AttributeError("No slit installed")
 
-    def get_slit(self):
+    def get_slit(self) -> float:
         return self.cam.spectrograph.get_slit()
 
+    @Slot()
     def calibrate_ref(self):
-        self.cam.calibrate_ref()
-        self.sigRefCalibrationFinished.emit(self.cam.deltaK1, self.cam.deltaK2)
+        try:
+            logger.info("Calibrating reference to probe")
+            self.cam.calibrate_ref()
+            self.sigRefCalibrationFinished.emit(self.cam.deltaK1, self.cam.deltaK2)
+        except AttributeError:
+            logger.error("No reference installed")
 
 
 @define(auto_attribs=True, slots=False)
 class DelayLine(QObject):
+    _dl: I.IDelayLine = _dl
     pos: float = 0
     moving: bool = False
-    _dl: I.IDelayLine = _dl
     _thread: T.Optional[object] = None
 
     sigPosChanged: T.ClassVar[Signal] = Signal(float)
@@ -154,6 +170,7 @@ class DelayLine(QObject):
         self.pos = self._dl.get_pos_fs()
         self.sigPosChanged.emit(self.pos)
 
+    @Slot(float, bool)
     def set_pos(self, pos_fs: float, do_wait=True):
         "Set pos in femtoseconds"
         try:
@@ -161,10 +178,12 @@ class DelayLine(QObject):
         except ValueError:
             raise
         self.moving = True
+        logger.info(f"Moving delay line to {pos_fs} fs")
         self._dl.move_fs(pos_fs, do_wait=do_wait)
         if not do_wait:
             self.wait_and_update()
         else:
+            logger.info("Waiting for delay line to finish moving")
             while _dl.is_moving():
                 time.sleep(0.1)
             self.moving = False
@@ -183,14 +202,14 @@ class DelayLine(QObject):
     def get_pos(self) -> float:
         return self._dl.get_pos_fs()
 
-    def set_speed(self, ps_per_sec: float):
-        self._dl.set_speed(ps_per_sec)
-
+    @Slot()
     def set_home(self):
-        self._dl.home_pos = self._dl.get_pos_mm()
+        logger.info("Old home position: {self._dl.home_pos}")
+        logger.info(
+            f"Setting home position to {self._dl.get_pos_mm()} mm or {self._dl.get_pos_fs()} fs"
+        )
         self._dl.def_home()
-        config.__dict__["Delay 1 Home Pos."] = self._dl.get_pos_mm()
-        config.save()
+
         self.sigPosChanged.emit(self.get_pos())
 
 
@@ -202,7 +221,7 @@ class Controller(QObject):
     """Class which controls the main loop."""
 
     cam: Cam = attrib(init=False)
-    delay_line: DelayLine = Factory(lambda: DelayLine(dl=_dl))
+    delay_line: DelayLine = Factory(lambda: DelayLine(_dl))
     delay_line_second: T.Optional[DelayLine] = None
     cam2: T.Optional[Cam] = attrib(init=False)
     cam_list: T.List[Cam] = Factory(list)
@@ -258,9 +277,10 @@ class Controller(QObject):
     def loop(self):
         if self.plan is None or self.pause_plan:
             if self.t1 is None:
+                t0 = time.time()
                 self.start_standard_read()
-            elif not self.standard_read_running():
                 self.standard_read()
+                logger.info(f"Standard read took {(time.time()-t0)*1000} ms")
         elif getattr(self.plan, "is_async", False) and self.plan.task:
             t = self.plan.task
             t: aio.Task
@@ -281,16 +301,15 @@ class Controller(QObject):
 
     @Slot(object)
     def start_plan(self, plan):
+        logger.info(f"Starting plan {plan}")
         self.plan = plan
         self.pause_plan = False
         self.plan.sigPlanFinished.connect(self.stop_plan)
         self.starting_plan.emit(True)
 
-    def add_task(self, task: Task):
-        self.async_tasks.append(task)
-
     @Slot()
     def stop_plan(self):
+        logger.info("Stopping plan")
         if self.plan:
             self.plan.stop_plan()
             self.plan = None

@@ -13,6 +13,7 @@ Created on Tue Jun 03 15:41:22 2014
 """
 
 
+from functools import cached_property
 from MessPy.Instruments.interfaces import IRotationStage
 from PySide6.QtCore import QObject, Signal, QTimer
 import serial
@@ -60,16 +61,13 @@ class RotSignals(QObject):
 class RotationStage(IRotationStage):
     name: str = "Rotation Stage"
     comport: str = "COM11"
-    rot: serial.Serial = attr.ib()
     offset: float = 180
     last_pos: float = 0
     signals: RotSignals = attr.Factory(RotSignals)
 
-    @rot.default
-    def _default_rs(self):
-        rot = serial.Serial(self.comport, baudrate=115200 * 8, xonxoff=1)
-        rot.timeout = 3
-        return rot
+    @cached_property
+    def rot(self):
+        return serial.Serial(self.comport, baudrate=115200 * 8, xonxoff=True, timeout=2)
 
     def __attrs_post_init__(self):
         super(RotationStage, self).__attrs_post_init__()
@@ -102,12 +100,12 @@ class RotationStage(IRotationStage):
         self.rot.write(setter_str.encode("utf-8"))
         self.rot.timeout = 3
         self.last_pos = pos
-        if self.signals.thread().eventDispatcher() != 0:
-            self.signals.sigMovementStarted.emit(pos, cur_pos)
-            self._checker = QTimer()
-            self._checker.setSingleShot(True)
-            self._checker.timeout.connect(self.check_moving)
-            self._checker.start(200)
+
+        self.signals.sigMovementStarted.emit(pos, cur_pos)
+        self._checker = QTimer()
+        self._checker.setSingleShot(True)
+        self._checker.timeout.connect(self.check_moving)
+        self._checker.start(200)
 
     def check_moving(self):
         if self.is_moving():

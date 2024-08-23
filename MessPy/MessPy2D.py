@@ -1,7 +1,7 @@
 from functools import partial
 
 
-from PySide6.QtCore import QTimer, Qt, Slot
+from PySide6.QtCore import QTimer, Qt, Slot, QThread
 from PySide6.QtGui import QIntValidator
 from PySide6.QtWidgets import (
     QMainWindow,
@@ -18,6 +18,7 @@ from PySide6.QtWidgets import (
 import qtawesome as qta
 from pyqtgraph import setConfigOptions
 from qtpy.QtWidgets import QVBoxLayout
+from loguru import logger
 
 from MessPy.Config import config
 from MessPy.ControlClasses import Controller
@@ -49,15 +50,22 @@ class MainWindow(QMainWindow):
         self.setWindowTitle("Messpy-2D Edition")
         self.setWindowIcon(qta.icon("fa.play"))
         self.controller = controller  # controller
-
-        self.setup_toolbar()
+        logger.info("Creating loop thread")
+        self.controller_thread = QThread()
+        self.controller_thread.setObjectName("Controller Thread")
+        logger.info(f"Main threadis {QThread.currentThread()}")
+        logger.info(f"Controller thread id is {self.controller_thread.currentThread()}")
+        controller.moveToThread(self.controller_thread)
+        self.controller_thread.start()
         app = QApplication.instance()
+        assert app is not None
         app.aboutToQuit.connect(self.cleanup)
+        self.setup_toolbar()
         self.cm = CommandMenu(controller, self)
         self.setCentralWidget(self.cm)
         self.timer = QTimer()
-        self.timer.timeout.connect(controller.loop)
-
+        self.timer.timeout.connect(controller.loop, Qt.QueuedConnection)
+        self.timer.timeout.connect(app.quit)
         self.toggle_run(True)
         self.xaxis = {}
 
@@ -161,8 +169,11 @@ class MainWindow(QMainWindow):
 
     def toggle_run(self, bool):
         if bool:
-            self.timer.start(15)
+            self.timer.setSingleShot(True)
+            self.controller.loop_finished.connect(self.timer.start)
+            self.timer.start(0)
         else:
+            self.controller.loop_finished.disconnect(self.timer.start)
             self.timer.stop()
 
     def toggle_wl(self, c):
@@ -175,6 +186,7 @@ class MainWindow(QMainWindow):
         else:
             self.viewer = self.plan_class.viewer(self.controller.plan)
 
+    @Slot()
     def show_alignment_helper(self):
         self._ah = AlignmentHelper(self.controller)
         self._ah.show()
@@ -202,6 +214,7 @@ class MainWindow(QMainWindow):
     def cleanup(self):
         self.controller.stop_plan()
         self.timer.stop()
+        self.controller_thread.quit()
         config.save()
 
 
