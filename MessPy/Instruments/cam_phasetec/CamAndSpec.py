@@ -70,7 +70,7 @@ class PhaseTecCam(ICam):
 
     sigRowsChanged: ClassVar[Signal] = Signal()
 
-    @rows.default("rows")
+    @rows.default
     def _rows_default(self) -> dict[str, Tuple[int, int]]:
         return {
             "Probe": PROBE_RANGE,
