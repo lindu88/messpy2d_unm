@@ -364,25 +364,6 @@ class PlanStartDialog(QDialog, metaclass=QProtocolMetaMeta):
         return plan, result == QDialog.Accepted
 
 
-class MonkeyCurveItem(pg.PlotCurveItem):
-    def __init__(self, *args, **kwds):
-        super().__init__(*args, **kwds)
-        self.monkey_mode = "PolyLine"
-
-    def setMethod(self, param, value):
-        self.monkey_mode = value
-
-    def paint(self, painter, opt, widget):
-        if self.monkey_mode not in ["drawPolyline"]:
-            return super().paint(painter, opt, widget)
-
-        painter.setRenderHint(painter.RenderHint.Antialiasing, self.opts["antialias"])
-        painter.setPen(pg.mkPen(self.opts["pen"]))
-
-        if self.monkey_mode == "drawPolyline":
-            painter.drawPolyline(fn.arrayToQPolygonF(self.xData, self.yData))
-
-
 class ObserverPlot(pg.PlotWidget):
     def __init__(self, obs, signal, x=None, parent=None, aa=False, **kwargs):
         """Plot windows which can observe an array
@@ -431,10 +412,9 @@ class ObserverPlot(pg.PlotWidget):
 
     def add_observed(self, single_obs):
         self.observed.append(single_obs)
-        pen = pg.mkPen(color=next(self.color_cycle), width=2)
-        curve = MonkeyCurveItem(pen=pen, antialias=self.antialias)
+        pen = pg.mkPen(color=next(self.color_cycle), width=4)
+        curve = self.plotItem.plot(pen=pen, antialias=self.antialias)
         self.lines[single_obs] = curve
-        self.plotItem.addItem(curve)
 
     @Slot()
     def request_update(self):
@@ -460,14 +440,13 @@ class ObserverPlot(pg.PlotWidget):
                 self.lines[o].setData(x=x, y=y)
             else:
                 y = getattr(*o)
-                # print(x)
                 if y is not None:
                     self.lines[o].setData(x=x, y=y)
         self.do_update = False
 
     def click(self, ev):
         if self.click_func is not None and ev.button() == 1:
-            coords = self.plotItem.vb.mapSceneToView(ev.pos())
+            coords = self.plotItem.vb().mapSceneToView(ev.pos())
             self.click_func(coords)
             ev.accept()
 
@@ -530,7 +509,6 @@ def make_groupbox(widgets, title="") -> QGroupBox:
         if isinstance(i, QWidget):
             vl.addWidget(i)
         elif isinstance(i, QLayout):
-            print("Adding layout GB")
             vl.addLayout(i)
     if title:
         gb.setTitle(title)
@@ -551,7 +529,6 @@ def create_layout(
         if isinstance(w, QWidget):
             lay.addWidget(w)
         elif isinstance(w, QLayout):
-            print("Adding layout")
             lay.addLayout(w)
     if post_stretch:
         lay.addStretch(1)

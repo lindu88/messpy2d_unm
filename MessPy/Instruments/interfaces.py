@@ -155,9 +155,10 @@ class TargetThread(QThread):
         self.target = target
         self.args = args
         self.kwargs = kwargs
+        self.result = None
 
     def run(self):
-        self.target(*self.args, **self.kwargs)
+        self.result = self.target(*self.args, **self.kwargs)
 
 
 # Defining a minimal interface for each hardware

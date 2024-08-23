@@ -4,6 +4,7 @@ from typing import Optional, List, Iterable, TYPE_CHECKING, Generator
 import zipfile
 import numpy as np
 from attr import attrs, attrib, Factory
+from numpy._typing import NDArray
 from .PlanBase import Plan
 from MessPy.ControlClasses import Controller, Cam
 from PySide6.QtCore import QObject, Signal
@@ -167,7 +168,7 @@ class PumpProbeData(QObject):
 
     last_signal: Optional[np.ndarray] = None
     mean_signal: Optional[np.ndarray] = None
-    current_scan: np.ndarray = attrib(init=False)
+    current_scan: NDArray = attrib(init=False)
     mean_scans: Optional[np.ndarray] = None
     completed_scans: Optional[np.ndarray] = None
     wavelengths: np.ndarray = attrib(init=False)

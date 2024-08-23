@@ -1,7 +1,9 @@
-from typing import ClassVar, Optional, Literal
+from typing import ClassVar, Literal, Optional
 
-from attr import define, Factory
-from PySide6.QtCore import Signal, Slot, QObject
+from attr import Factory, define
+from loguru import logger
+from PySide6.QtCore import QObject, Signal, Slot
+
 from MessPy.Plans.PlanBase import Plan
 
 

@@ -8,7 +8,6 @@ pyqtgraph
 qasync
 scipy
 pytest
-pandas
 nicelib
 pyzmq
 loguru

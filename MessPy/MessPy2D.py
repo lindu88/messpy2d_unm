@@ -36,7 +36,10 @@ from MessPy.SampleMoveWidget import MoveWidget
 
 qta.set_defaults(color="white")
 setConfigOptions(
-    enableExperimental=True, useNumba=True, antialias=False, useOpenGL=False
+    enableExperimental=True,
+    useNumba=True,
+    antialias=False,
+    useOpenGL=False,
 )
 
 
@@ -158,7 +161,7 @@ class MainWindow(QMainWindow):
 
     def toggle_run(self, bool):
         if bool:
-            self.timer.start(35)
+            self.timer.start(15)
         else:
             self.timer.stop()
 
@@ -440,9 +443,11 @@ def start_app():
     import sys
 
     import qasync
+    # from PySide6.QtAsyncio import QAzEventLoop
+
     import asyncio as aio
     import traceback
-    import qtvscodestyle
+    # import qtvscodestyle
 
     from pyqtgraph import mkQApp
 
@@ -471,9 +476,9 @@ def start_app():
             pass
 
     sys.excepthook = exception_hook
-    ss = qtvscodestyle.load_stylesheet(qtvscodestyle.Theme.TOMORROW_NIGHT_BLUE)
+    # ss = qtvscodestyle.load_stylesheet(qtvscodestyle.Theme.TOMORROW_NIGHT_BLUE)
 
-    app.setStyleSheet(ss)
+    # app.setStyleSheet(ss)
 
     mw = MainWindow(Controller())
     mw.showMaximized()
