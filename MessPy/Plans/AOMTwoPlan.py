@@ -27,8 +27,7 @@ from MessPy.Instruments.signal_processing import THz2cm, cm2THz
 from .PlanBase import Plan, ScanPlan
 
 
-def flat_dict(d, grp):
-    print(d, grp)
+def flat_dict(d, grp):    
     for key, val in d.items():
         if isinstance(val, dict):
             return flat_dict(val, grp.create_group(key))
@@ -241,15 +240,15 @@ class AOMTwoDPlan(ScanPlan):
                     disp_ifr = f.get(
                         f"ifr_data/{line}/{t2_idx}/mean", data.interferogram
                     )
-                    assert isinstance(disp_2d, h5py.Dataset)
-                    assert isinstance(disp_ifr, h5py.Dataset)
+                    #assert isinstance(disp_2d, h5py.Dataset)
+                    #assert isinstance(disp_ifr, h5py.Dataset)
 
                     self.disp_arrays[line + "_spec2d"] = disp_2d[:]
                     self.disp_arrays[line + "_ifr"] = disp_ifr[:]
 
             self.last_2d = (
-                np.array(self.disp_arrays["Probe1"][0]),
-                np.array(self.disp_arrays["Probe2"][0]),
+                np.array(self.disp_arrays["Probe1_spec2d"]),
+                np.array(self.disp_arrays["Probe2_spec2d"]),
             )
             self.last_ir = np.array(disp_ifr)
 

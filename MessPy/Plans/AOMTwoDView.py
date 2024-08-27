@@ -28,9 +28,8 @@ from ..QtHelpers import vlay, PlanStartDialog, hlay
 from .AOMTwoPlan import AOMTwoDPlan
 from .PlanBase import sample_parameters
 from ..Instruments.signal_processing import cm2THz, THz2cm
-from typing import Callable
 
-import qasync
+
 
 
 @attr.define(auto_attribs=True, weakref_slot=False)
@@ -61,7 +60,7 @@ class TwoDMap(GraphicsLayoutWidget):
         rect = (
             self.probe_wn.max(),
             self.pump_wn[-1],
-            -self.probe_wn.ptp(),
+            -np.ptp(self.probe_wn),
             self.pump_wn[0] - self.pump_wn[-1],
         )
         self.spec2d_item.setImage(image, rect=rect)
@@ -103,7 +102,7 @@ class AOMTwoDViewer(QWidget):
         rect = (
             self.probe_freq.max(),
             self.pump_freqs[-1],
-            -self.probe_freq.ptp(),
+            -np.ptp(self.probe_freq),
             self.pump_freqs[0] - self.pump_freqs[-1],
         )
         self.spec_img.setImage(np.zeros((128, plan.pump_freqs.size)), rect=rect)
@@ -142,11 +141,19 @@ class AOMTwoDViewer(QWidget):
         self.pr_2_pb = QRadioButton("Probe2")
         for pb in (self.pr_1_pb, self.pr_2_pb):
             pb.toggled.connect(self.update_plots)
+        self.pr_1_pb.setChecked(True)
         self.layout().addWidget(self.pr_1_pb)
         self.layout().addWidget(self.pr_2_pb)
 
-    @qasync.asyncSlot()
-    async def update_data(self, al=True):
+    @property
+    def pr_idx(self):
+        if self.pr_1_pb.isChecked():
+            return 0
+        else:
+            return 1
+
+    @Slot()
+    def update_data(self, al=True):
         if self.pr_1_pb.isChecked():
             i = 0
         else:
@@ -187,14 +194,14 @@ class AOMTwoDViewer(QWidget):
 
     def update_plots(self):
         if self.plan.last_2d is not None:
-            self.spec_mean_line.setData(self.probe_freq, self.plan.last_2d.mean(1))
+            self.spec_mean_line.setData(self.probe_freq, self.plan.last_2d[self.pr_idx].mean(1))
             # for line in self.ifr_lines.keys():
             #    line.sigPositionChanged.emit(line)  # Causes an update
 
     def update_spec_lines(self, *args):
         idx = np.argmin(abs(self.pump_freqs - self.spec_line.pos()[1]))
         if self.plan.last_2d is not None:
-            self.spec_cut_line.setData(self.probe_freq, self.plan.last_2d[:, idx])
+            self.spec_cut_line.setData(self.probe_freq, self.plan.last_2d[self.pr_idx][:, idx])
 
     def set_time_str(self, s):
         self.time_str = s
@@ -226,11 +233,11 @@ class AOMTwoDStarter(PlanStartDialog):
             {"name": "Operator", "type": "str", "value": "Till"},
             {"name": "t1 (+)", "suffix": "ps", "type": "float", "value": -4},
             {"name": "t1 (step)", "suffix": "ps", "type": "float", "value": 0.1},
-            {"name": "Phase Cycles", "type": "list", "values": [1, 2, 4]},
+            {"name": "Phase Cycles", "type": "list", "limits": [1, 2, 4], "value": 4},
             {"name": "Rot. Frame", "suffix": "cm-1", "type": "int", "value": 2000},
             {"name": "Rot. Frame Fixed", "suffix": "cm-1", "type": "int", "value": 0},
             dict(name="Pump Axis", type="str", readonly=True),
-            {"name": "Mode", "type": "list", "values": ["classic", "bragg"]},
+            {"name": "Mode", "type": "list", "limits": ["classic", "bragg"]},
             {"name": "AOM Amp.", "type": "float", "value": 0.3, "min": 0, "max": 0.6},
             {"name": "Repetitions", "type": "int", "value": 1},
             DelayParameter(),
