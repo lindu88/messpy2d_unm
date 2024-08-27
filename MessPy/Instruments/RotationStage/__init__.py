@@ -16,6 +16,7 @@ Created on Tue Jun 03 15:41:22 2014
 from functools import cached_property
 from MessPy.Instruments.interfaces import IRotationStage
 from PySide6.QtCore import QObject, Signal, QTimer
+
 import serial
 import attr
 import time
@@ -71,12 +72,10 @@ class RotationStage(IRotationStage):
 
     def __attrs_post_init__(self):
         super(RotationStage, self).__attrs_post_init__()
-        state = self.controller_state()
-        print(state)
+        state = self.controller_state()        
         if state.startswith("DISABLE"):
             self.w("1MM1")
-
-            print(self.controller_state())
+            
         elif state.startswith("NOT REFERENCED"):
             self.w(b"1RS")
             self.rot.write(b"1OR\r\n")
@@ -101,16 +100,14 @@ class RotationStage(IRotationStage):
         self.rot.timeout = 3
         self.last_pos = pos
 
-        self.signals.sigMovementStarted.emit(pos, cur_pos)
-        self._checker = QTimer()
-        self._checker.setSingleShot(True)
-        self._checker.timeout.connect(self.check_moving)
-        self._checker.start(200)
 
+        self.signals.sigMovementStarted.emit(pos, cur_pos)
+        self._checker = QTimer.singleShot(100, self.check_moving)
+        
     def check_moving(self):
         if self.is_moving():
             self.signals.sigDegreesChanged.emit(self.get_degrees())
-            self._checker.start(200)
+            QTimer.singleShot(100, self.check_moving)
         else:
             self.signals.sigDegreesChanged.emit(self.get_degrees())
             self.signals.sigMovementFinished.emit()
