@@ -2,6 +2,7 @@ import pyqtgraph as pg
 import time
 from PySide6.QtWidgets import (
     QWidget,
+    QCheckBox,
 )
 from PySide6.QtCore import Slot
 import MessPy.QtHelpers as qh
@@ -16,26 +17,39 @@ class AlignmentHelper(QWidget):
         self.t0 = time.time()
         self.controller = controller
 
+        
         self.graph_layouter = pg.GraphicsLayoutWidget()
-        self.setLayout(qh.hlay([self.graph_layouter]))
         self.plots = {}
         self.amp_lines = {}
         self.std_lines = {}
-
+        self.check_boxes = []
         for cam in controller.cam_list:
+            
             amp_plot: pg.PlotItem = self.graph_layouter.addPlot()
             amp_plot.setTitle("Amplitude")
             for line_name in range(len(cam.cam.line_names)):
                 c = pg.mkPen(color=qh.col[line_name])
-                self.amp_lines[(cam, line_name)] = amp_plot.plot(pen=c), []
+                line = amp_plot.plot(pen=c)
+                self.amp_lines[(cam, line_name)] = line, []
+                cb = QCheckBox(cam.cam.line_names[line_name])
+                cb.setChecked(True)
+                cb.toggled.connect(line.setVisible)
+                self.check_boxes.append(cb)                
 
-            std_plot = self.graph_layouter.addPlot()
-
+            std_plot = self.graph_layouter.addPlot()            
             std_plot.setTitle("Std")
             for std_name in range(len(cam.cam.std_names)):
                 c = pg.mkPen(color=qh.col[std_name])
-                self.std_lines[(cam, std_name)] = std_plot.plot(pen=c), []
+                line = std_plot.plot(pen=c)
+                self.std_lines[(cam, std_name)] = line, []
+                cb = QCheckBox(cam.cam.std_names[std_name])
+                cb.setChecked(True)
+                cb.toggled.connect(line.setVisible)
+                self.check_boxes.append(cb)
             self.graph_layouter.nextRow()
+        
+        self.setLayout(qh.hlay([self.graph_layouter,
+                                qh.vlay(self.check_boxes, add_stretch=True)]))
         controller.loop_finished.connect(self.update_plots)
 
     @Slot()
