@@ -99,14 +99,14 @@ class AOM(IDevice):
         dac = self.dac
         dac.SetDacSampleSizeXD48(2)
         log = logger
-        log.info("Size: %s ", dac.GetDacSampleSizeXD48(1))
-        log.info("Format: %s", dac.GetDacSampleFormatXD48(1))
+        log.info("Size: %s " % dac.GetDacSampleSizeXD48(1))
+        log.info("Format: %s" % dac.GetDacSampleFormatXD48(1))
 
-        log.info("Output Voltage %s", dac.get_output_voltage())
+        log.info("Output Voltage %s" % dac.get_output_voltage())
         dac.set_output_voltage(ch1=200, ch2=1000)
-        log.info("Output Voltage %s", dac.get_output_voltage())
+        log.info("Output Voltage %s" % dac.get_output_voltage())
         dac.SetExternalTriggerEnableXD48(1)
-        log.info("ExtTrigger %s", dac.GetExternalTriggerEnableXD48(1))
+        log.info("ExtTrigger %s" % dac.GetExternalTriggerEnableXD48(1))
         dac.SetTriggerModeXD48(0)
         dac.SetActiveChannelMaskXD48(0x1 | 0x2)
         dac.SetDacSampleSizeXD48(1)
