@@ -365,7 +365,7 @@ class PlanStartDialog(QDialog, metaclass=QProtocolMetaMeta):
 
 
 class ObserverPlot(pg.PlotWidget):
-    def __init__(self, obs, signal, x=None, parent=None, aa=False, **kwargs):
+    def __init__(self, obs, signal, x=None, parent=None, aa=False, linewidth=2, **kwargs):
         """Plot windows which can observe an array
 
         Parameters
@@ -381,11 +381,14 @@ class ObserverPlot(pg.PlotWidget):
             The QtParent
         aa: bool
             Antialaising of the curve
+        linewidth: float
+            Linewidth of the curvess
 
         All other kwargs are passed to PlotWidget.
         """
         super(ObserverPlot, self).__init__(parent=parent, **kwargs)
         signal.connect(self.request_update)
+        self.linewidth = linewidth
         self.signal = signal
         self.antialias = aa
         self.color_cycle = make_default_cycle()
@@ -400,7 +403,7 @@ class ObserverPlot(pg.PlotWidget):
         for i in obs:
             self.add_observed(i)
         # self.enableMouse()
-        self.sceneObj.sigMouseClicked.connect(self.click)
+        self.scene().sigMouseClicked.connect(self.click)
         self.click_func = None
         self.x = x
         self.use_inverse = False
@@ -412,7 +415,7 @@ class ObserverPlot(pg.PlotWidget):
 
     def add_observed(self, single_obs):
         self.observed.append(single_obs)
-        pen = pg.mkPen(color=next(self.color_cycle), width=1)
+        pen = pg.mkPen(color=next(self.color_cycle), width=self.linewidth)
         curve = self.plotItem.plot(pen=pen, antialias=self.antialias)
         self.lines[single_obs] = curve
 
@@ -445,9 +448,9 @@ class ObserverPlot(pg.PlotWidget):
                     self.lines[o].setData(x=x, y=y)
         self.do_update = False
 
-    def click(self, ev):
-        if self.click_func is not None and ev.button() == 1:
-            coords = self.plotItem.vb().mapSceneToView(ev.pos())
+    def click(self, ev):                
+        if self.click_func is not None and ev.button() == Qt.MouseButton.LeftButton:
+            coords = self.plotItem.vb.mapSceneToView(ev.pos())
             self.click_func(coords)
             ev.accept()
 
