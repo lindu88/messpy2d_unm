@@ -3,7 +3,8 @@ from MessPy.Instruments.RotationStage import RotationStage
 from MessPy.Instruments.dac_px import AOM
 
 import attr
-from qtpy import QtGui, QtWidgets, QtCore
+from PySide6.QtCore import Qt
+from PySide6 import QtWidgets
 from MessPy.QtHelpers import ControlFactory, vlay, hlay
 
 from pyqtgraph.parametertree import Parameter, ParameterTree
@@ -40,7 +41,7 @@ class ShaperControl(QtWidgets.QWidget):
         slider_lbl = QtWidgets.QLabel("bla")
 
         self.slider = QtWidgets.QSlider()
-        self.slider.setOrientation(0x1)
+        self.slider.setOrientation(Qt.Orientation.Horizontal)
         self.slider.setMinimum(0)
         self.slider.setMaximum(1000)
         self.slider.setSingleStep(1)
