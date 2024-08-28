@@ -281,6 +281,7 @@ class Controller(QObject):
                 self.start_standard_read()
                 self.standard_read()
                 logger.info(f"Standard read took {(time.time()-t0)*1000} ms")
+                self.loop_finished.emit()
         elif getattr(self.plan, "is_async", False) and self.plan.task:
             t = self.plan.task
             t: aio.Task
@@ -292,12 +293,15 @@ class Controller(QObject):
                     raise t.exception()
                 else:
                     self.plan.task = None
-        elif hasattr(self.plan, "make_step"):
+            time.sleep(0.2)
+            self.loop_finished.emit()
+        elif hasattr(self.plan, "make_step"):            
             try:
                 self.plan.make_step()
+                time.sleep(0.1)
             except StopIteration:
                 self.pause_plan = True
-        self.loop_finished.emit()
+            self.loop_finished.emit()
 
     @Slot(object)
     def start_plan(self, plan):

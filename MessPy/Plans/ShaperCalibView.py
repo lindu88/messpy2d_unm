@@ -92,7 +92,7 @@ class CalibScanView(QWidget):
         config.save()
 
         self.params.setReadonly(True)
-        self.params.child("Start Calibration").setEnabled(False)
+        #self.params.child("Start Calibration").setEnabled(False)
         self.plan = CalibPlan(
             cam=self.cam,
             dac=self.dac,

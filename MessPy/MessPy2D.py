@@ -64,8 +64,8 @@ class MainWindow(QMainWindow):
         self.cm = CommandMenu(controller, self)
         self.setCentralWidget(self.cm)
         self.timer = QTimer()
-        self.timer.timeout.connect(controller.loop, Qt.QueuedConnection)
-        self.timer.timeout.connect(app.quit)
+        self.update_time = 10
+        self.timer.timeout.connect(controller.loop, Qt.QueuedConnection)        
         self.toggle_run(True)
         self.xaxis = {}
 
@@ -165,15 +165,19 @@ class MainWindow(QMainWindow):
         alg_icon = qta.icon("fa5s.crosshairs")
         pp = QPushButton("Show alignment helper", icon=alg_icon)
         pp.clicked.connect(self.show_alignment_helper)
-        tb.addWidget(pp)
+        tb.addWidget(pp)        
 
-    def toggle_run(self, bool):
+    @Slot(int)
+    def set_update_time(self, ms: int):
+        self.update_time = ms
+
+    def toggle_run(self, bool=True):
         if bool:
-            self.timer.setSingleShot(True)
-            self.controller.loop_finished.connect(self.timer.start)
-            self.timer.start(0)
-        else:
-            self.controller.loop_finished.disconnect(self.timer.start)
+            self.timer.setSingleShot(True)                                    
+            self.timer.setInterval(self.update_time)            
+            self.controller.loop_finished.connect(self, self.timer.start)
+            self.timer.start()
+        else:            
             self.timer.stop()
 
     def toggle_wl(self, c):
@@ -454,14 +458,11 @@ class DelayLineControl(QGroupBox):
 
 def start_app():
     import sys
-
     import qasync
-    # from PySide6.QtAsyncio import QAzEventLoop
+    
 
     import asyncio as aio
     import traceback
-    # import qtvscodestyle
-
     from pyqtgraph import mkQApp
 
     app = mkQApp()
@@ -489,9 +490,6 @@ def start_app():
             pass
 
     sys.excepthook = exception_hook
-    # ss = qtvscodestyle.load_stylesheet(qtvscodestyle.Theme.TOMORROW_NIGHT_BLUE)
-
-    # app.setStyleSheet(ss)
 
     mw = MainWindow(Controller())
     mw.showMaximized()

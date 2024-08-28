@@ -52,7 +52,7 @@ class GVDScanStarter(PlanStartDialog):
             {"name": "Start Val", "type": "float", "value": -300, "step": 1},
             {"name": "End Val", "type": "float", "value": -100, "step": 1},
             {"name": "Step", "type": "float", "value": 1, "step": 0.1},
-            {"name": "Scan Mode", "type": "list", "values": ["GVD", "TOD", "FOD"]},
+            {"name": "Scan Mode", "type": "list", "limits": ["GVD", "TOD", "FOD"], "value": "GVD"},
             {"name": "Waiting time (s)", "type": "float", "value": 0.1, "step": 0.05},
             {"name": "GVD", "type": "float", "value": 0, "step": 1},
             {"name": "TOD", "type": "float", "value": 0, "step": 1},
