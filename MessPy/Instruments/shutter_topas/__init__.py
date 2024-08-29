@@ -15,6 +15,10 @@ url = 'http://{}:{}/{}/{}/PublicAPI'.format(ip_address, port, serial_number, ver
 class TopasShutter(IShutter):
     name: str = 'TopasShutter'
     baseAddress: str = url
+    
+    def __attrs_post_init__(self):
+        super().__attrs_post_init__()
+        self.is_open()    
 
     def put(self, url, data):
         return requests.put(self.baseAddress + url, json=data)
@@ -29,7 +33,9 @@ class TopasShutter(IShutter):
         return self.get('/ShutterInterlock/IsShutterOpen').json()
 
     def toggle(self):
-        self.put('/ShutterInterlock/OpenCloseShutter', not self.is_open())
+        start_state = self.is_open()
+        self.put('/ShutterInterlock/OpenCloseShutter', not start_state)
+        self.sigShutterToggled.emit((not start_state))
         time.sleep(0.1)
 
 

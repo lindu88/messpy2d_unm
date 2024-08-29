@@ -36,7 +36,7 @@ Reading = I.Reading
 @attrs(cmp=False)
 class Cam(QObject):
     cam: I.ICam = attrib(_cam)
-    shots: int = attrib(config.shots)
+    shots: int = attrib(init=False)
 
     back: T.Any = attrib((0, 0))
     has_ref: bool = attrib(init=False)
@@ -53,6 +53,7 @@ class Cam(QObject):
 
     def __attrs_post_init__(self):
         QObject.__init__(self)
+        self.shots = self.cam.shots
         if self.shots > 1000:
             self.set_shots(20)
         self.read_cam()

@@ -60,17 +60,20 @@ elif pc_name == "DESKTOP-BBLLUO7":
 
     logger.info("Importing and initializing AOM")
     from MessPy.Instruments.dac_px import AOM, AOMShutter
+    try:
+        _shaper = AOM(name="AOM")
+        aom_shutter = AOMShutter(aom=_shaper)
+        _shutter.append(aom_shutter)
+        logger.info("Importing and initializing RotationStage")
+        from MessPy.Instruments.RotationStage import RotationStage
 
-    _shaper = AOM(name="AOM")
-    aom_shutter = AOMShutter(aom=_shaper)
-    _shutter.append(aom_shutter)
-    logger.info("Importing and initializing RotationStage")
-    from MessPy.Instruments.RotationStage import RotationStage
-
-    r1 = RotationStage(name="Grating1", comport="COM5")
-    r2 = RotationStage(name="Grating2", comport="COM6")
-    _shaper.rot1 = r1
-    _shaper.rot2 = r2
+        r1 = RotationStage(name="Grating1", comport="COM5")
+        r2 = RotationStage(name="Grating2", comport="COM6")
+        _shaper.rot1 = r1
+        _shaper.rot2 = r2
+    except: 
+        logger.warning("Either AOM or Rotation Stage initalization failed")
+        _shaper = None
 
     logger.info("Importing and initializing TopasShutter")
     try:
