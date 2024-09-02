@@ -1,6 +1,6 @@
 import asyncio as aio
 from asyncio import Task
-from re import S
+
 
 import numpy as np
 from attr import attrs, attrib, Factory, define
@@ -296,10 +296,10 @@ class Controller(QObject):
                     self.plan.task = None
             time.sleep(0.2)
             self.loop_finished.emit()
-        elif hasattr(self.plan, "make_step"):            
+        elif hasattr(self.plan, "make_step"):
             try:
                 self.plan.make_step()
-                time.sleep(0.1)
+                time.sleep(0.02)
             except StopIteration:
                 self.pause_plan = True
             self.loop_finished.emit()

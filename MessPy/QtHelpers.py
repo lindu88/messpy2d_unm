@@ -173,7 +173,7 @@ class ControlFactory(QWidget):
         self.apply_button.clicked.connect(lambda: apply_fn(self.edit_box.text()))
 
         self._layout = QFormLayout(self)
-        self._layout.setLabelAlignment(Qt.AlignRight)
+        self._layout.setLabelAlignment(Qt.AlignmentFlag.AlignRight)
 
         for w in [
             (QLabel("<b>%s</b>" % name), self.cur_value_label),
@@ -365,7 +365,9 @@ class PlanStartDialog(QDialog, metaclass=QProtocolMetaMeta):
 
 
 class ObserverPlot(pg.PlotWidget):
-    def __init__(self, obs, signal, x=None, parent=None, aa=False, linewidth=2, **kwargs):
+    def __init__(
+        self, obs, signal, x=None, parent=None, aa=False, linewidth=2, **kwargs
+    ):
         """Plot windows which can observe an array
 
         Parameters
@@ -448,7 +450,7 @@ class ObserverPlot(pg.PlotWidget):
                     self.lines[o].setData(x=x, y=y)
         self.do_update = False
 
-    def click(self, ev):                
+    def click(self, ev):
         if self.click_func is not None and ev.button() == Qt.MouseButton.LeftButton:
             coords = self.plotItem.vb.mapSceneToView(ev.pos())
             self.click_func(coords)

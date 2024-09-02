@@ -43,9 +43,16 @@ if pc_name == "DESKTOP-RMRQA8D":
 
 elif pc_name == "DESKTOP-BBLLUO7":
     logger.info("Importing and initializing PhaseTecCam")
-    from MessPy.Instruments.cam_phasetec import PhaseTecCam
+    try:
+        from MessPy.Instruments.cam_phasetec import PhaseTecCam
 
-    _cam = PhaseTecCam()
+        _cam = PhaseTecCam()
+    except Exception as e:
+        tmp_shots = _cam.shots
+        _cam.set_shots(10)
+
+        logger.warning("PhaseTecCam import or testread failed")
+        raise e
     # _cam = CamMock()
     _cam2 = None
     # from MessPy.Instruments.delay_line_apt import DelayLine
@@ -60,6 +67,7 @@ elif pc_name == "DESKTOP-BBLLUO7":
 
     logger.info("Importing and initializing AOM")
     from MessPy.Instruments.dac_px import AOM, AOMShutter
+
     try:
         _shaper = AOM(name="AOM")
         aom_shutter = AOMShutter(aom=_shaper)
@@ -71,7 +79,7 @@ elif pc_name == "DESKTOP-BBLLUO7":
         r2 = RotationStage(name="Grating2", comport="COM6")
         _shaper.rot1 = r1
         _shaper.rot2 = r2
-    except: 
+    except:
         logger.warning("Either AOM or Rotation Stage initalization failed")
         _shaper = None
 
@@ -109,7 +117,7 @@ else:
     logger.info("Unknown PC, using mocks")
     _cam = CamMock()
     _dl = DelayLineMock()
-    # _sh = StageMock()
+    _sh = StageMock()
     _power_meter = PowerMeterMock()
 
 logger.info("HwRegistry initialized")

@@ -13,7 +13,8 @@ from .AOMTwoPlan import AOMTwoDPlan
 from .AOMTwoDView import AOMTwoDViewer, AOMTwoDStarter
 from .ShaperCalibPlan import CalibPlan
 from .ShaperCalibView import CalibScanView
-
+from .SignalImagePlan import SignalImagePlan
+from .SignalImageView import SignalImageView, SignalImageStarter
 from .PlanBase import Plan, ScanPlan
 # from .GermaniumPlan import GermaniumPlan
 # from .GermaniumView import GermaniumView, GermaniumStarter
