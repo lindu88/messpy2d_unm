@@ -81,7 +81,7 @@ class AdaptiveTimeZeroPlan(AsyncPlan):
     def check_for_holes(self):
         x, y = self.get_data()
         xd = np.diff(x)
-        yd = np.diff(y) / y.ptp()
+        yd = np.diff(y) / np.ptp(y)
         i = (np.abs(yd) > self.max_diff) & (xd > self.min_step)
         if np.any(i):
             first = np.argmax(i)

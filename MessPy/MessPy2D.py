@@ -45,7 +45,7 @@ setConfigOptions(
 
 
 class MainWindow(QMainWindow):
-    def __init__(self, controller):
+    def __init__(self, controller: Controller):
         super(MainWindow, self).__init__()
         self.setWindowTitle("Messpy-2D Edition")
         self.setWindowIcon(qta.icon("fa.play"))
@@ -65,7 +65,7 @@ class MainWindow(QMainWindow):
         self.setCentralWidget(self.cm)
         self.timer = QTimer()
         self.update_time = 10
-        self.timer.timeout.connect(controller.loop, Qt.QueuedConnection)
+        self.timer.timeout.connect(controller.loop, Qt.ConnectionType.QueuedConnection)
         self.toggle_run(True)
         self.xaxis = {}
 

@@ -1,30 +1,27 @@
-import asyncio as aio
-from asyncio import Task
-
-
-import numpy as np
-from attr import attrs, attrib, Factory, define
-
-from loguru import logger
-
-from PySide6.QtCore import QThread, QTimer, QObject, Signal, Slot
-from qasync import Slot
-from MessPy.Config import config
 import threading
 import time
 import typing as T
+from asyncio import Task
+
+import numpy as np
+from attr import Factory, attrib, attrs, define
+from loguru import logger
+from PySide6.QtCore import QObject, QTimer, Signal, Slot
+from qasync import Slot
+
+import MessPy.Instruments.interfaces as I
+from MessPy.Config import config
 from MessPy.HwRegistry import (
     _cam,
     _cam2,
     _dl,
     _dl2,
+    _power_meter,
     _rot_stage,
-    _shutter,
     _sh,
     _shaper,
-    _power_meter,
+    _shutter,
 )
-import MessPy.Instruments.interfaces as I
 
 if T.TYPE_CHECKING:
     from MessPy.Plans.PlanBase import Plan
@@ -232,7 +229,7 @@ class Controller(QObject):
     shaper: T.Optional[object] = _shaper
     power_meter: T.Optional[I.IPowerMeter] = _power_meter
     async_tasks: list = Factory(list)
-    plan: T.Optional[object] = None
+    plan: T.Optional["Plan"] = None
     pause_plan: bool = False
 
     loop_finished: T.ClassVar[Signal] = Signal()
@@ -276,12 +273,18 @@ class Controller(QObject):
 
     @Slot()
     def loop(self):
+        import sys
+
+        if "debugpy" in sys.modules:
+            import debugpy
+
+            debugpy.debug_this_thread()
         if self.plan is None or self.pause_plan:
             if self.t1 is None:
                 t0 = time.time()
                 self.start_standard_read()
                 self.standard_read()
-                logger.info(f"Standard read took {(time.time()-t0)*1000} ms")
+                # logger.info(f"Standard read took {(time.time()-t0)*1000} ms")
                 self.loop_finished.emit()
         elif getattr(self.plan, "is_async", False) and self.plan.task:
             t = self.plan.task
@@ -302,10 +305,13 @@ class Controller(QObject):
                 time.sleep(0.02)
             except StopIteration:
                 self.pause_plan = True
+            except Exception as e:
+                logger.error(f"Error in loop: {e}")
+                self.pause_plan = True
             self.loop_finished.emit()
 
     @Slot(object)
-    def start_plan(self, plan):
+    def start_plan(self, plan: "Plan"):
         logger.info(f"Starting plan {plan}")
         self.plan = plan
         self.pause_plan = False

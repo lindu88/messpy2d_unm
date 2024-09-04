@@ -47,10 +47,12 @@ elif pc_name == "DESKTOP-BBLLUO7":
         from MessPy.Instruments.cam_phasetec import PhaseTecCam
 
         _cam = PhaseTecCam()
-    except Exception as e:
         tmp_shots = _cam.shots
         _cam.set_shots(10)
+        _cam.read_cam()
+        _cam.set_shots(tmp_shots)
 
+    except Exception as e:
         logger.warning("PhaseTecCam import or testread failed")
         raise e
     # _cam = CamMock()
