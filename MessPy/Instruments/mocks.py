@@ -115,8 +115,10 @@ class CamMock(ICam):
             if state.t > 0
             else 0.1 * np.exp(state.t / 100)
         )
-        y_sig = 300 * np.exp(-((x - 250) ** 2) / 30**2 / 2)
-        y_sig -= 300 * np.exp(-((x - 310) ** 2) / 30**2 / 2)
+        y_sig = 300 * np.exp(-((x - 250) ** 2) / 20**2 / 2)
+        y_sig -= 300 * np.exp(-((x - 310) ** 2) / 20**2 / 2)
+        dist = np.sqrt(state.stage_pos[0] ** 2 + state.stage_pos[1] ** 2)
+        y_sig *= np.exp(-dist / 0.5)
         a[::2, :] *= 1 + signal * y_sig / 300
         dt = time.time() - t0
         time.sleep(max(self.shots / 1000.0 - dt, 0))

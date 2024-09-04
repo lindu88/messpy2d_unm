@@ -65,7 +65,7 @@ class MainWindow(QMainWindow):
         self.setCentralWidget(self.cm)
         self.timer = QTimer()
         self.update_time = 10
-        self.timer.timeout.connect(controller.loop, Qt.QueuedConnection)        
+        self.timer.timeout.connect(controller.loop, Qt.QueuedConnection)
         self.toggle_run(True)
         self.xaxis = {}
 
@@ -138,6 +138,7 @@ class MainWindow(QMainWindow):
 
         if self.controller.sample_holder is not None:
             plans.append(("Focus Scan", "fa5s.ruler-combined", FocusScanStarter))
+            plans.append(("Signal Image", "fa5s.image", SignalImageStarter))
 
         if self.controller.shaper is not None:
             plans += [("GVD Scan", "fa5s.stopwatch", GVDScanStarter)]
@@ -165,7 +166,7 @@ class MainWindow(QMainWindow):
         alg_icon = qta.icon("fa5s.crosshairs")
         pp = QPushButton("Show alignment helper", icon=alg_icon)
         pp.clicked.connect(self.show_alignment_helper)
-        tb.addWidget(pp)        
+        tb.addWidget(pp)
 
     @Slot(int)
     def set_update_time(self, ms: int):
@@ -173,11 +174,11 @@ class MainWindow(QMainWindow):
 
     def toggle_run(self, bool=True):
         if bool:
-            self.timer.setSingleShot(True)                                    
-            self.timer.setInterval(self.update_time)            
+            self.timer.setSingleShot(True)
+            self.timer.setInterval(self.update_time)
             self.controller.loop_finished.connect(self, self.timer.start)
             self.timer.start()
-        else:            
+        else:
             self.timer.stop()
 
     def toggle_wl(self, c):
@@ -361,7 +362,6 @@ class CamControls(QGroupBox):
         )
         sc.edit_box.setValidator(QIntValidator(10, 50000))
         c.cam.sigShotsChanged.connect(sc.update_value)
-        c.cam.set_shots(config.shots)
         self.setTitle("ADC")
         self.setLayout(vlay(sc))
 
@@ -459,7 +459,6 @@ class DelayLineControl(QGroupBox):
 def start_app():
     import sys
     import qasync
-    
 
     import asyncio as aio
     import traceback
