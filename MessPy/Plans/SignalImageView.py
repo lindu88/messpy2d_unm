@@ -30,7 +30,7 @@ class SignalImageView(QWidget):
         self.ch_line.setPos(si_plan.wavelengths[64])
         self.ch_line.setPen("r")
         self.line_plot.addItem(self.ch_line)
-
+        
         self.image = ImageItem()
         self.mean_image = ImageItem()
         self.image_plot = PlotWidget()
