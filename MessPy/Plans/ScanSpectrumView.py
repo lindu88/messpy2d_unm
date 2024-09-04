@@ -121,7 +121,6 @@ class ScanSpectrumStarter(PlanStartDialog):
         wl_list = np.arange(min_val, max_val + 0.001, p["Resolution"])
         if p["Linear Axis"] == "cm-1":
             wl_list = 1e7 / wl_list
-        print(wl_list)
         scan = ScanSpectrum(
             name=p["Filename"],
             cam=self.candidate_cams[p["Cam"]],

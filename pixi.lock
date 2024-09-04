@@ -99,7 +99,6 @@ environments:
       - conda: https://conda.anaconda.org/conda-forge/win-64/pthreads-win32-2.9.1-hfa6e2cd_3.tar.bz2
       - conda: https://conda.anaconda.org/conda-forge/noarch/pycparser-2.22-pyhd8ed1ab_0.conda
       - conda: https://conda.anaconda.org/conda-forge/noarch/pyparsing-3.1.2-pyhd8ed1ab_0.conda
-      - conda: https://conda.anaconda.org/conda-forge/noarch/pyqtgraph-0.13.7-pyhd8ed1ab_0.conda
       - conda: https://conda.anaconda.org/conda-forge/noarch/pyserial-3.5-pyhd8ed1ab_0.tar.bz2
       - conda: https://conda.anaconda.org/conda-forge/win-64/pyside6-6.7.2-py312h2ee7485_2.conda
       - conda: https://conda.anaconda.org/conda-forge/noarch/pytest-8.3.2-pyhd8ed1ab_0.conda
@@ -143,6 +142,7 @@ environments:
       - pypi: https://files.pythonhosted.org/packages/e5/3e/741d8c82801c347547f8a2a06aa57dbb1992be9e948df2ea0eda2c8b79e8/idna-3.7-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/ce/03/4837e5616dcaedaa1820c5c47c60bca455175f33b444d2f2183511b0482c/NiceLib-0.7.1-py2.py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/b4/29/9ec43606606f51b2712aa96f7412fee5d572ff5ffe26efbe0411bfd77b48/nidaqmx-1.0.0-py3-none-any.whl
+      - pypi: git+https://github.com/pyqtgraph/pyqtgraph@20bc47ecabe659ffe83e3cc88c560091882473aa
       - pypi: https://files.pythonhosted.org/packages/a2/d4/9193206c4563ec771faf2ccf54815ca7918529fe81f6adb22ee6d0e06622/python_decouple-3.8-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/f9/9b/335f9764261e915ed497fcdeb11df5dfd6f7bf257d4a6a2a686d80da4d54/requests-2.32.3-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/65/58/f9c9e6be752e9fcb8b6a0ee9fb87e6e7a1f6bcab2cdc73f02bb7ba91ada0/tzdata-2024.1-py2.py3-none-any.whl
@@ -1936,27 +1936,14 @@ packages:
   - pkg:pypi/pyparsing?source=hash-mapping
   size: 89455
   timestamp: 1709721146886
-- kind: conda
+- kind: pypi
   name: pyqtgraph
-  version: 0.13.7
-  build: pyhd8ed1ab_0
-  subdir: noarch
-  noarch: python
-  url: https://conda.anaconda.org/conda-forge/noarch/pyqtgraph-0.13.7-pyhd8ed1ab_0.conda
-  sha256: e0ab6d9b69bde1febba187f88c4743cb36063c3edbf3642ac0e604979bf6f126
-  md5: d31a6f00bd89ff46a5e457c935578c33
-  depends:
-  - numpy >=1.22
-  - python >=3.9
-  constrains:
-  - pyqt >=5.15
-  - pyside2 >=5.15
-  license: MIT
-  license_family: MIT
-  purls:
-  - pkg:pypi/pyqtgraph?source=hash-mapping
-  size: 1443102
-  timestamp: 1714681228438
+  version: 0.14.0.dev0
+  url: git+https://github.com/pyqtgraph/pyqtgraph@20bc47ecabe659ffe83e3cc88c560091882473aa
+  requires_dist:
+  - numpy>=1.24.0
+  - colorama
+  requires_python: '>=3.10'
 - kind: conda
   name: pyserial
   version: '3.5'
