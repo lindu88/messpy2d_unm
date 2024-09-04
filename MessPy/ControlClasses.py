@@ -294,7 +294,8 @@ class Controller(QObject):
                     raise t.exception()
                 else:
                     self.plan.task = None
-            time.sleep(0.2)
+            
+            time.sleep(0.02)
             self.loop_finished.emit()
         elif hasattr(self.plan, "make_step"):            
             try:
@@ -306,7 +307,7 @@ class Controller(QObject):
 
     @Slot(object)
     def start_plan(self, plan):
-        logger.info(f"Starting plan {plan}")
+        logger.info(f"Starting plan: {plan.plan_shorthand}:{plan.name}")
         self.plan = plan
         self.pause_plan = False
         self.plan.sigPlanFinished.connect(self.stop_plan)
