@@ -1,5 +1,5 @@
 from MessPy.Instruments.interfaces import IDevice
-from PySide6.QtCore import Signal
+from PySide6.QtCore import Signal, QMutex
 from loguru import logger
 from pathlib import Path
 from typing import Optional, Literal
@@ -32,6 +32,7 @@ def default_dac():
 class AOM(IDevice):
     dac: "PXDAC.DAC" = attr.Factory(default_dac)
     name: str = "Phasetech AOM"
+    lock: QMutex = attr.Factory(QMutex)
 
     amp_fac: float = 1.0
     wave_amp: float = 0.4
@@ -96,6 +97,7 @@ class AOM(IDevice):
         self.set_wave_amp(self.wave_amp)
 
     def setup_dac(self):
+        self.lock.lock()
         dac = self.dac
         dac.SetDacSampleSizeXD48(2)
         log = logger
@@ -110,6 +112,7 @@ class AOM(IDevice):
         dac.SetTriggerModeXD48(0)
         dac.SetActiveChannelMaskXD48(0x1 | 0x2)
         dac.SetDacSampleSizeXD48(1)
+        self.lock.unlock()
 
     def update_dispersion_compensation(self):
         """
@@ -261,7 +264,9 @@ class AOM(IDevice):
     def voltage(self, i: int):
         if not (0 <= i < 1023):
             raise ValueError(i)
+        self.lock.lock()
         self.dac.set_output_voltage(ch1=i)
+        self.lock.unlock()
 
     def set_wave_amp(self, amp):
         """
@@ -303,8 +308,10 @@ class AOM(IDevice):
         full_mask[::2] = mask
         full_mask[1::2] = mask1
         self.full_mask = full_mask
+        self.lock.lock()
         self.dac.LoadRamBufXD48(0, full_mask.size * 2, full_mask.ctypes.data, 0)
         self.start_playback()
+        self.lock.unlock()
         return frames
 
     def start_playback(self):
