@@ -26,7 +26,6 @@ class TriaxSpectrometer(object):
         self.write(" ")
         port.timeout = 10
         out = port.read(1)
-        print(out)
         try:
             if len(out) == 0:
                 print("Can't connect to Triax Spectrometer")

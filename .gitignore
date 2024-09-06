@@ -15,3 +15,5 @@ MessPy/messpy_config
 *.cfg
 .pixi/
 __pycache__
+release/
+*.pyd
