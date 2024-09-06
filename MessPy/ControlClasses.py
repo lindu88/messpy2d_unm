@@ -80,6 +80,7 @@ class Cam(QObject):
         else:
             self.disp_axis[:] = self.wavenumbers
 
+    @Slot(bool)
     def set_disp_wavelengths(self, use_wl):
         self.disp_wavelengths = not use_wl
         self._update_wl_arrays()

@@ -172,11 +172,13 @@ class MainWindow(QMainWindow):
     def set_update_time(self, ms: int):
         self.update_time = ms
 
+    @Slot()
+    @Slot(bool)
     def toggle_run(self, bool=True):
         if bool:
             self.timer.setSingleShot(True)
             self.timer.setInterval(self.update_time)
-            self.controller.loop_finished.connect(self, self.timer.start)
+            self.controller.loop_finished.connect(self.timer.start)
             self.timer.start()
         else:
             self.timer.stop()
