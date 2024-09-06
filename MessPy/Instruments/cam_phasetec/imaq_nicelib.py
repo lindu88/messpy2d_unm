@@ -193,8 +193,8 @@ if __name__ == "__main__":
     import threading
 
     cam = Cam()
+    cam.set_shots(20)
     cam.read_cam()
-    cam.set_shots(2000)
 
     cnt = 0
     import numpy as np
