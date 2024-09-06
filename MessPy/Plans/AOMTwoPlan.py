@@ -185,11 +185,10 @@ class AOMTwoDPlan(ScanPlan):
                 self.repetitions,
                 self.save_frames_enabled,
             )
-            while not future.done():
-                yield
 
-        self.time_tracker.point_ending()
         ret = future.result()
+        self.time_tracker.point_ending()
+        yield
         thr = threading.Thread(
             target=self.save_data,
             args=(

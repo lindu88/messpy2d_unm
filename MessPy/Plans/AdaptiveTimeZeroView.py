@@ -3,7 +3,7 @@ import lmfit
 import numpy as np
 import pyqtgraph.parametertree as pt
 from pyqtgraph import PlotItem, PlotWidget, TextItem, mkPen
-from PySide6.QtCore import Qt
+from PySide6.QtCore import Qt, Slot
 from PySide6.QtWidgets import QLabel, QMessageBox, QPushButton, QWidget, QComboBox
 from scipy.special import erfc
 
@@ -66,6 +66,9 @@ class AdaptiveTZViewer(QWidget):
         self.line = self.plot_widget.plotItem.plot(
             pen=mkPen(color=next(color), width=2), symbol="t"
         )
+        self.line2 = self.plot_widget.plotItem.plot(
+            pen=mkPen(color=next(color), width=2), symbol="t"
+        )
         self.fit_text = QLabel()
         self.fit_text.setAlignment(Qt.AlignHCenter)
         self.setLayout(
@@ -76,7 +79,8 @@ class AdaptiveTZViewer(QWidget):
             )
         )
 
-        self.plan.sigStepDone.connect(lambda x: self.line.setData(*x))
+        self.plan.sigStepDone.connect(self.update_line, Qt.ConnectionType.QueuedConnection)
+        
         self.stop_button.clicked.connect(
             lambda: setattr(self.plan, "is_running", False)
         )
@@ -84,6 +88,12 @@ class AdaptiveTZViewer(QWidget):
 
         self.fit_model_combo.addItems(["Folded Exp.", "Folded Exp. + Gaussian"])
 
+    @Slot(object)
+    def update_line(self, obj):
+        x, y = obj
+        self.line.setData(x, y)
+
+    @Slot()
     def show_stop_options(self):
         self.stop_button.setDisabled(True)
         self.set_zero_btn = QPushButton("Set t0")
@@ -100,6 +110,7 @@ class AdaptiveTZViewer(QWidget):
         self.layout().addWidget(save_button)
         self.fit_data()
 
+    @Slot()
     def fit_data(self):
         x, y = self.plan.get_data()
         if self.fit_model_combo.currentText() == "Folded Exp.":
@@ -122,7 +133,7 @@ class AdaptiveTZViewer(QWidget):
                     self, "New t0", "Set Time-Zero to %.2f" % t0
                 )
             )
-            self.set_zero_btn.clicked.connect(self.set_zero_btn.setDisabled)
+            self.set_zero_btn.clicked.connect(lambda: self.set_zero_btn.setDisabled(True))
         else:
             self.fit_text.setText("Fit failed")
 
