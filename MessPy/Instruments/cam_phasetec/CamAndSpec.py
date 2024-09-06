@@ -1,31 +1,24 @@
 import concurrent
-import threading
-import time
+import concurrent.futures
 from math import log
 from pathlib import Path
-from typing import ClassVar, List, Optional, Tuple, Dict
+from typing import ClassVar, Dict, List, Optional, Tuple
 
 import attr
-
 import numpy as np
+from PySide6.QtCore import Signal, Slot
 from scipy.stats import trim_mean
-from PySide6.QtCore import Slot, Signal
-from MessPy.Config import config
-from MessPy.Instruments.interfaces import ICam
-from MessPy.Instruments.signal_processing import (
-    Reading,
-    Spectrum,
-    first,
-    fast_col_mean,
-    Reading2D,
-)
 
 from MessPy.Instruments.cam_phasetec.imaq_nicelib import Cam
 from MessPy.Instruments.cam_phasetec.spec_sp2500i import SP2150i
-from typing import List, Optional, Tuple, Dict
-from scipy.stats import trim_mean
-from math import log
-
+from MessPy.Instruments.interfaces import ICam
+from MessPy.Instruments.signal_processing import (
+    Reading,
+    Reading2D,
+    Spectrum,
+    fast_col_mean,
+    first,
+)
 
 LOG10 = log(10)
 PROBE_CENTER = 85
@@ -36,61 +29,60 @@ PROBE_RANGE = (PROBE_CENTER - k, PROBE_CENTER + k + 1)
 PROBE2_RANGE = (PROBE_CENTER_2 - k, PROBE_CENTER_2 + k + 1)
 REF_RANGE = (REF_CENTER - k, REF_CENTER + k + 1)
 
+row_defaults = {
+    "Probe": PROBE_RANGE,
+    "Ref": REF_RANGE,
+    "Probe2": PROBE2_RANGE,
+    "back_line": (90, 110),
+}
+
+
+def _back_default():
+    try:
+        return np.load(Path(__file__).parent / "back.npy")
+    except IOError:
+        return None
+
+
 TWO_PROBES = True
 
 
 @attr.s(auto_attribs=True, kw_only=True)
 class PhaseTecCam(ICam):
     spectrograph: SP2150i = attr.Factory(SP2150i)
-    rows: Dict[str, Tuple[int, int]] = attr.ib()
+    rows: Dict[str, Tuple[int, int]] = row_defaults
     name: str = "Phasetec Array"
     shots: int = 50
     has_ref: bool = True
 
-    if not TWO_PROBES:
-        line_names: List[str] = ["Probe", "Ref", "max"]
-        std_names: List[str] = ["Probe", "Ref", "Probe/Ref"]
-        sig_names: List[str] = ["Sig", "SigNoRef"]
-    else:
-        line_names: List[str] = ["Probe", "Probe2", "Ref", "max"]
-        std_names: List[str] = ["Probe", "Probe2", "Ref", "Probe/Ref"]
-        sig_names: List[str] = ["SigNoRef", "Sig", "Sig2NoRef", "Sig2"]
+    line_names: List[str] = ["Probe", "Probe2", "Ref", "max"]
+    std_names: List[str] = ["Probe", "Probe2", "Ref", "Probe/Ref"]
+    sig_names: List[str] = ["SigNoRef", "Sig", "Sig2NoRef", "Sig2"]
 
-    beta1: Optional[object] = None
-    beta2: Optional[object] = None
+    beta1: Optional[np.ndarray] = None
+    beta2: Optional[np.ndarray] = None
     channels: int = 128
     ext_channels: int = 0
     changeable_wavelength: bool = True
     changeable_slit: bool = False
-    background: Optional[np.ndarray] = attr.ib()
+    background: Optional[np.ndarray] = attr.Factory(_back_default)
     can_validate_pixel: bool = True
-    valid_pixel: Optional[List[np.ndarray]] = None
+    valid_pixel: Optional[dict[str, np.ndarray]] = None
     frame_channel: int = 0
     _cam: Cam = attr.ib(factory=Cam)
+    darklevel: int = 0
+    amplification: int = 7
 
     sigRowsChanged: ClassVar[Signal] = Signal()
 
-    @rows.default
-    def _rows_default(self) -> dict[str, Tuple[int, int]]:
-        return {
-            "Probe": PROBE_RANGE,
-            "Ref": REF_RANGE,
-            "Probe2": PROBE2_RANGE,
-            "back_line": (90, 110),
-        }
-
-    @background.default
-    def _back_default(self):
-        try:
-            return np.load(Path(__file__).parent / "back.npy")
-        except IOError:
-            pass
-        return None
-
     def get_state(self):
+        # The following state is saved an restored after a restart
+
         d = {
             "shots": self.shots,
             "rows": self.rows,
+            "darklevel": self.darklevel,
+            "amplification": self.amplification,
         }
         return d
 
@@ -114,69 +106,52 @@ class PhaseTecCam(ICam):
         """
         arr, ch = self._cam.read_cam()
 
-        self.valid_pixel = []
-        for lower, upper in self.rows.values():
+        self.valid_pixel = {}
+        for name, (lower, upper) in self.rows.items():
             sub_arr = arr[lower:upper, :, :].mean(-1)
-            self.valid_pixel += [(min_val < sub_arr) & (sub_arr < max_val)]
+            self.valid_pixel[name] = (min_val < sub_arr) & (sub_arr < max_val)
 
     def delete_valid_pixel(self):
         self.valid_pixel = None
 
-    def get_spectra(self, frames=None, **kwargs) -> Tuple[Dict[str, Spectrum], object]:
+    def get_spectra(
+        self, frames=None, **kwargs
+    ) -> Tuple[Dict[str, Spectrum], np.ndarray]:
         import time
 
         t = time.time()
 
-        arr, ch = self._cam.read_cam(back=self.background, lines=self.rows.values())
-        # print(-t + time.time(), self.shots)
-        # if self.background is not None:
-        #    arr = arr - self.background[:, :, None]
+        arr, ch = self._cam.read_cam(back=self.background, lines=self.rows)
+
         if frames is not None:
-            first_frame = first(np.array(ch[self.frame_channel]), 1)
+            first_frame: int = first(np.array(ch[self.frame_channel]), 1)
         else:
-            first_frame = None
+            first_frame = 0
 
-        pr_range = self.rows["Probe"]
-        pr2_range = self.rows["Probe2"]
-        ref_range = self.rows["Ref"]
-        backline_mean = self.rows["back_line"]
-
-        if self.valid_pixel is not None:
-            probe = fast_col_mean(
-                arr[pr_range[0] : pr_range[1], ...], self.valid_pixel[0]
-            )
-            ref = fast_col_mean(
-                arr[ref_range[0] : ref_range[1], ...], self.valid_pixel[1]
-            )
-            if TWO_PROBES:
-                probe2 = fast_col_mean(
-                    arr[pr2_range[0] : pr2_range[1], ...], self.valid_pixel[2]
-                )
-        else:
-            probe = self._cam.lines[0]  # - self._cam.lines[-1]
-            ref = self._cam.lines[1]  # - self._cam.lines[-1]
-            # probe = np.nanmean(arr[pr_range[0]:pr_range[1], :, :], 0)
-            # ref = np.nanmean(arr[ref_range[0]:ref_range[1], :, :], 0)
-            if TWO_PROBES:
-                probe2 = self._cam.lines[2]  # - self._cam.lines[-1]
-                # probe2 = np.nanmean(arr[pr2_range[0]:pr2_range[1], :, :], 0)
-
+        spectra = {}
+        means = {}
         get_max = kwargs.get("get_max", None)
-        if get_max:
-            probemax = np.nanmax(arr[:, :, :10], 0)
-        else:
-            probemax = None
-        probe = Spectrum.create(
-            probe, probemax, name="Probe1", frames=frames, first_frame=first_frame
-        )
-        ref = Spectrum.create(ref, name="Ref", frames=frames, first_frame=first_frame)
+        for name, (lower, upper) in self.rows.items():
+            if self.valid_pixel is not None:
+                means[name] = fast_col_mean(
+                    arr[lower:upper, :, :], self.valid_pixel[name]
+                )
+            else:
+                means[name] = np.nanmean(arr[lower:upper, :, :], 0)
 
-        if TWO_PROBES:
-            probe2 = Spectrum.create(
-                probe2, name="Probe2", frames=frames, first_frame=first_frame
+            if get_max and name == "Probe1":
+                probemax = np.nanmax(arr[:, :, :10], 0)
+            else:
+                probemax = None
+
+            spectra[name] = Spectrum.create(
+                means[name],
+                data_max=probemax,
+                name=name,
+                frames=frames,
+                first_frame=first_frame,
             )
-
-        return {i.name: i for i in (probe, probe2, ref)}, ch
+        return spectra, ch
 
     def make_reading(self, frame_data=None) -> Reading:
         d, ch = self.get_spectra(frames=2, get_max=True)
@@ -200,45 +175,40 @@ class PhaseTecCam(ICam):
             sig_noref = d["Probe1"].signal
 
             # print(sig.shape, ref_mean.shape, norm_std.shape, probe_mean.shape)
-            if not TWO_PROBES:
-                reading = Reading(
-                    lines=np.stack((probe.mean, ref.mean, probe.max)),
-                    stds=np.stack((probe.std, ref.std, norm_std)),
-                    signals=np.stack((sig, sig_noref)),
-                    valid=True,
-                )
 
+            probe2 = d["Probe2"]
+            normed2 = probe2.data / ref.data
+
+            if self.beta1 is not None:
+                # ref calibration available
+                assert self.beta2 is not None
+                dp = probe.data[:, ::2] - probe.data[:, 1::2]
+                dp2 = probe2.data[:, ::2] - probe2.data[:, 1::2]
+                dr = ref.data[::1, ::2] - ref.data[::1, 1::2]
+                dp = dp - self.beta1.T @ dr
+                dp2 = dp2 - self.beta2.T @ dr
+
+                sig = (-f / LOG10) * np.log1p(dp.mean(1) / probe.mean)
+                sig_pr2 = (-f / LOG10) * np.log1p(dp2.mean(1) / probe2.mean)
             else:
-                probe2 = d["Probe2"]
-                normed2 = probe2.data / ref.data
+                # no ref calibration
+                pu2 = trim_mean(normed2[:, ::2], 0.2, 1)
+                not_pu2 = trim_mean(normed2[:, 1::2], 0.2, 1)
+                sig_pr2 = -f * np.log10(pu2 / not_pu2)
 
-                if self.beta1 is not None:
-                    dp = probe.data[:, ::2] - probe.data[:, 1::2]
-                    dp2 = probe2.data[:, ::2] - probe2.data[:, 1::2]
-                    dr = ref.data[::1, ::2] - ref.data[::1, 1::2]
-                    dp = dp - self.beta1.T @ dr
-                    dp2 = dp2 - self.beta2.T @ dr
+            pu2 = trim_mean(probe2.data[:, ::2], 0.2, 1)
+            not_pu2 = trim_mean(probe2.data[:, 1::2], 0.2, 1)
 
-                    sig = -f / LOG10 * np.log1p(dp.mean(1) / probe.mean)
-                    sig_pr2 = -f / LOG10 * np.log1p(dp2.mean(1) / probe2.mean)
-                else:
-                    pu2 = trim_mean(normed2[:, ::2], 0.2, 1)
-                    not_pu2 = trim_mean(normed2[:, 1::2], 0.2, 1)
-                    sig_pr2 = f * np.log10(pu2 / not_pu2)
+            sig_pr2_noref = probe2.signal  # f * np.log10(pu2 / not_pu2)
 
-                pu2 = trim_mean(probe2.data[:, ::2], 0.2, 1)
-                not_pu2 = trim_mean(probe2.data[:, 1::2], 0.2, 1)
-
-                sig_pr2_noref = probe2.signal  # f * np.log10(pu2 / not_pu2)
-
-                reading = Reading(
-                    lines=np.stack((probe.mean, probe2.mean, ref.mean, probe.max)),
-                    stds=np.stack((probe.std, probe2.std, ref.std, norm_std)),
-                    signals=np.stack((sig_noref, sig, sig_pr2_noref, sig_pr2)),
-                    full_data=np.stack((probe.data, probe2.data, ref.data)),
-                    shots=self.shots,
-                    valid=True,
-                )  #
+            reading = Reading(
+                lines=np.stack((probe.mean, probe2.mean, ref.mean, probe.max)),
+                stds=np.stack((probe.std, probe2.std, ref.std, norm_std)),
+                signals=np.stack((sig_noref, sig, sig_pr2_noref, sig_pr2)),
+                full_data=np.stack((probe.data, probe2.data, ref.data)),
+                shots=self.shots,
+                valid=True,
+            )  #
         return reading
 
     def make_2D_reading(
@@ -291,7 +261,7 @@ class PhaseTecCam(ICam):
         if self.background is not None:
             self.background = None
         else:
-            arr = self._cam.read_cam(lines=self.rows.values(), back=None)[0]
+            self._cam.read_cam(lines=self.rows, back=None)[0]
             # back_probe = np.nanmean(arr[:, :, :], 2)
             self.background = self._cam.lines.mean(2)
             fname = Path(__file__).parent / "back"

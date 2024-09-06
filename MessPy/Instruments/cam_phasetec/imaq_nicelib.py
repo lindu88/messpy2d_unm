@@ -124,7 +124,9 @@ class Cam:
         return fcount[0]
 
     def read_cam(
-        self, lines: Optional[list[tuple]] = None, back: Optional[np.ndarray] = None
+        self,
+        lines: Optional[dict[str, tuple]] = None,
+        back: Optional[np.ndarray] = None,
     ) -> tuple[np.ndarray, np.ndarray]:
         self.reading_lock.acquire()
         IMAQ.imgSessionStartAcquisition(self.s)
@@ -151,7 +153,7 @@ class Cam:
             self.data[:, :, i] = MAX_14_BIT - a.T
             # self.background is not None:            #    self.data[:, :, i] -= self.background.astype('uint16')
             if lines:
-                for k, (l, u) in enumerate(lines):
+                for k, (l, u) in enumerate(lines.values()):
                     m = np.mean(self.data[l:u, :, i], 0)
                     if back is not None:
                         m = m - back[k]

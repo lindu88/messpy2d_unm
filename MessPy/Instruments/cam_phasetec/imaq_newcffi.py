@@ -177,8 +177,8 @@ class Cam:
             self.lines = np.empty((self.shots, len(lines), 128), dtype="float")
             line_num = len(lines)
             line_buf = ffi.from_buffer(
-                "float[%d]" % (line_num * 128 * self.shots), self.lines
-            )
+                "float[%d]" % (line_num * 128 * self.shots), self.lines.data
+            )  # type: ignore
             line_args = []
             for a, b in lines:
                 line_args += [a, b]
@@ -191,7 +191,9 @@ class Cam:
             back = ffi.from_buffer("uInt16[%d]" % (128 * 128), self.background)
         else:
             back = ffi.NULL
-        outp = ffi.from_buffer("uInt16[%d]" % (128 * 128 * self.shots), self.data)
+        outp = ffi.from_buffer(
+            "uInt16[%d]" % (128 * 128 * self.shots), python_buffer=self.data.data
+        )
 
         print(
             lib.read_n_shots(
