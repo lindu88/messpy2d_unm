@@ -6,7 +6,7 @@ from pathlib import Path
 from typing import ClassVar, List, Optional, Tuple, Dict
 
 import attr
-import attrs
+
 import numpy as np
 from scipy.stats import trim_mean
 from PySide6.QtCore import Slot, Signal
@@ -41,7 +41,7 @@ TWO_PROBES = True
 
 @attr.s(auto_attribs=True, kw_only=True)
 class PhaseTecCam(ICam):
-    spectrograph: SP2150i = attr.ib()
+    spectrograph: SP2150i = attr.Factory(SP2150i)
     rows: Dict[str, Tuple[int, int]] = attr.ib()
     name: str = "Phasetec Array"
     shots: int = 50
@@ -78,10 +78,6 @@ class PhaseTecCam(ICam):
             "Probe2": PROBE2_RANGE,
             "back_line": (90, 110),
         }
-
-    @spectrograph.default
-    def _default_spec(self) -> SP2150i:
-        return SP2150i()
 
     @background.default
     def _back_default(self):

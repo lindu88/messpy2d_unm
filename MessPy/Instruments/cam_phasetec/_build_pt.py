@@ -1,22 +1,31 @@
 import cffi
+
 ffibuilder = cffi.FFI()
-ffibuilder.set_source("_imaqffi", '#include "read_loop.h"', sources=['read_loop.c'], 
-                      include_dirs=[r"C:/Program Files (x86)/National Instruments/Shared/ExternalCompilerSupport/C/Include"],
-                      library_dirs=[r'C:/Program Files (x86)/National Instruments/Shared/ExternalCompilerSupport/C/Lib64/MSVC/'], 
-                      libraries=['imaq'])
+ffibuilder.set_source(
+    "_imaqffi",
+    '#include "read_loop.h"',
+    sources=["read_loop.c"],
+    include_dirs=[
+        r"C:/Program Files (x86)/National Instruments/Shared/ExternalCompilerSupport/C/Include"
+    ],
+    library_dirs=[
+        r"C:/Program Files (x86)/National Instruments/Shared/ExternalCompilerSupport/C/Lib64/MSVC/"
+    ],
+    libraries=["imaq"],
+)
 
 defs = ffibuilder.cdef("""
-typedef int...  uInt32;
-typedef int...  uInt16; 
-typedef int...       Int32;
-typedef  uInt32   INTERFACE_ID;
-typedef  uInt32   SESSION_ID;
-typedef  uInt32   EVENT_ID;
-typedef  uInt32   PULSE_ID;
-typedef  uInt32   BUFLIST_ID;
-typedef  Int32    IMG_ERR;
-typedef  uInt32   GUIHNDL;
-typedef  char Int8;
+typedef int...   uInt32;
+typedef int...   uInt16; 
+typedef int...   Int32;
+typedef int...   INTERFACE_ID;
+typedef int...   SESSION_ID;
+typedef int...   EVENT_ID;
+typedef int...   PULSE_ID;
+typedef int...   BUFLIST_ID;
+typedef int...   IMG_ERR;
+typedef int...   GUIHNDL;
+typedef char     Int8;
 
 typedef int USER_FUNC;
 
@@ -25,7 +34,7 @@ typedef int USER_FUNC;
 #define  IMG_LAST_BUFFER                     ...
 #define  IMG_OLDEST_BUFFER                   ...
 #define  IMG_CURRENT_BUFFER                  ...
-
+#define  IMG_ATTR_FRAME_COUNT                ...
 
 typedef enum {
     IMG_SIGNAL_NONE                 = 0xFFFFFFFF,
@@ -64,7 +73,7 @@ USER_FUNC imgSessionStartAcquisition(SESSION_ID sid);
 USER_FUNC imgSessionExamineBuffer2(SESSION_ID sid, uInt32 whichBuffer, uInt32 *bufferNumber, void** bufferAddr);
 USER_FUNC imgSessionCopyBufferByNumber(SESSION_ID sid, uInt32 bufNumber, void* userBuffer, IMG_OVERWRITE_MODE overwriteMode,
                         uInt32* copiedNumber, uInt32* copiedIndex);
-int imgShowError(int err, char* msg); 
+USER_FUNC imgShowError(int err, char* msg); 
 USER_FUNC imgSessionTriggerConfigure2(SESSION_ID sid, IMG_SIGNAL_TYPE triggerType, 
     uInt32 triggerNumber, uInt32 polarity, uInt32 timeout, uInt32 action);
                        
