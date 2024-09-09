@@ -315,6 +315,7 @@ class IDelayLine(IDevice):
 
 @attr.s(auto_attribs=True)
 class IShutter(IDevice):
+    interface_type: T.ClassVar[str] = "Shutter"
     sigShutterToggled: typing.ClassVar[Signal] = Signal(bool)
 
     @abc.abstractmethod

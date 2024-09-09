@@ -34,11 +34,27 @@ class ScannerMover(QObject):
         pass
 
 
+help_text = """	
+        <h1>Move Widget</h1>
+        This widget is used to move the stage. It needs to be focused to work.
+        It can be focused by clicking on it and turn green.
+
+
+        <p>Use the arrow keys to move the stage.</p>
+        <p>Use W and S to increase and decrease the step size.</p>
+        <p>Use R and F to move the z-axis.</p>
+        <p>Press the 'Cont. Move' button to move the stage continuously.</p>
+        <p>Press the 'Set Home' button to set the current position as the home position.</p>\
+        <p>Press the 'Go Home' button to move the stage to the home position.</p>
+        <p>Press the 'Help' button to show this help text.</p>
+"""
+
+
 class MoveWidget(QWidget):
     def __init__(self, sh: ILissajousScanner):
         super().__init__()
         self.scanner = sh
-        self.setFocusPolicy(Qt.StrongFocus)
+        self.setFocusPolicy(Qt.FocusPolicy.StrongFocus)
         home_button = QPushButton("Set Home")
         home_button.clicked.connect(lambda: self.scanner.set_home())
         goto_home = QPushButton("Go Home")
@@ -71,10 +87,11 @@ class MoveWidget(QWidget):
         self.home_label.setStyleSheet("background-color: red")
         super(MoveWidget, self).focusOutEvent(a0)
 
+    @Slot()
     def show_help(self):
         self.help_label = QLabel()
-        self.help_label.setPixmap(QPixmap("MotorHelp.png"))
-        self.help_label.setAutoFillBackground(False)
+        self.help_label.setContentsMargins(20, 20, 20, 20)
+        self.help_label.setText(help_text)
         self.help_label.show()
 
     def show_xy(self):
@@ -90,6 +107,7 @@ class MoveWidget(QWidget):
             # self.x_settings = None
             # self.y_settings = None
 
+    @Slot()
     def update_pos(self):
         x, y = self.scanner.get_pos_mm()
         z = self.scanner.get_zpos_mm()
@@ -107,28 +125,30 @@ class MoveWidget(QWidget):
 
         move = True
         K = self.K
-        if key == Qt.Key_Left:
-            pos[0] += K
-        elif key == Qt.Key_Right:
-            pos[0] -= K
-        elif key == Qt.Key_Up:
-            pos[1] += K
-        elif key == Qt.Key_Down:
-            pos[1] -= K
-        elif key == Qt.Key_W:
-            self.K *= 1.5
-        elif key == Qt.Key_S:
-            self.K /= 1.5
-        elif key == Qt.Key_Escape:
-            move = False
-            self.close()
+        KEYS = Qt.Key
+        match key:
+            case KEYS.Key_Left:
+                pos[0] += K
+            case KEYS.Key_Right:
+                pos[0] -= K
+            case KEYS.Key_Up:
+                pos[1] += K
+            case KEYS.Key_Down:
+                pos[1] -= K
+            case KEYS.Key_W:
+                self.K *= 1.5
+            case KEYS.Key_S:
+                self.K /= 1.5
+            case KEYS.Key_Escape:
+                move = False
+                self.close()
 
         if self.scanner.has_zaxis:
             z_pos = self.scanner.get_zpos_mm()
-            if key == Qt.Key_R:
+            if key == KEYS.Key_R:
                 z_pos += 0.3
                 move = False
-            if key == Qt.Key_F:
+            if key == KEYS.Key_F:
                 z_pos -= 0.3
                 move = False
             self.scanner.set_zpos_mm(z_pos)
