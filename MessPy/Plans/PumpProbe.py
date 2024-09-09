@@ -1,17 +1,16 @@
-import time
+
 import threading
-from typing import Optional, List, Iterable, TYPE_CHECKING, Generator
-import zipfile
+from typing import TYPE_CHECKING, ClassVar, Generator, Iterable, List, Optional
+
 import numpy as np
-from attr import attrs, attrib, Factory
+from attr import Factory, attrib, attrs
 from numpy._typing import NDArray
-from .PlanBase import Plan
-from MessPy.ControlClasses import Controller, Cam
 from PySide6.QtCore import QObject, Signal
-from pathlib import Path
+
 from MessPy.Config import config
-import datetime
-import asyncio as aio
+from MessPy.ControlClasses import Cam, Controller
+
+from .PlanBase import Plan
 
 if TYPE_CHECKING:
     from MessPy.Instruments.interfaces import ICam, IRotationStage, IShutter
@@ -29,6 +28,7 @@ class PumpProbePlan(Plan):
     t_idx: int = 0
     rot_idx: int = 0
 
+    plan_shorthand: str = "PumpProbe"
     center_wl_list: List[List[float]] = [[0]]
     pump_shutter: Optional["IShutter"] = None
     cam_data: List["PumpProbeData"] = attrib(init=False)
@@ -39,8 +39,8 @@ class PumpProbePlan(Plan):
     do_ref_calib: bool = True
     probe_shutter: Optional["IShutter"] = None
     save_full_data: bool = False
-    sigStepDone = Signal()
-    plan_shorthand = "PumpProbe"
+    
+    sigStepDone: ClassVar[Signal] = Signal()
 
     @property
     def common_mulitple_cwls(self):
@@ -55,6 +55,7 @@ class PumpProbePlan(Plan):
         self.make_step = lambda: next(gen)
         self.angle_cycle = []
         self.cam_data = []
+        self.pre_state = dict(shots=self.controller.cam.shots)
         for c, cwl in zip(self.controller.cam_list, self.center_wl_list):
             self.cam_data.append(
                 PumpProbeData(cam=c, cwl=cwl, plan=self, t_list=self.t_list)
@@ -151,6 +152,11 @@ class PumpProbePlan(Plan):
         data["t"] = np.array(self.t_list)
         data["rot"] = self.rot_at_scan
         np.savez(name, **data)
+
+    def restore_state(self):
+        super().restore_state()
+        # TODO: cam_list
+        self.controller.cam.set_shots(self.pre_state['shots'])
 
 
 @attrs(auto_attribs=True, cmp=False)
