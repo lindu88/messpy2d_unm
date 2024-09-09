@@ -1,6 +1,7 @@
 import functools
 import concurrent.futures
 import threading
+import json
 from pathlib import Path
 from numpy._typing import NDArray
 from typing import (
@@ -27,24 +28,9 @@ from MessPy.Instruments.signal_processing import THz2cm, cm2THz
 from .PlanBase import Plan, ScanPlan
 
 
-def flat_dict(d, grp):    
-    for key, val in d.items():
-        if isinstance(val, dict):
-            return flat_dict(val, grp.create_group(key))
-        else:
-            grp.attrs[key] = val
-
-
 h5py_ops = dict(
     compression="lzf", compression_opts=5, shuffle=True, chunk=True, track_order=True
 )
-
-
-def _generate_t1(max_t1, step_t1):
-    t1 = np.arange(0, abs(max_t1) + 1e-3, step_t1)
-    if max_t1 < 0:
-        t1 = -t1
-    return t1
 
 
 @attrs(auto_attribs=True, kw_only=True)
@@ -52,28 +38,37 @@ class AOMTwoDPlan(ScanPlan):
     """Plan used for pump-probe experiments"""
 
     plan_shorthand: ClassVar[str] = "2D"
+    # Instruments used, controller has cam and delay_line
     controller: Controller
     shaper: AOM
+
+    # Waitingtime parameters
     t2: np.ndarray
     t2_idx: int = 0
     cur_t2: float = 0
-    do_stop: bool = False
+
+    # AOM parameters
     max_t1: float = 4
     step_t1: float = 0.05
     mode: Literal["classic", "bragg"] = "bragg"
     rot_frame_freq: float = 0
     rot_frame2_freq: float = 0
-    repetitions: int = 1
     phase_frames: Literal[1, 2, 4] = 4
-    save_frames_enabled: bool = False
     aom_amplitude: float = 0.3
-    initial_state: dict = attr.Factory(dict)
-    save_ref: bool = True
+    repetitions: int = 1
 
+    # Plan behavior
+    initial_state: dict = attr.Factory(dict)
+    do_stop: bool = False
+    save_ref: bool = True
+    save_frames_enabled: bool = False
+
+    # Arrays to display
     disp_arrays: Dict[str, np.ndarray] = attr.Factory(dict)
     last_ir: Optional[np.ndarray] = None
     last_2d: Optional[Tuple[np.ndarray, np.ndarray]] = None
 
+    # Signals
     sigStepDone: ClassVar[Signal] = Signal()
 
     @functools.cached_property
@@ -103,7 +98,8 @@ class AOMTwoDPlan(ScanPlan):
             f["t1"].attrs["rot_frame"] = self.rot_frame_freq
             f["wn"] = self.controller.cam.wavenumbers
             f["wl"] = self.controller.cam.wavelengths
-            # grp = f.create_group('meta')
+            grp = f.create_group("meta")
+            grp.attrs["meta"] = json.dumps(self.meta)
             # flat_dict(self.meta, grp)
         return name
 
@@ -239,8 +235,8 @@ class AOMTwoDPlan(ScanPlan):
                     disp_ifr = f.get(
                         f"ifr_data/{line}/{t2_idx}/mean", data.interferogram
                     )
-                    #assert isinstance(disp_2d, h5py.Dataset)
-                    #assert isinstance(disp_ifr, h5py.Dataset)
+                    # assert isinstance(disp_2d, h5py.Dataset)
+                    # assert isinstance(disp_ifr, h5py.Dataset)
 
                     self.disp_arrays[line + "_spec2d"] = disp_2d[:]
                     self.disp_arrays[line + "_ifr"] = disp_ifr[:]
@@ -252,4 +248,5 @@ class AOMTwoDPlan(ScanPlan):
             self.last_ir = np.array(disp_ifr)
 
     def stop_plan(self):
-        self.post_plan()
+        self.do_stop = True
+        super(AOMTwoDPlan, self).stop_plan()

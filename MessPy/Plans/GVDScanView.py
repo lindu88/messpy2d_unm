@@ -7,6 +7,25 @@ from MessPy.ControlClasses import Controller
 from MessPy.QtHelpers import ObserverPlot, PlanStartDialog, vlay, make_entry
 from .GVDScan import GVDScan
 
+import lmfit
+
+
+def gaussfit(x, y, offset=True):
+    model = lmfit.models.GaussianModel() + lmfit.models.ConstantModel()
+    params = model.guess(y, x=x)
+    if offset:
+        params["c"].set(value=y.min(), vary=True)
+    else:
+        params["c"].set(value=0, vary=False)
+    x_center = x[np.argmax(y)]
+    params["center"].set(value=x_center)
+    sigma = np.std(x) / 5
+    height = y.max() - y.min()
+    # convert height to amplitude taking sigma into account
+    amplitude = height / (sigma * np.sqrt(2 * np.pi))
+    params["amplitude"].set(value=amplitude)
+    return model.fit(y, params, x=x)
+
 
 class GVDScanView(QWidget):
     def __init__(self, gvd_plan: GVDScan, *args, **kwargs):
@@ -31,6 +50,7 @@ class GVDScanView(QWidget):
         self.info_label = QLabel("Info")
         self.setLayout(vlay(self.gvd_sig, self.gvd_amp, self.info_label))
         self.plan.sigPointRead.connect(self.update_label)
+        self.plan.sigPlanFinished.connect(self.analyze_lines)
         self.setWindowTitle("GVD Scan")
         self.setWindowIcon(icon("fa5s.tired"))
 
@@ -38,6 +58,29 @@ class GVDScanView(QWidget):
         p = self.plan
         s = f"Point {p.gvd_idx}/ {len(p.gvd_list)}"
         self.info_label.setText(s)
+
+    def analyze_lines(self):
+        x = self.plan.gvd_list
+        y1 = self.plan.probe2.mean(1)
+        y2 = self.plan.signal[:, :, 0].mean(1)
+        y3 = self.plan.signal[:, :, 2].mean(1)
+        y1_minpos = x[np.argmin(y1)]
+        y2_maxpos = x[np.argmax(y2)]
+        y3_maxpos = x[np.argmax(y3)]
+
+        txt = f"Min Probe2: {y1_minpos:.2f}\nMax Signal1: {y2_maxpos:.2f}\nMax Signal2: {y3_maxpos:.2f}"
+
+        # Try gaussfit with offset
+        fit2 = gaussfit(x, y1)
+        if fit2.success:
+            self.gvd_sig.plot(x, fit2.best_fit, pen="g")
+            txt += f"\nProbe2: {fit2.best_values['center']:.2f}"
+        fit3 = gaussfit(x, y2)
+        if fit3.success:
+            self.gvd_sig.plot(x, fit3.best_fit, pen="r")
+            txt += f"\nSignal1: {fit3.best_values['center']:.2f}"
+
+        self.info_label.setText(txt)
 
 
 class GVDScanStarter(PlanStartDialog):
@@ -52,7 +95,12 @@ class GVDScanStarter(PlanStartDialog):
             {"name": "Start Val", "type": "float", "value": -300, "step": 1},
             {"name": "End Val", "type": "float", "value": -100, "step": 1},
             {"name": "Step", "type": "float", "value": 1, "step": 0.1},
-            {"name": "Scan Mode", "type": "list", "limits": ["GVD", "TOD", "FOD"], "value": "GVD"},
+            {
+                "name": "Scan Mode",
+                "type": "list",
+                "limits": ["GVD", "TOD", "FOD"],
+                "value": "GVD",
+            },
             {"name": "Waiting time (s)", "type": "float", "value": 0.1, "step": 0.05},
             {"name": "GVD", "type": "float", "value": 0, "step": 1},
             {"name": "TOD", "type": "float", "value": 0, "step": 1},
