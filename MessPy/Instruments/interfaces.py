@@ -23,6 +23,10 @@ QObjectType = type(QObject)
 
 T = typing
 
+conf_path = Path(__file__).parent / "config"
+conf_path_new = Path.home() / ".messpy" / "config"
+conf_path_new.mkdir(parents=True, exist_ok=True)
+
 
 class QABCMeta(QObjectType, abc.ABCMeta):
     pass
@@ -80,6 +84,8 @@ class IDevice(QObject, metaclass=QABCMeta):
         if d:
             with (conf_path / (self.name + ".cfg")).open("w") as f:
                 json.dump(d, f, indent=4)
+            with (conf_path_new / (self.name + ".cfg")).open("w") as f:
+                json.dump(d, f, indent=4)
 
     def load_state(self, exclude: T.Optional[T.List[str]] = None):
         """
@@ -89,7 +95,6 @@ class IDevice(QObject, metaclass=QABCMeta):
         if exclude is None:
             exclude = []
         try:
-            conf_path = Path(__file__).parent / "config"
             logger.info(
                 f"Loading state for {self.name}, {conf_path / (self.name + '.cfg')}"
             )
@@ -382,6 +387,7 @@ class ILissajousScanner(IDevice):
     has_zaxis: bool = False
 
     interface_type: T.ClassVar[str] = "LissajousScanner"
+    sigPositionChanged: T.ClassVar[Signal] = Signal(float, float)
 
     def init_motor(self):
         pass

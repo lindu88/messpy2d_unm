@@ -81,7 +81,7 @@ class AdaptiveTimeZeroPlan(AsyncPlan):
     def check_for_holes(self):
         x, y = self.get_data()
         xd = np.diff(x)
-        yd = np.diff(y) / y.ptp()
+        yd = np.diff(y) / np.ptp(y)
         i = (np.abs(yd) > self.max_diff) & (xd > self.min_step)
         if np.any(i):
             first = np.argmax(i)
@@ -92,7 +92,7 @@ class AdaptiveTimeZeroPlan(AsyncPlan):
     async def read_point(self):
         loop = asyncio.get_running_loop()
         reading = await loop.run_in_executor(None, self.cam.read_cam)
-        return np.mean(reading.signals[0])
+        return np.mean(reading.signals[2])
 
     async def check_pos(self, pos):
         await self.move_dl(pos)

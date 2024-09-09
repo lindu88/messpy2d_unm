@@ -199,8 +199,8 @@ class ScanPlan(Plan):
             yield from self.pre_scan()
             self.sigScanStarted.emit()
             yield from self.scan()
-            self.sigScanFinished.emit()
             yield from self.post_scan()
+            self.sigScanFinished.emit()
             self.cur_scan += 1
         yield from self.post_plan()
         self.sigPlanFinished.emit()

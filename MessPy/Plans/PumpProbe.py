@@ -1,27 +1,24 @@
-
 import threading
-from typing import TYPE_CHECKING, ClassVar, Generator, Iterable, List, Optional
+from typing import Optional, List, Iterable, TYPE_CHECKING, Generator
 
 import numpy as np
 from attr import Factory, attrib, attrs
 from numpy._typing import NDArray
-from PySide6.QtCore import QObject, Signal
 
-from MessPy.Config import config
-from MessPy.ControlClasses import Cam, Controller
+from PySide6.QtCore import QObject, Signal
 
 from .PlanBase import Plan
 
 if TYPE_CHECKING:
+    from MessPy.ControlClasses import Controller, Cam
     from MessPy.Instruments.interfaces import ICam, IRotationStage, IShutter
-from PySide6.QtWidgets import QApplication
 
 
 @attrs(auto_attribs=True)
 class PumpProbePlan(Plan):
     """Plan used for pump-probe experiments"""
 
-    controller: Controller
+    controller: "Controller"
     t_list: np.ndarray
     shots: int = 1000
     num_scans: int = 0
@@ -163,7 +160,7 @@ class PumpProbePlan(Plan):
 class PumpProbeData(QObject):
     """Class holding the pump-probe data for a single cam"""
 
-    cam: Cam
+    cam: "Cam"
     plan: PumpProbePlan
     cwl: List[float] = attrib()
     t_list: np.ndarray

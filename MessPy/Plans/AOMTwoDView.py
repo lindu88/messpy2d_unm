@@ -30,8 +30,6 @@ from .PlanBase import sample_parameters
 from ..Instruments.signal_processing import cm2THz, THz2cm
 
 
-
-
 @attr.define(auto_attribs=True, weakref_slot=False)
 class TwoDMap(GraphicsLayoutWidget):
     probe_wn: np.ndarray = attr.field()
@@ -77,22 +75,6 @@ class AOMTwoDViewer(QWidget):
         gl = GraphicsLayoutWidget(self)
         self.setLayout(QVBoxLayout())
         self.layout().addWidget(gl)
-        # pw = self.addPlot()
-        # pw: PlotItem
-        # pw.setLabels(bottom='Probe Freq', left='Time')
-        # cmap = colormap.get("CET-D1")
-        # self.ifr_img = ImageItem()
-        # rect = (self.probe_freq.max(), 0, -self.probe_freq.ptp(), plan.max_t1)
-        # self.ifr_img.setImage(np.zeros((128, plan.t1.size)), rect=rect)
-        # pw.addItem(self.ifr_img)
-        # self.spec_image_view = pw
-        # self.ifr_img.mouseClickEvent = self.ifr_clicked
-        # hist = HistogramLUTItem()
-        # hist.setImageItem(self.ifr_img)
-        # hist.gradient.setColorMap(cmap)
-        # self.addItem(hist)
-        # self.ifr_lines: dict[InfiniteLine, PlotDataItem] = {}
-        # self.ifr_free_colors = list(range(9))
 
         pw: PlotItem = gl.addPlot()
         pw.setLabels(bottom="Probe Freq", left="Pump Freq")
@@ -139,11 +121,14 @@ class AOMTwoDViewer(QWidget):
         self.plan.time_tracker.sigTimesUpdated.connect(self.set_time_str)
         self.pr_1_pb = QRadioButton("Probe1")
         self.pr_2_pb = QRadioButton("Probe2")
+        self.cb_auto_levels = QCheckBox("Auto Levels")
         for pb in (self.pr_1_pb, self.pr_2_pb):
             pb.toggled.connect(self.update_plots)
+            pb.toggled.connect(self.update_data)
         self.pr_1_pb.setChecked(True)
         self.layout().addWidget(self.pr_1_pb)
         self.layout().addWidget(self.pr_2_pb)
+        self.layout().addWidget(self.cb_auto_levels)
 
     @property
     def pr_idx(self):
@@ -159,53 +144,28 @@ class AOMTwoDViewer(QWidget):
         else:
             i = 1
         if self.plan.last_2d is not None:
-            #    self.ifr_img.setImage(self.plan.last_ir, autoLevels=al)
-            self.spec_img.setImage(self.plan.last_2d[i][::, ::-1], autoLevels=al)
+            al = self.cb_auto_levels.isChecked()
+            self.spec_img.setImage(self.plan.last_2d[i][::, ::-1], autoLevels=True)
 
-    def ifr_clicked(self, ev):
-        x, y = ev.pos()
-        if len(self.ifr_free_colors) == 0:
-            return
-        _int_color = self.ifr_free_colors.pop(0)
-        line = self.spec_image_view.addLine(
-            x=self.probe_freq[round(x)],
-            movable=True,
-            bounds=(self.probe_freq.min(), self.probe_freq.max()),
-            pen=mkPen(_int_color, width=1),
-        )
-        line._int_color = _int_color
-        cur_line = "Probe2"
-        # self.ifr_lines[line] = self.trans_plot.plot(self.plan.t1, self.plan.disp_arrays[cur_line][1][round(x), :],
-        #                                            pen=line.pen)
-
-        def update(line: InfiniteLine):
-            idx = np.argmin(abs(self.probe_freq - line.pos()[0]))
-            self.ifr_lines[line].setData(self.plan.t1, self.plan.last_ir[round(idx), :])
-
-        def delete(line: InfiniteLine, ev):
-            ev.accept()
-            trans_line = self.ifr_lines.pop(line)
-            self.trans_plot.removeItem(trans_line)
-            self.spec_image_view.removeItem(line)
-            self.ifr_free_colors.append(line._int_color)
-
-        line.sigClicked.connect(delete)
-        line.sigPositionChanged.connect(update)
-
+    @Slot()
     def update_plots(self):
         if self.plan.last_2d is not None:
-            self.spec_mean_line.setData(self.probe_freq, self.plan.last_2d[self.pr_idx].mean(1))
-            # for line in self.ifr_lines.keys():
-            #    line.sigPositionChanged.emit(line)  # Causes an update
+            self.spec_mean_line.setData(
+                self.probe_freq, self.plan.last_2d[self.pr_idx].mean(1)
+            )
 
+    @Slot()
     def update_spec_lines(self, *args):
         idx = np.argmin(abs(self.pump_freqs - self.spec_line.pos()[1]))
         if self.plan.last_2d is not None:
-            self.spec_cut_line.setData(self.probe_freq, self.plan.last_2d[self.pr_idx][:, idx])
+            self.spec_cut_line.setData(
+                self.probe_freq, self.plan.last_2d[self.pr_idx][:, idx]
+            )
 
     def set_time_str(self, s):
         self.time_str = s
 
+    @Slot()
     def update_label(self):
         p = self.plan
         s = f"""
