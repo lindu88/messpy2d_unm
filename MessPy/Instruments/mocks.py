@@ -46,7 +46,7 @@ state = MockState()
 class MockSpectrograph(ISpectrograph):
     name: str = "MockSpec"
     changeable_wavelength: bool = True
-    center_wl: float = 250
+    center_wl: float = 300
     _cur_grating: int = 0
 
     def get_state(self) -> dict:
@@ -99,7 +99,6 @@ class CamMock(ICam):
         y = 300 * np.exp(-((x - 250) ** 2) / 50**2 / 2)
 
         knife_amp = state.knife_amp()
-        knife_amp = 4
         y = y * (knife_amp / 4)
 
         a = np.random.normal(loc=y, scale=3, size=(self.shots, self.channels))

@@ -1,6 +1,3 @@
-import sys, os
-
-print(os.environ)
 from loguru import logger
 from MessPy.MessPy2D import start_app
 

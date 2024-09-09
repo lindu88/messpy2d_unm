@@ -63,9 +63,10 @@ class PhaseTecCam(ICam):
     beta2: Optional[np.ndarray] = None
     channels: int = 128
     ext_channels: int = 0
+    changeable_wavelength: bool = True
+    changeable_slit: bool = False
     background: Optional[np.ndarray] = attr.Factory(_back_default)
     can_validate_pixel: bool = True
-
     valid_pixel: Optional[dict[str, np.ndarray]] = None
     frame_channel: int = 0
     _cam: Cam = attr.ib(factory=Cam)
