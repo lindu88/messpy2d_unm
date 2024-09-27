@@ -7,7 +7,7 @@ from pathlib import Path
 import attr
 
 import numpy as np
-from PySide6.QtCore import QObject, Signal
+from PySide6.QtCore import Signal
 
 from MessPy.Config import config
 from MessPy.ControlClasses import Cam
@@ -17,7 +17,6 @@ from MessPy.Plans.PlanBase import Plan
 
 @attr.s(auto_attribs=True, cmp=False)
 class GVDScan(Plan):
-    name: str
     cam: Cam
     aom: AOM
     gvd_list: T.List[float]
@@ -32,7 +31,8 @@ class GVDScan(Plan):
     observed_channel: T.Optional[int] = None
     settings_before: dict = attr.Factory(dict)
 
-    sigPointRead = Signal()
+    sigPointRead: T.ClassVar[Signal] = Signal()
+
     plan_shorthand: T.ClassVar[str] = "GVDscan"
 
     def __attrs_post_init__(self):
@@ -47,6 +47,7 @@ class GVDScan(Plan):
         self.ref = np.zeros((n_disp, n_pix))
         self.signal = np.zeros((n_disp, n_pix, self.cam.sig_lines))
         self.settings_before["shots"] = self.cam.shots
+        self.settings_before["disp"] = self.aom.gvd
         gen = self.make_step_gen()
         self.make_step = lambda: next(gen)
 
@@ -69,6 +70,7 @@ class GVDScan(Plan):
             while t.is_alive():
                 yield
 
+            assert self.cam.last_read is not None
             probe = self.cam.last_read.lines[0, :]
             probe2 = self.cam.last_read.lines[1, :]
             ref = self.cam.last_read.lines[2, :]
@@ -84,46 +86,9 @@ class GVDScan(Plan):
         self.save()
         yield
         self.cam.set_shots(self.settings_before["shots"])
+        self.aom.gvd = self.settings_before["disp"]
+        self.aom.update_dispersion_compensation()
         self.sigPlanFinished.emit()
-
-    def get_name(self, data_path=False):
-        if data_path:
-            p = Path(data_path)
-        else:
-            p = r"C:\Users\2dir\messpy2d\data_temps"
-        dname = p + f"\{self.name}_spectrumScan.npz"
-
-        if os.path.exists(dname):
-            name_exists = True
-            i = 0
-            while name_exists == True:
-                dname = p + f"\{self.name}{i}_spectrumScan.npz"
-                i += 1
-                if os.path.exists(dname) == False:
-                    name_exists = False
-        self._name = dname
-        return self._name
 
     def save(self):
         return
-        data = {"cam": self.cam.name}
-        # data['meta'] = self.meta
-        data["wl"] = self.wls
-        data["probe"] = self.probe
-        data["ref"] = self.ref
-        data["signal"] = self.signal
-        fig = plt.figure()
-        plt.plot(self.wls[:, 64], self.probe[:, 64], label="Probe")
-        plt.plot(self.wls[:, 64], self.ref[:, 64], label="Ref")
-        plt.legend()
-        fig.show()
-        try:
-            name = self.get_name(data_path=config.data_directory)
-            np.savez(name, **data)
-            fig.savefig(name[:-4] + ".png")
-            print("saved in results")
-        except:
-            name = self.get_name()
-            np.savez(name, **data)
-            fig.savefig(name[:-4] + ".png")
-            print("saved in local temp")

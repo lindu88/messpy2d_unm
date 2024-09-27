@@ -196,6 +196,8 @@ class ControlFactory(QWidget):
         if update_signal is not None:
             update_signal.connect(self.update_value)
 
+    @Slot(int)
+    @Slot(float)
     def update_value(self, value):
         """updates value of the control widget"""
         if not isinstance(value, str):
@@ -450,6 +452,7 @@ class ObserverPlot(pg.PlotWidget):
                     self.lines[o].setData(x=x, y=y)
         self.do_update = False
 
+    @Slot(object)
     def click(self, ev):
         if self.click_func is not None and ev.button() == Qt.MouseButton.LeftButton:
             coords = self.plotItem.vb.mapSceneToView(ev.pos())
