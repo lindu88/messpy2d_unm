@@ -43,7 +43,7 @@ def first(arr, val: float) -> int:
 
 
 def stats(probe, probe_max=None):
-    mean, std, mi, ma = fast_stats2d(probe).T
+    mean, std, mi, ma = fast_stats2d(probe.astype('float64')).T
     probe_mean = mean
     probe_std = 100 * std / probe_mean
     if probe_max is not None:

@@ -55,9 +55,9 @@ int read_n_shots(int shots, uInt32 start_frame, SESSION_ID sid, uInt16 *buf,
     uInt16 ba_reordered[FRAME_SIZE];
     uInt32 copiedNumber;
     uInt32 copiedIndex;
-    for (int i = 0; i < shots; i++)
+    for (int i_cur_shot = 0; i_cur_shot < shots; i_cur_shot++)
     {
-        int err = imgSessionCopyBufferByNumber(sid, i + start_frame, ba,
+        int err = imgSessionCopyBufferByNumber(sid, i_cur_shot + start_frame, ba,
                                                IMG_OVERWRITE_FAIL,
                                                &copiedNumber,
                                                &copiedIndex);
@@ -69,22 +69,22 @@ int read_n_shots(int shots, uInt32 start_frame, SESSION_ID sid, uInt16 *buf,
         transpose(ba_reordered);
         if (back != NULL)
         {
-            subtract_frame(ba_reordered, back, ba_reordered);
+            subtract_frame(ba_reordered, back);
         }
-        memcpy(buf + i * FRAME_SIZE, ba_reordered, FRAME_SIZE * sizeof(uInt16));
+        memcpy(buf + i_cur_shot * FRAME_SIZE, ba_reordered, FRAME_SIZE * sizeof(uInt16));
 
         for (int j = 0; j < num_line_ranges; j++)
         {
             int bot_row = line_ranges[2 * j];
             int top_row = line_ranges[2 * j + 1];
-
-            for (int k = 0; k < ROW_SIZE; k++)
+            for (int n_chan = 0; n_chan < ROW_SIZE; n_chan++)
             {
+                size_t idx = i_cur_shot * ROW_SIZE * num_line_ranges + j * ROW_SIZE + n_chan;                
                 for (int l = bot_row; l < top_row; l++)
                 {
-                    linebuffer[j * ROW_SIZE * shots + k * shots + i] += ba_reordered[l * ROW_SIZE + k];
+                    linebuffer[idx] += ba_reordered[l * ROW_SIZE + n_chan];
                 }
-                linebuffer[j * ROW_SIZE * shots + k * shots + i] /= (top_row - bot_row);
+                linebuffer[idx] /= 1.0 * (top_row - bot_row);
             }
         }
     }

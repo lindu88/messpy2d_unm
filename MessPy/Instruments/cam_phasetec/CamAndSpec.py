@@ -9,7 +9,7 @@ import numpy as np
 from PySide6.QtCore import Signal, Slot
 from scipy.stats import trim_mean
 
-from MessPy.Instruments.cam_phasetec.imaq_nicelib import Cam
+from MessPy.Instruments.cam_phasetec.imaq_newcffi import Cam
 from MessPy.Instruments.cam_phasetec.spec_sp2500i import SP2150i
 from MessPy.Instruments.interfaces import ICam
 from MessPy.Instruments.signal_processing import (
@@ -30,7 +30,7 @@ PROBE2_RANGE = (PROBE_CENTER_2 - k, PROBE_CENTER_2 + k + 1)
 REF_RANGE = (REF_CENTER - k, REF_CENTER + k + 1)
 
 row_defaults = {
-    "Probe": PROBE_RANGE,
+    "Probe1": PROBE_RANGE,
     "Ref": REF_RANGE,
     "Probe2": PROBE2_RANGE,
     "back_line": (90, 110),
@@ -55,8 +55,8 @@ class PhaseTecCam(ICam):
     shots: int = 50
     has_ref: bool = True
 
-    line_names: List[str] = ["Probe", "Probe2", "Ref", "max"]
-    std_names: List[str] = ["Probe", "Probe2", "Ref", "Probe/Ref"]
+    line_names: List[str] = ["Probe1", "Probe2", "Ref", "max"]
+    std_names: List[str] = ["Probe1", "Probe2", "Ref", "Probe/Ref"]
     sig_names: List[str] = ["SigNoRef", "Sig", "Sig2NoRef", "Sig2"]
 
     beta1: Optional[np.ndarray] = None
@@ -131,16 +131,17 @@ class PhaseTecCam(ICam):
         spectra = {}
         means = {}
         get_max = kwargs.get("get_max", None)
-        for name, (lower, upper) in self.rows.items():
+        for i, (name, (lower, upper)) in enumerate(self.rows.items()):
             if self.valid_pixel is not None:
                 means[name] = fast_col_mean(
-                    arr[lower:upper, :, :], self.valid_pixel[name]
+                    arr[:, lower:upper, :], self.valid_pixel[name]
                 )
             else:
-                means[name] = np.nanmean(arr[lower:upper, :, :], 0)
+                means[name] = self._cam.lines[:, i, :]
+                #means[name] = np.nanmean(arr[lower:upper, :, :], 0)
 
             if get_max and name == "Probe1":
-                probemax = np.nanmax(arr[:, :, :10], 0)
+                probemax = np.nanmax(arr[:10, :, :], 0).T
             else:
                 probemax = None
 
@@ -263,7 +264,7 @@ class PhaseTecCam(ICam):
         else:
             self._cam.read_cam(lines=self.rows, back=None)[0]
             # back_probe = np.nanmean(arr[:, :, :], 2)
-            self.background = self._cam.lines.mean(2)
+            self.background = self._cam.lines.mean(-1)
             fname = Path(__file__).parent / "back"
             np.save(fname, self.background)
 

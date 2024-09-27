@@ -1,5 +1,5 @@
 import threading
-from typing import Optional, List, Iterable, TYPE_CHECKING, Generator
+from typing import Optional, List, Iterable, TYPE_CHECKING, Generator, ClassVar
 
 import numpy as np
 from attr import Factory, attrib, attrs
