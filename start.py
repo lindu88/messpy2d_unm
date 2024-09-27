@@ -1,3 +1,5 @@
+import faulthandler
+faulthandler.enable()
 from loguru import logger
 from MessPy.MessPy2D import start_app
 
