@@ -17,3 +17,4 @@ MessPy/messpy_config
 __pycache__
 release/
 *.pyd
+build/
