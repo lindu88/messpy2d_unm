@@ -16,6 +16,35 @@ int16_t reorder_pixel(uInt16 single_frame[FRAME_SIZE], uInt16 reordered_frame[FR
     return 0;
 }
 
+int dead_pixel_replacement(uint16_t *frame, int *dead_pixel_list, int num_dead_pixels)
+{
+    for (int i = 0; i < num_dead_pixels; i++)
+    {
+        // Replace dead pixel by average of above and below
+        // We have to check if the dead pixel is at the top or bottom of the frame
+        int average = 0;
+        int dead_pixel = dead_pixel_list[i];
+        if (dead_pixel < ROW_SIZE)
+        {
+            int below_pixel = dead_pixel + ROW_SIZE;
+            average = frame[below_pixel];
+        }
+        else if (dead_pixel >= FRAME_SIZE - ROW_SIZE)
+        {
+            int above_pixel = dead_pixel - ROW_SIZE;
+            average = frame[above_pixel];
+        }
+        else
+        {
+            int above_pixel = dead_pixel - ROW_SIZE;
+            int below_pixel = dead_pixel + ROW_SIZE;
+            average = (frame[above_pixel] + frame[below_pixel]) / 2;
+            frame[dead_pixel] = average;
+        }
+        return 0;
+    }
+}
+
 int transpose(uInt16 *single_buf)
 {
     uInt16 temp;
@@ -49,7 +78,7 @@ int subtract_frame(uInt16 *single_frame, uInt16 *back_frame)
 
 int read_n_shots(int shots, uInt32 start_frame, SESSION_ID sid, uInt16 *buf,
                  int num_line_ranges, int line_ranges[], float linebuffer[],
-                 uInt16 *back)
+                 uInt16 *back, uInt16 *dead_pixel_list, int num_dead_pixels)
 {
     uInt16 ba[FRAME_SIZE];
     uInt16 ba_reordered[FRAME_SIZE];
@@ -70,6 +99,10 @@ int read_n_shots(int shots, uInt32 start_frame, SESSION_ID sid, uInt16 *buf,
         if (back != NULL)
         {
             subtract_frame(ba_reordered, back, ba_reordered);
+        }
+        if (dead_pixel_list != NULL)
+        {
+            dead_pixel_replacement(ba_reordered, dead_pixel_list, num_dead_pixels);
         }
         memcpy(buf + i * FRAME_SIZE, ba_reordered, FRAME_SIZE * sizeof(uInt16));
 

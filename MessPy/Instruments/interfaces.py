@@ -116,7 +116,7 @@ class IDevice(QObject, metaclass=QABCMeta):
         except FileNotFoundError:
             return
 
-    def get_extra_widgets(self) -> 'QWidget'|None:
+    def get_extra_widgets(self) -> "QWidget|None":
         return None
 
 
