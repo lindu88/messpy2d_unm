@@ -23,6 +23,9 @@ QObjectType = type(QObject)
 
 T = typing
 
+if typing.TYPE_CHECKING:
+    from PySide6.QtWidgets import QWidget
+
 conf_path = Path(__file__).parent / "config"
 conf_path_new = Path.home() / ".messpy" / "config"
 conf_path_new.mkdir(parents=True, exist_ok=True)
@@ -69,7 +72,6 @@ class IDevice(QObject, metaclass=QABCMeta):
             thr = multiprocessing.Process(target=create_obj)
         else:
             thr = threading.Thread(target=create_obj)
-
         return thr
 
     def get_state(self) -> dict:
@@ -115,6 +117,9 @@ class IDevice(QObject, metaclass=QABCMeta):
                     logger.info(f"Setting {key} to {val}")
         except FileNotFoundError:
             return
+
+    def get_extra_widgets(self) -> 'QWidget'|None:
+        return None
 
 
 @attr.s(auto_attribs=True, cmp=False)

@@ -35,8 +35,8 @@ params = [
 
 x = np.arange(128)
 y = np.arange(128)
-map = colormap.get("CET-L9")
-lut = map.getLookupTable()
+cmap = colormap.get("CET-L9")
+lut = cmap.getLookupTable()
 MAX_VAL = 1 << 14
 
 

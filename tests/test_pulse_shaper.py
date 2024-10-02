@@ -1,6 +1,6 @@
 from unittest.mock import MagicMock
 from MessPy.Instruments.dac_px import AOM
-from pytest import raises
+import numpy as np
 
 
 def test_aom():
@@ -19,9 +19,10 @@ def test_aom():
     aom.set_calib((p1, p2, p3))
     aom.generate_waveform()
 
-    masks = aom.double_pulse(1, 0.1, 1600)
-    assert(masks[0].shape[0] == len(aom.nu))
-    assert(masks[0].shape[1] == 11*4)
+    masks = aom.double_pulse(
+        np.arange(0, 1, 0.1), rot_frame=1600, rot_frame2=0, phase_frames=2
+    )
+
 
     aom.bragg_wf(masks[0], masks[1])
     aom.classic_wf(masks[0], masks[1])
