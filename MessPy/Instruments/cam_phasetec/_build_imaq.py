@@ -4,7 +4,7 @@ from nicelib import build_lib
 header_info = {
     'win*': {
         'path': (
-            r"C:\Program Files (x86)\National Instruments\NI-IMAQ\Include",
+            r"C:/Program Files (x86)/National Instruments/Shared/ExternalCompilerSupport/C/Include",
             
         ),
         'header': 'niimaq.h'
@@ -14,7 +14,7 @@ header_info = {
 lib_names = {'win*': 'imaq'}
 preamble = """
 
-#define __GNUC__ a
+#define __GNUC__ 
 
 """
 

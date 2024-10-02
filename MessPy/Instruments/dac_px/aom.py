@@ -354,7 +354,9 @@ class AOM(IDevice):
     def load_full_mask(self):
         """Loads a full mask using a frequency of 75 MHz"""
         self.set_amp_and_phase(np.ones(PIXEL), np.zeros(PIXEL))
-        self.generate_waveform()
+        logger.info("Loading full mask")
+        full_mask = np.cos(np.arange(PIXEL) / 16 * 2 * np.pi)
+        self.load_mask(full_mask)
 
     def set_compensation_amp(self, x0=2150, width=200):
         assert self.nu is not None

@@ -78,9 +78,7 @@ class IDevice(QObject, metaclass=QABCMeta):
         return dict()
 
     def save_state(self):
-        logger.info(f"Saving state for {self.name}")
         d = self.get_state()
-        logger.info(f"State for {self.name}: {d}")
         conf_path = Path(__file__).parent / "config"
         logger.info(f"Saving state for {self.name}, {conf_path / (self.name + '.cfg')}")
         if d:

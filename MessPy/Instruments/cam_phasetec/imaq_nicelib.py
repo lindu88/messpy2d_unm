@@ -133,10 +133,10 @@ class Cam:
         self.task.start()
         rows = 128
         colums = 128
-        ba = bytearray(rows * colums * 2)
-        bap = ffi.from_buffer(ba)
-        bi = np.frombuffer(ba).view("u2")
-        MAX_14_BIT = 1 << 14
+        bi = np.empty((128, 128), dtype='uint16')        
+        
+
+        MAX_14_BIT = (1 << 14)
 
         assert self.data is not None
 
@@ -145,11 +145,9 @@ class Cam:
 
         for i in range(self.shots):
             IMAQ.imgSessionCopyBufferByNumber(
-                self.s, i + self.frames, bap, IMAQ.IMG_OVERWRITE_FAIL
-            )
-            a = np.swapaxes(bi.reshape(rows // 4, colums, 4), 0, 1).reshape(
-                rows, colums
-            )
+                self.s, i + self.frames, bi.ctypes.data, IMAQ.IMG_OVERWRITE_FAIL)
+            a = np.swapaxes(bi.reshape(rows//4, colums, 4),
+                            0, 1).reshape(rows, colums)
             self.data[:, :, i] = MAX_14_BIT - a.T
             # self.background is not None:            #    self.data[:, :, i] -= self.background.astype('uint16')
             if lines:
