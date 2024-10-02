@@ -86,8 +86,8 @@ class PhaseTecCam(ICam):
         }
         return d
 
-    def load_state(self):
-        super().load_state()
+    def load_state(self, exclude=None):
+        super().load_state(exclude)
         if self.shots > 1000:
             self.shots = 20
         self.set_shots(self.shots)

@@ -1,4 +1,11 @@
-from MessPy.Instruments.signal_processing import first, fast_stats, fast_stats2d, fast_signal, fast_signal2d, fast_col_mean
+from MessPy.Instruments.signal_processing import (
+    first,
+    fast_stats,
+    fast_stats2d,
+    fast_signal,
+    fast_signal2d,
+    fast_col_mean,
+)
 import numpy as np
 from numpy.testing import assert_almost_equal
 
@@ -8,20 +15,20 @@ import pytest
 @pytest.fixture
 def array():
     np.random.seed(1)
-    x = 100+10*np.random.random((128, 10000))
+    x = 100 + 10 * np.random.random((128, 10000))
     return x
 
 
 def test_first():
     arr = np.zeros(10000)
     arr[5] = 3
-    assert(first(arr, 1) == 5)
+    assert first(arr, 1) == 5
     arr[5000] = 50
-    assert (first(arr, 4) == 5000)
+    assert first(arr, 4) == 5000
 
 
 def classic1d(x):
-    mean, std, mi, ma = x.mean(),  x.std(), x.min(), x.max()
+    mean, std, mi, ma = x.mean(), x.std(), x.min(), x.max()
     return mean, std, mi, ma
 
 
@@ -39,7 +46,7 @@ def test_fast_stats(array, benchmark):
 
 
 def classic(x):
-    mean, std, mi, ma = x.mean(1),  x.std(1), x.min(1), x.max(1)
+    mean, std, mi, ma = x.mean(1), x.std(1), x.min(1), x.max(1)
     return mean, std, mi, ma
 
 
@@ -87,7 +94,7 @@ def test_fast_signal2d(array, benchmark):
 def test_col_mean():
     arr = np.random.normal(size=(30, 128, 200))
     x = np.linspace(0, 100, 30) - 50
-    arr += 2 / (1 + x[:, None, None] ** 2 / 20 ** 2)
+    arr += 2 / (1 + x[:, None, None] ** 2 / 20**2)
     idx = arr.mean(2) > 1
     idx2 = np.tile(idx[..., None], arr.shape[2])
     true_val = np.average(arr, axis=0, weights=idx2)

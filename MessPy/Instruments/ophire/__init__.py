@@ -1,12 +1,16 @@
-from qtpy import QtWidgets, QtCore
+"Class implemting the IPowerMeter interface for the Starbright power meter"
+import attr
 from serial import Serial
 
 from MessPy.Instruments.interfaces import IPowerMeter
-import attr
 
 
 @attr.dataclass(kw_only=True)
 class Starbright(IPowerMeter):
+    """Class for the Starbright power meter
+
+    Only read out is implemented. The power meter is connected via RS232.
+    """
     name: str = 'Starbright'
     _serial: Serial = Serial("COM9", baudrate=19200)
 

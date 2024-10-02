@@ -1,3 +1,4 @@
+from typing import List
 import requests, time
 from attr import dataclass
 
@@ -15,10 +16,21 @@ url = 'http://{}:{}/{}/{}/PublicAPI'.format(ip_address, port, serial_number, ver
 class TopasShutter(IShutter):
     name: str = 'TopasShutter'
     baseAddress: str = url
-    
+
     def __attrs_post_init__(self):
         super().__attrs_post_init__()
-        self.is_open()    
+        self.is_open()
+
+    def _get_motor_state(self) -> dict:
+        ans = self.get('/Motors/PropertiesThatChangeOften')
+        return ans.json()
+
+    def get_state(self) -> dict:
+        return self._get_motor_state()
+
+    def load_state(self, exclude: List[str] | None = None):
+        """Do nothing"""
+        pass
 
     def put(self, url, data):
         return requests.put(self.baseAddress + url, json=data)

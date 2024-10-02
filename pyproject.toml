@@ -3,9 +3,19 @@ build-backend = "hatch"
 requires = ["hatch"]
 
 [project]
-authors = [{name = "Till Stensitzki", email = "mail.till@gmx.de"}] 
-description = "A python application for ultrafast spectroscopy experimental control." 
-name = "MessPy" 
-readme = "README.md" 
-requires-python = ">=3.10" 
+authors = [{name = "Till Stensitzki", email = "mail.till@gmx.de"}]
+description = "A python application for ultrafast spectroscopy experimental control."
+name = "MessPy"
+readme = "README.md"
+requires-python = ">=3.10"
 version = "0.1.0" # Add your project version
+
+[tool.pytest.ini_options]
+minversion = "6.0"
+addopts = "-ra -q"
+testpaths = [
+    "tests",
+    "integration",
+]
+pythonpath  = "."
+

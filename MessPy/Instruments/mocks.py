@@ -1,6 +1,7 @@
 import typing
 from typing import Dict, Optional
 
+from PySide6.QtWidgets import QWidget
 import numpy as np
 import attr
 from MessPy.Instruments.interfaces import (
@@ -161,6 +162,9 @@ class CamMock(ICam):
         x = np.arange(self.channels) - self.channels // 2
         return x * 0.5 + center_wl
 
+    def get_extra_widgets(self) -> typing.List[QWidget]:
+        from MessPy2D.Instruments.mock_widget import MockWidget
+        return 
 
 @attr.s(auto_attribs=True)
 class DelayLineMock(IDelayLine):
