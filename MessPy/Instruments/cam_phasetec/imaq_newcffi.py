@@ -247,20 +247,18 @@ class Cam:
             "uInt16[%d]" % (128 * 128 * self.shots), python_buffer=self.data.data
         )
 
-        
-            lib.read_n_shots(
-                self.shots,
-                self.frames,
-                self.s,
-                outp,
-                line_num,
-                line_args,
-                line_buf,
-                back,
-                dead_pixel_list,
-                len(dead_pixel_list),
-            )
-        
+        lib.read_n_shots(
+            self.shots,
+            self.frames,
+            self.s,
+            outp,
+            line_num,
+            line_args,
+            line_buf,
+            back,
+            dead_pixel_list,
+            len(dead_pixel_list),
+        )
 
         self.frames += self.shots
         if lines:

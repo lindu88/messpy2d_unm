@@ -78,6 +78,7 @@ USER_FUNC imgSessionTriggerConfigure2(SESSION_ID sid, IMG_SIGNAL_TYPE triggerTyp
     uInt32 triggerNumber, uInt32 polarity, uInt32 timeout, uInt32 action);
                        
 int read_n_shots(int shots, uInt32 start_frame, SESSION_ID sid, uInt16 *buf,
-                 int num_line_ranges, int *line_ranges, float *linebuffer, uInt16 *back);
+                 int num_line_ranges, int *line_ranges, float *linebuffer, uInt16 *back,
+                 int *dead_pixels, int num_dead_pixels);
 """)
 ffibuilder.compile(verbose=True)
