@@ -18,3 +18,5 @@ __pycache__
 release/
 *.pyd
 build/
+_*.c
+*.obj

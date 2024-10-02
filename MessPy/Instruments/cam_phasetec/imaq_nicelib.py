@@ -90,7 +90,6 @@ class Cam:
 
     def set_shots(self, shots):
         self.reading_lock.acquire()
-
         self.task.timing.cfg_samp_clk_timing(
             1000,
             "PFI0",
@@ -149,7 +148,6 @@ class Cam:
             a = np.swapaxes(bi.reshape(rows//4, colums, 4),
                             0, 1).reshape(rows, colums)
             self.data[:, :, i] = MAX_14_BIT - a.T
-            # self.background is not None:            #    self.data[:, :, i] -= self.background.astype('uint16')
             if lines:
                 for k, (l, u) in enumerate(lines.values()):
                     m = np.mean(self.data[l:u, :, i], 0)
@@ -157,12 +155,7 @@ class Cam:
                         m = m - back[k]
                     self.lines[k, :, i] = m
 
-            # hop.append(self.task.read(1)[0])
-            # chop.append(self.task.read())
-
         self.frames += self.shots
-
-        # chop = self.task.in_stream.read(c.READ_ALL_AVAILABLE)
         chop = self.task.read(c.READ_ALL_AVAILABLE)
 
         self.task.stop()

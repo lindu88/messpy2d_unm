@@ -1,5 +1,5 @@
-import pathlib
 import json
+import pathlib
 from threading import Lock
 from typing import TYPE_CHECKING, Optional
 
@@ -17,7 +17,8 @@ if TYPE_CHECKING:
 
     ffi: FFI
 
-with open("init_cmds.json") as f:
+cur_dir = pathlib.Path(__file__).parent
+with (cur_dir / "init_cmds.json").open("r") as f:
     init_cmd_list = json.load(f)
 
 dead_pixel_list = [
@@ -228,28 +229,25 @@ class Cam:
         assert self.data is not None
 
         if lines is not None:
-            self.lines = np.empty((self.shots, len(lines), 128), dtype="float")
+            self.lines = np.zeros((self.shots, len(lines), 128), dtype="float32")
             line_num = len(lines)
             line_buf = ffi.from_buffer(
                 "float[%d]" % (line_num * 128 * self.shots), self.lines.data
             )  # type: ignore
             line_args = []
-            for a, b in lines:
+            for a, b in lines.values():
                 line_args += [a, b]
         else:
             line_num = 0
+
             line_buf = ffi.NULL
             line_args = ffi.NULL
 
-        if self.background is not None and False:
-            back = ffi.from_buffer("uInt16[%d]" % (128 * 128), self.background)
-        else:
-            back = ffi.NULL
         outp = ffi.from_buffer(
             "uInt16[%d]" % (128 * 128 * self.shots), python_buffer=self.data.data
         )
 
-        print(
+        
             lib.read_n_shots(
                 self.shots,
                 self.frames,
@@ -262,9 +260,13 @@ class Cam:
                 dead_pixel_list,
                 len(dead_pixel_list),
             )
-        )
-        self.frames += self.shots
+        
 
+        self.frames += self.shots
+        if lines:
+            self.lines = self.lines.transpose()
+        if back is not None:
+            self.lines -= back[:, :, None]
         chop = self.task.read(c.READ_ALL_AVAILABLE)
         self.data = self.data
         self.task.stop()
@@ -276,7 +278,7 @@ class Cam:
 
     def set_background(self):
         assert self.data is not None
-        self.background = self.data.mean(0).astype(np.uint16)
+        self.background = self.data.mean(0)
         np.save("back.npy", self.background)
 
 
@@ -307,14 +309,16 @@ if __name__ == "__main__":
         t = time.time()
         thr = threading.Thread(
             target=cam.read_cam,
-            args=([(50, 60)],),
+            args=([(50, 60), (20, 30)],),
         )
         # o, ch = cam.read_cam()
         thr.start()
         while thr.is_alive():
             app.processEvents()
         print(time.time() - t)
-        img.setImage(cam.data[0])
+        img.setImage(cam.data[0].T)
+        print(cam.lines.shape)
+        l.setData(cam.lines[:, 1, :].mean(0))
         global cnt
         # np.save('%d testread' % cnt, cam.data)
         cnt += 1
