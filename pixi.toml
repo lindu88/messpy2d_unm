@@ -7,6 +7,8 @@ platforms = ["win-64"]
 version = "0.1.0"
 
 [tasks]
+start = "python start.py"
+build = { cmd = ["python", "_build_pt.py"], cwd = "MessPy/Instruments/cam_phasetec"}
 
 [dependencies]
 python = ">=3.12.5,<4"

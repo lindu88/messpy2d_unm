@@ -76,6 +76,11 @@ USER_FUNC imgSessionCopyBufferByNumber(SESSION_ID sid, uInt32 bufNumber, void* u
 USER_FUNC imgShowError(int err, char* msg); 
 USER_FUNC imgSessionTriggerConfigure2(SESSION_ID sid, IMG_SIGNAL_TYPE triggerType, 
     uInt32 triggerNumber, uInt32 polarity, uInt32 timeout, uInt32 action);
+
+USER_FUNC imgSessionSerialFlush(SESSION_ID sid);                       
+USER_FUNC imgSessionSerialWrite(SESSION_ID sid, Int8 *buffer, uInt32 *bufSize, uInt32 timeout);
+USER_FUNC imgSessionSerialRead(SESSION_ID sid, Int8 *buffer, uInt32 *bufSize, uInt32 timeout);
+USER_FUNC imgSessionSerialReadBytes(SESSION_ID sid, char* buffer, uInt32 *bufferSize, uInt32 timeout);
                        
 int read_n_shots(int shots, uInt32 start_frame, SESSION_ID sid, uInt16 *buf,
                  int num_line_ranges, int *line_ranges, float *linebuffer, uInt16 *back,

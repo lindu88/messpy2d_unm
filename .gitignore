@@ -15,8 +15,10 @@ MessPy/messpy_config
 *.cfg
 .pixi/
 __pycache__
-release/
+**/Release/
 *.pyd
 build/
 _*.c
 *.obj
+MessPy/Instruments/cam_phasetec/_imaqffi.cp312-win_amd64.pyd
+Bist_Complete_result.txt
