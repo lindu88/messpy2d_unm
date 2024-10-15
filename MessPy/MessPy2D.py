@@ -235,15 +235,14 @@ class CommandMenu(QWidget):
         self.controller = c
         self.add_plan_controls()
 
-        gb = CamControls(c)
-        self._layout.addWidget(gb)
-        c.starting_plan.connect(gb.setDisabled)
-        c.stopping_plan.connect(gb.setEnabled)
+        gb1 = CamControls(c)
+        self._layout.addWidget(gb1)
+        gb2 = DelayLineControl(c)
+        self._layout.addWidget(gb2)
 
-        gb = DelayLineControl(c)
-        c.starting_plan.connect(gb.setDisabled)
-        c.stopping_plan.connect(gb.setEnabled)
-        self._layout.addWidget(gb)
+        for control in [gb1, gb2]:
+            c.starting_plan.connect(control.setDisabled)
+            c.stopping_plan.connect(control.setEnabled)
 
         for cam in c.cam_list:
             if cam.changeable_wavelength:
@@ -370,6 +369,15 @@ class CamControls(QGroupBox):
 
 class SpectrometerControls(QGroupBox):
     def __init__(self, cam: ICam, *args):
+        """
+        Controls for the spectrometer. This includes wavelength, slit, grating and wavenumber controls.
+        Latter is only available if the spectrometer supports it.
+
+        Parameters
+        ----------
+        cam : ICam
+            The camera object to control, here we assume it has a spectrometer object.
+        """
         super(SpectrometerControls, self).__init__()
         spec = cam.cam.spectrograph
 
@@ -429,6 +437,9 @@ class SpectrometerControls(QGroupBox):
 
 
 class DelayLineControl(QGroupBox):
+    """
+    Controls for the delay lines. This includes the delay line and the optional second delay line.
+    """
     def __init__(self, c: Controller):
         super(DelayLineControl, self).__init__()
         dl = c.delay_line
