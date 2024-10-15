@@ -136,16 +136,16 @@ class Cam:
         """Write a command to the camera, always 4 bytes"""
         assert len(cmd) == 4
         lib.imgSessionSerialFlush(self.s)
-        l = ffi.new("uint32_t[1]", 4)
+        l = ffi.new("uint32_t[1]", [4])
         err = lib.imgSessionSerialWrite(self.s, ffi.from_buffer(cmd), l, 200)
         return err
 
     def read_serial_cmd(self) -> bytes:
         """Read a command from the camera, always 4 bytes"""
         out_buf = ffi.new("char[4]")
-        l = ffi.new("uint32_t[1]", 4)
+        l = ffi.new("uint32_t[1]", [4])
         lib.imgSessionSerialReadBytes(self.s, out_buf, l, 200)
-        return out_buf[:]
+        return ffi.buffer(out_buf)
 
     def send_cmd(self, cmd: bytes | tuple[int, int, int, int]) -> bytes:
         """Send a command to the camera and return the response"""
@@ -161,11 +161,12 @@ class Cam:
         These commands are stored in init_cmds.json and may be
         specific to the camera model we have.
         """
-        for cmd in init_cmd_list[:2]:
-            self.write_serial_cmd(bytes(cmd))
-            time.sleep(0.3)
-        for cmd in init_cmd_list[2:]:
-            self.send_cmd(bytes(cmd))
+        with self.reading_lock:
+            for cmd in init_cmd_list[:2]:
+                self.write_serial_cmd(bytes(cmd))
+                time.sleep(0.3)
+            for cmd in init_cmd_list[2:]:
+                self.send_cmd(bytes(cmd))
 
     def set_amp_and_dark(self, i: int, darklevel: int):
         """Set the amplification and dark level of the camera.
@@ -176,12 +177,13 @@ class Cam:
         assert 0 <= i < 8
         assert 0 <= darklevel < 256
         k = darklevel
-        self.send_cmd((113, 0, 0, 0))
-        self.send_cmd((112, 79 - i, 0, 0))
-        self.send_cmd((64, 1, k, 0))
-        self.send_cmd((64, 2, k, 0))
-        self.send_cmd((64, 64, k, 0))
-        self.send_cmd((64, 128, k, 0))
+        with self.reading_lock:
+            self.send_cmd((113, 0, 0, 0))
+            self.send_cmd((112, 79 - i, 0, 0))
+            self.send_cmd((64, 1, k, 0))
+            self.send_cmd((64, 2, k, 0))
+            self.send_cmd((64, 64, k, 0))
+            self.send_cmd((64, 128, k, 0))
 
     def set_shots(self, shots):
         self.reading_lock.acquire()
@@ -246,7 +248,7 @@ class Cam:
         outp = ffi.from_buffer(
             "uInt16[%d]" % (128 * 128 * self.shots), python_buffer=self.data.data
         )
-
+        dp_arr = ffi.new("int[]", dead_pixel_list)
         lib.read_n_shots(
             self.shots,
             self.frames,
@@ -255,8 +257,8 @@ class Cam:
             line_num,
             line_args,
             line_buf,
-            back,
-            dead_pixel_list,
+            ffi.NULL,
+            dp_arr,
             len(dead_pixel_list),
         )
 
@@ -292,34 +294,39 @@ if __name__ == "__main__":
     img = pg.ImageItem()
     win.addItem(img)
     win.show()
-
+    
     import threading
     import time
 
     cam = Cam()
-    cam.set_shots(20)
+    cam.set_shots(500)
+    
     cam.read_cam()
-
-    cnt = 0
+    cnt = 100
+    save = False
     import numpy as np
-
+    lines = {"a": (50, 60)}
     def up():
+        global cnt
+        cam.set_amp_and_dark(7, cnt)
         t = time.time()
         thr = threading.Thread(
             target=cam.read_cam,
-            args=([(50, 60), (20, 30)],),
+            args=(lines,),
         )
         # o, ch = cam.read_cam()
         thr.start()
         while thr.is_alive():
             app.processEvents()
-        print(time.time() - t)
+        #print(time.time() - t)
+        print(cnt, cam.data[0].mean(), cam.data[0].std())
         img.setImage(cam.data[0].T)
-        print(cam.lines.shape)
-        l.setData(cam.lines[:, 1, :].mean(0))
-        global cnt
-        # np.save('%d testread' % cnt, cam.data)
-        cnt += 1
+        #print(cam.lines.shape)
+        y, x = np.histogram(cam.data[-1], 128)
+        l.setData(x[:-1], y)
+        if save:
+            np.save('%d testread' % cnt, cam.data)
+        cnt = (cnt + 1) % 255
 
     timer.timeout.connect(up)
     timer.start(0)

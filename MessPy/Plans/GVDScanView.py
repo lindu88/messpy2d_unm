@@ -12,7 +12,7 @@ import lmfit
 
 def gaussfit(x, y, offset=True):
     model = lmfit.models.GaussianModel() + lmfit.models.ConstantModel()
-    params = model.guess(y, x=x)
+    params = model.make_params()
     if offset:
         params["c"].set(value=y.min(), vary=True)
     else:
