@@ -51,6 +51,8 @@ class GVDScanView(QWidget):
         self.setLayout(vlay(self.gvd_sig, self.gvd_amp, self.info_label))
         self.plan.sigPointRead.connect(self.update_label)
         self.plan.sigPlanFinished.connect(self.analyze_lines)
+        self.gvd_sig.plotItem.setLabels(left="Signal", bottom=gvd_plan.scan_mode)
+        self.gvd_amp.plotItem.setLabels(left="Probe2 Mean", bottom=gvd_plan.scan_mode)
         self.setWindowTitle("GVD Scan")
         self.setWindowIcon(icon("fa5s.tired"))
 
