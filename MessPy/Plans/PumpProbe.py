@@ -36,7 +36,7 @@ class PumpProbePlan(Plan):
     do_ref_calib: bool = True
     probe_shutter: Optional["IShutter"] = None
     save_full_data: bool = False
-    
+
     sigStepDone: ClassVar[Signal] = Signal()
 
     @property
@@ -79,6 +79,12 @@ class PumpProbePlan(Plan):
             assert self.rot_stage_angles is not None
             yield from self.move_rot_stage(self.rot_stage_angles[self.rot_idx])
             self.rot_at_scan.append(rs.get_degrees())
+        if self.probe_shutter:
+            self.probe_shutter.close()
+            for pp in self.cam_data:
+                pp.cam.cam.get_background()
+            self.probe_shutter.open()
+
         yield from self.move_delay_line(self.t_list[0] - 200)
 
     def scan(self) -> Generator:
