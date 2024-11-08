@@ -33,7 +33,7 @@ from .PlanParameters import DelayParameter
 class LineLabel(QLabel):
     def __init__(self, line, index: int, parent=None):
         super(LineLabel, self).__init__(parent=parent)
-        assert (isinstance(line, pg.InfiniteLine))
+        assert isinstance(line, pg.InfiniteLine)
         line.sigPositionChanged.connect(self.update_label)
         self.line = line
         self.wl_idx = index
@@ -43,8 +43,10 @@ class LineLabel(QLabel):
 
     def update_label(self, ev=None):
         x = self.line.pos().x()
-        self.setText('<font size=15 style="bold" color="%s">%d: %.1f</font>' %
-                     (self.color, self.wl_idx, x))
+        self.setText(
+            '<font size=15 style="bold" color="%s">%d: %.1f</font>'
+            % (self.color, self.wl_idx, x)
+        )
 
 
 @attr.s
@@ -71,13 +73,13 @@ class PumpProbeViewer(QTabWidget):
     def __init__(self, pp_plan: PumpProbePlan, parent=None):
         super(PumpProbeViewer, self).__init__(parent=parent)
         for ppd in pp_plan.cam_data:
-            self.addTab(PumpProbeDataViewer(
-                ppd, pp_plan, parent=self), ppd.cam.cam.name)
+            self.addTab(
+                PumpProbeDataViewer(ppd, pp_plan, parent=self), ppd.cam.cam.name
+            )
 
 
 class PumpProbeDataViewer(QWidget):
-    def __init__(self, pp_plan: PumpProbeData, pp: PumpProbePlan,
-                 parent=None):
+    def __init__(self, pp_plan: PumpProbeData, pp: PumpProbePlan, parent=None):
         super(PumpProbeDataViewer, self).__init__(parent=parent)
         self.pp = pp
         self.pp_plan = pp_plan
@@ -94,19 +96,17 @@ class PumpProbeDataViewer(QWidget):
 
         self.signal_ch_selector = QSpinBox()
         self.signal_ch_selector.setMinimum(0)
-        self.signal_ch_selector.setMaximum(self.pp_plan.cam.sig_lines-1)
-        self.signal_ch_selector.valueChanged.connect(
-            lambda x: self.update_trans())
+        self.signal_ch_selector.setMaximum(self.pp_plan.cam.sig_lines - 1)
+        self.signal_ch_selector.valueChanged.connect(lambda x: self.update_trans())
 
-        self.do_show_cur = QCheckBox('Current Scan', self)
+        self.do_show_cur = QCheckBox("Current Scan", self)
         self.do_show_cur.setChecked(True)
         self.do_show_cur.stateChanged.connect(self.hide_current_lines)
-        self.do_show_mean = QCheckBox('Mean of all scans', self)
+        self.do_show_mean = QCheckBox("Mean of all scans", self)
         self.do_show_mean.setChecked(True)
         self.do_show_mean.stateChanged.connect(self.hide_history_lines)
-        self.use_wavenumbers = QCheckBox('Use Wavenumbers', self)
-        self.use_wavenumbers.stateChanged.connect(
-            self.update_indicator_line_pos)
+        self.use_wavenumbers = QCheckBox("Use Wavenumbers", self)
+        self.use_wavenumbers.stateChanged.connect(self.update_indicator_line_pos)
 
         vlay.addWidget(self.info_label)
         vlay.addWidget(self.signal_ch_selector)
@@ -123,8 +123,8 @@ class PumpProbeDataViewer(QWidget):
         self.sig_plot = ObserverPlot([], pp_plan.sigStepDone, x=self.get_x)
         self.last_signal = np.zeros_like(self.get_x())
         self.mean_signal = np.zeros_like(self.last_signal)
-        self.sig_plot.add_observed((self, 'last_signal'))
-        self.sig_plot.add_observed((self, 'mean_signal'))
+        self.sig_plot.add_observed((self, "last_signal"))
+        self.sig_plot.add_observed((self, "mean_signal"))
         self.sig_plot.click_func = self.handle_sig_click
 
         self.trans_plot = ObserverPlot([], pp_plan.sigStepDone, aa=True)
@@ -132,15 +132,14 @@ class PumpProbeDataViewer(QWidget):
         lw.addWidget(self.sig_plot)
         lw.addWidget(self.trans_plot)
 
-        self.inf_lines: List[List[IndicatorLine]] = [list()
-                                                     for i in pp_plan.cwl]
+        self.inf_lines: List[List[IndicatorLine]] = [list() for i in pp_plan.cwl]
 
         for i in [self.update_info, self.update_trans]:
             self.pp_plan.sigStepDone.connect(i)
         pp_plan.sigWavelengthChanged.connect(self.handle_wl_change)
 
-    def handle_sig_click(self, coords):        
-        x = coords.x()        
+    def handle_sig_click(self, coords):
+        x = coords.x()
         c = next(self.sig_plot.color_cycle)
         l = self.sig_plot.plotItem.addLine(x=x, pen=pg.mkPen(c, width=6))
         l.setMovable(True)
@@ -150,14 +149,15 @@ class PumpProbeDataViewer(QWidget):
         tl = self.trans_plot.plot(pen=pg.mkPen(c, width=2))
         tlh = self.trans_plot.plot(pen=pg.mkPen(c, width=4))
 
-        il = IndicatorLine(wl_idx=self.pp_plan.wl_idx,
-                           wl=self.pp_plan.wavelengths,
-                           pos=x,
-                           line=l,
-                           trans_line=tl,
-                           hist_trans_line=tlh,
-                           entry_label=lbl
-                           )
+        il = IndicatorLine(
+            wl_idx=self.pp_plan.wl_idx,
+            wl=self.pp_plan.wavelengths,
+            pos=x,
+            line=l,
+            trans_line=tl,
+            hist_trans_line=tlh,
+            entry_label=lbl,
+        )
 
         self.inf_lines[self.pp_plan.wl_idx].append(il)
         l.sigPositionChanged.connect(self.update_trans)
@@ -176,11 +176,11 @@ class PumpProbeDataViewer(QWidget):
         p = self.pp
         s = self.pp_plan
         if p.rot_stage_angles:
-            rot_stage_pos = f'<dt>t pos:<dd>{s.t_idx + 1}/{len(s.t_list)}'
+            rot_stage_pos = f"<dt>t pos:<dd>{s.t_idx + 1}/{len(s.t_list)}"
         else:
-            rot_stage_pos = ''
+            rot_stage_pos = ""
 
-        s = f'''
+        s = f"""
         <h3>Current Experiment</h3>
         <big>
         <dl>
@@ -193,7 +193,7 @@ class PumpProbeDataViewer(QWidget):
         <dt>Time per scan<dd>{p.time_per_scan}
         </dl>
         </big>
-        '''
+        """
         self.info_label.setText(s)
 
     def handle_wl_change(self):
@@ -234,21 +234,22 @@ class PumpProbeDataViewer(QWidget):
 
     def update_spec(self):
         pass
-    
+
     @Slot()
     def update_trans(self):
-
         pp = self.pp_plan
         if pp.t_idx == 0:
             return
-        sig_ch = self.signal_ch_selector.value()        
-        self.last_signal = pp.last_signal[sig_ch, :]        
+        sig_ch = self.signal_ch_selector.value()
+        self.last_signal = pp.last_signal[sig_ch, :]
         if pp.mean_signal is not None:
             self.mean_signal = pp.mean_signal[sig_ch, :]
         if self.do_show_cur.checkState():
             for i in self.inf_lines[pp.wl_idx]:
-                i.trans_line.setData(x=pp.t_list[:pp.t_idx],
-                                     y=pp.current_scan[pp.wl_idx, :pp.t_idx, sig_ch, i.channel])
+                i.trans_line.setData(
+                    x=pp.t_list[: pp.t_idx],
+                    y=pp.current_scan[pp.wl_idx, : pp.t_idx, sig_ch, i.channel],
+                )
 
         if pp.completed_scans is not None and self.do_show_mean.checkState():
             for j in self.inf_lines:
@@ -256,7 +257,8 @@ class PumpProbeDataViewer(QWidget):
                     if i.hist_trans_line not in self.trans_plot.plotItem.dataItems:
                         continue
                     ym = np.nanmean(
-                        pp.completed_scans[:, i.wl_idx, :, sig_ch, i.channel], 0)
+                        pp.completed_scans[:, i.wl_idx, :, sig_ch, i.channel], 0
+                    )
                     i.hist_trans_line.setData(x=pp.t_list, y=ym)
 
     def get_x(self):
@@ -283,50 +285,78 @@ class PumpProbeDataViewer(QWidget):
 class PumpProbeStarter(PlanStartDialog):
     title = "New Pump-probe Experiment"
     viewer = PumpProbeViewer
-    experiment_type = 'Pump-Probe'
+    experiment_type = "Pump-Probe"
 
     def setup_paras(self):
         has_rot = self.controller.rot_stage is not None
         has_shutter = self.controller.shutter is not None
 
-        tmp = [{'name': 'Filename', 'type': 'str', 'value': 'temp'},
-               {'name': 'Operator', 'type': 'str', 'value': ''},
-               {'name': 'Shots', 'type': 'int', 'max': 4000, 'decimals': 5,
-                'step': 500, 'value': 100},
-               DelayParameter(),
-               dict(name='Use Shutter', type='bool', value=True,
-                    enabled=has_shutter, visible=has_shutter),
-               dict(name='Use Rotation Stage', type='bool',
-                    value=has_rot, enabled=has_rot, visible=has_rot),
-               dict(name='Angles in deg.', type='str', value='0, 45', enabled=has_rot, visible=has_rot)]
+        tmp = [
+            {"name": "Filename", "type": "str", "value": "temp"},
+            {"name": "Operator", "type": "str", "value": ""},
+            {
+                "name": "Shots",
+                "type": "int",
+                "max": 4000,
+                "decimals": 5,
+                "step": 500,
+                "value": 100,
+            },
+            DelayParameter(),
+            dict(
+                name="Use Shutter",
+                type="bool",
+                value=True,
+                enabled=has_shutter,
+                visible=has_shutter,
+            ),
+            dict(
+                name="Use Rotation Stage",
+                type="bool",
+                value=has_rot,
+                enabled=has_rot,
+                visible=has_rot,
+            ),
+            dict(
+                name="Angles in deg.",
+                type="str",
+                value="0, 45",
+                enabled=has_rot,
+                visible=has_rot,
+            ),
+            dict(name="Save Full Data", type="bool", value=False),
+        ]
 
         for c in self.controller.cam_list:
             if c.cam.spectrograph:
                 name = c.cam.name
-                tmp.append(
-                    dict(name=f'{name} center wls', type='str', value='0'))
-
+                tmp.append(dict(name=f"{name} center wls", type="str", value="0"))
 
         if len(self.controller.shutter) > 0 and False:
-            #names = {self.controller.shutter}
-            tmp.append(dict(name='Pump Shutter', type='list', values=self.controller.shutter,
-                            value=self.controller.shutter[0]))
+            # names = {self.controller.shutter}
+            tmp.append(
+                dict(
+                    name="Pump Shutter",
+                    type="list",
+                    values=self.controller.shutter,
+                    value=self.controller.shutter[0],
+                )
+            )
 
-        two_d = {'name': 'Exp. Settings', 'type': 'group', 'children': tmp}
+        two_d = {"name": "Exp. Settings", "type": "group", "children": tmp}
 
         params = [sample_parameters, two_d]
-        self.paras = Parameter.create(
-            name='Pump Probe', type='group', children=params)
+        self.paras = Parameter.create(name="Pump Probe", type="group", children=params)
         config.last_pump_probe = self.paras.saveState()
 
     def create_plan(self, controller: Controller):
-        p = self.paras.child('Exp. Settings')
-        s = self.paras.child('Sample')
+        p = self.paras.child("Exp. Settings")
+        s = self.paras.child("Sample")
 
         t_list = p.child("Delay Times").generate_values()
 
-        if p['Use Rotation Stage'] and self.controller.rot_stage:
-            s = p['Angles in deg.'].split(',')
+        if p["Use Rotation Stage"] and self.controller.rot_stage:
+            s = p["Angles in deg."].split(",")
             angles = list(map(float, s))
         else:
             angles = None
@@ -335,37 +365,38 @@ class PumpProbeStarter(PlanStartDialog):
         for c in self.controller.cam_list:
             if c.cam.spectrograph:
                 name = c.name
-                l = p[f'{name} center wls'].split(',')
+                l = p[f"{name} center wls"].split(",")
                 cam_cwls = []
                 for s in l:
-                    if s[-1] == 'c':
+                    if s[-1] == "c":
                         cam_cwls.append(1e7 / float(s[:-1]))
                     else:
                         cam_cwls.append(float(s))
                 cwls.append(cam_cwls)
             else:
-                cwls.append([0.])
+                cwls.append([0.0])
 
         self.save_defaults()
-        if 'Pump Shutter' in p:
-            p_shutter = p['Pump Shutter']
+        if "Pump Shutter" in p:
+            p_shutter = p["Pump Shutter"]
         else:
             p_shutter = None
         p = PumpProbePlan(
-            name=p['Filename'],
+            name=p["Filename"],
             meta=make_entry(self.paras),
             t_list=np.asarray(t_list),
-            shots=p['Shots'],
+            shots=p["Shots"],
             controller=controller,
             center_wl_list=cwls,
             pump_shutter=p_shutter,
-            use_rot_stage=p['Use Rotation Stage'],
-            rot_stage_angles=angles
+            use_rot_stage=p["Use Rotation Stage"],
+            rot_stage_angles=angles,
+            save_full_data=p["Save Full Data"],
         )
         return p
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     import sys
 
     sys._excepthook = sys.excepthook
@@ -381,7 +412,7 @@ if __name__ == '__main__':
     timer = QTimer()
     timer.timeout.connect(con.loop)
 
-    pp = PumpProbePlan(name='BlaBlub', controller=con)
+    pp = PumpProbePlan(name="BlaBlub", controller=con)
     con.plan = pp
     pp.t_list = np.arange(-2, 2, 0.1)
     pp.center_wl_list = [300]
@@ -392,4 +423,4 @@ if __name__ == '__main__':
     try:
         app.exec_()
     except:
-        print('fds')
+        print("fds")

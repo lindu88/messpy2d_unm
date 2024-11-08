@@ -1,9 +1,11 @@
-import threading
+import threading, json
 from typing import Optional, List, Iterable, TYPE_CHECKING, Generator, ClassVar
 
+from loguru import logger
 import numpy as np
 from attr import Factory, attrib, attrs
 from numpy._typing import NDArray
+import h5py
 
 from PySide6.QtCore import QObject, Signal
 
@@ -52,10 +54,18 @@ class PumpProbePlan(Plan):
         self.make_step = lambda: next(gen)
         self.angle_cycle = []
         self.cam_data = []
-        self.pre_state = dict(shots=self.controller.cam.shots)
+        self.pre_state = dict(
+            shots=self.controller.cam.shots, delay=self.controller.delay_line.get_pos()
+        )
         for c, cwl in zip(self.controller.cam_list, self.center_wl_list):
             self.cam_data.append(
-                PumpProbeData(cam=c, cwl=cwl, plan=self, t_list=self.t_list)
+                PumpProbeData(
+                    cam=c,
+                    cwl=cwl,
+                    plan=self,
+                    t_list=self.t_list,
+                    save_full_data=self.save_full_data,
+                )
             )
             c.set_shots(self.shots)
 
@@ -109,6 +119,7 @@ class PumpProbePlan(Plan):
                 yield
             for pp in self.cam_data:
                 pp.sigStepDone.emit()
+
             if self.pump_shutter:
                 self.pump_shutter.close()
             self.sigStepDone.emit()
@@ -139,27 +150,31 @@ class PumpProbePlan(Plan):
                 self.rot_idx = (self.rot_idx + 1) % len(self.rot_stage_angles)
                 rs.set_degrees(self.rot_stage_angles[self.rot_idx])
 
+    def create_file(self):
+        with self.data_file as f:
+            for ppd in self.cam_data:
+                f.create_dataset("wl_" + ppd.cam.name, data=ppd.wavelengths)
+            f.create_dataset("t", data=self.t_list)
+            f.create_dataset("rot", data=self.rot_at_scan)
+
     def save(self):
-        name = self.get_file_name()[0]
+        logger.info(f"Saving to {self.data_file}")
         self.save_meta()
-        data = {
-            "data_" + ppd.cam.name: np.float32(ppd.completed_scans)
-            for ppd in self.cam_data
-        }
-        if self.save_full_data:
-            full_name = name.with_suffix("messpy_full")
-            fd = {"full_data_" + ppd.cam.name: ppd.full_data for ppd in self.cam_data}
-        wls = {"wl_" + ppd.cam.name: ppd.wavelengths for ppd in self.cam_data}
-        data.update(wls)
-        data["meta"] = self.meta
-        data["t"] = np.array(self.t_list)
-        data["rot"] = self.rot_at_scan
-        np.savez(name, **data)
+
+        with self.data_file as f:
+            for ppd in self.cam_data:
+                if (name := "data_" + ppd.cam.name) in f:
+                    del f[name]
+                    del f["rot"]
+                f[name] = ppd.completed_scans
+                f.create_dataset("rot", data=self.rot_at_scan)
+            f.attrs["meta"] = json.dumps(self.meta)
 
     def restore_state(self):
         super().restore_state()
         # TODO: cam_list
-        self.controller.cam.set_shots(self.pre_state['shots'])
+        self.controller.cam.set_shots(self.pre_state["shots"])
+        self.controller.delay_line.set_pos(self.pre_state["delay"], do_wait=False)
 
 
 @attrs(auto_attribs=True, cmp=False)
@@ -181,7 +196,7 @@ class PumpProbeData(QObject):
     mean_scans: Optional[np.ndarray] = None
     completed_scans: Optional[np.ndarray] = None
     wavelengths: np.ndarray = attrib(init=False)
-    full_data: Optional[dict] = None
+    save_full_data: bool = False
 
     sigWavelengthChanged = Signal()
     sigStepDone = Signal()
@@ -220,13 +235,18 @@ class PumpProbeData(QObject):
             self.cam.set_wavelength(next_wl)
         self.sigWavelengthChanged.emit()
 
-    def read_point(self, t_idx, save_full_data=False):
+    def read_point(self, t_idx):
         self.t_idx = t_idx
         self.cam.read_cam()
         lr = self.cam.last_read
         assert lr is not None
-        if save_full_data:
-            self.full_data[(self.delay_scans, self.wl_idx, t_idx)] = lr.full_data
+        if self.save_full_data:
+            with self.plan.data_file as f:
+                ds = f.create_dataset(
+                    f"full_data/{self.cam.name}/scan_{self.scan}/t_{t_idx: 05d}",
+                    data=lr.full_data,
+                )
+
         self.current_scan[self.wl_idx, t_idx, :, :] = lr.signals[...]
         if self.mean_scans is not None:
             self.mean_signal = self.mean_scans[self.wl_idx, t_idx, :, :]
