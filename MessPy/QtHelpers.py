@@ -8,7 +8,7 @@ from itertools import cycle
 import pyqtgraph as pg
 import pyqtgraph.parametertree as pt
 from pyqtgraph import PlotItem
-from PySide6.QtCore import Qt, Slot, QTimer, QObject
+from PySide6.QtCore import Qt, Slot, QTimer, QObject, QSettings
 from PySide6.QtGui import QPalette, QColor, QIcon
 from PySide6.QtWidgets import (
     QWidget,
@@ -467,21 +467,26 @@ class ObserverPlot(pg.PlotWidget):
 
 
 class ObserverPlotWithControls(QWidget):
-    def __init__(self, names, obs, signal, x=None, parent=None, **kwargs):
+    def __init__(self, names, obs, signal, plot_name: str, x=None, parent=None, **kwargs):
         super(ObserverPlotWithControls, self).__init__()
         self.obs_plot = ObserverPlot(obs, signal, x, parent)
         line_controls = QWidget()
         line_controls.setSizePolicy(QSizePolicy.Minimum, QSizePolicy.Minimum)
         form_layout = QFormLayout()
         line_controls.setLayout(form_layout)
+        settings = QSettings()
+
         for i, n in enumerate(names):
             line = self.obs_plot.lines[self.obs_plot.observed[i]]
             col = line.opts["pen"].color()
             lb = QLabel('<font color="%s">%s</font>' % (col.name(), n))
             cb = QCheckBox()
-            cb.setChecked(True)
+            checked = settings.value(f"{plot_name}/{n}", True, type=bool)
+            cb.setChecked(checked)
             form_layout.addRow(lb, cb)
             cb.toggled.connect(line.setVisible)
+            cb.toggled.connect(lambda _, n=n: QSettings().setValue(f"{plot_name}/{n}", _))
+
         self.line_controls = line_controls
         self.setLayout(QHBoxLayout())
         self.layout().addWidget(self.obs_plot)
