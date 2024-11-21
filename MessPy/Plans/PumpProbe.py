@@ -244,7 +244,11 @@ class PumpProbeData(QObject):
             with self.plan.data_file as f:
                 ds = f.create_dataset(
                     f"full_data/{self.cam.name}/scan_{self.scan}/t_{t_idx: 05d}",
-                    data=lr.full_data,
+                    data=lr.full_data.astype(np.float64),
+                    compression="lzf",
+                    chunks=(1, lr.full_data.shape[1], 20),
+                    shuffle=True,
+                    scaleoffset=2,
                 )
 
         self.current_scan[self.wl_idx, t_idx, :, :] = lr.signals[...]

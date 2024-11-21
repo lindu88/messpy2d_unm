@@ -22,12 +22,12 @@ from PySide6.QtWidgets import (
 )
 from PySide6.QtCore import Slot
 from ..ControlClasses import Controller
-from ..QtHelpers import vlay, PlanStartDialog, hlay, remove_nodes, make_entry
+from ..QtHelpers import vlay, PlanStartDialog, hlay, remove_nodes, make_entry, col
 from .PlanParameters import DelayParameter
 from ..QtHelpers import vlay, PlanStartDialog, hlay
 from .AOMTwoPlan import AOMTwoDPlan
 from .PlanBase import sample_parameters
-from ..Instruments.signal_processing import cm2THz, THz2cm
+from ..Instruments.signal_processing import cm2THz, THz2cm, Spectrum
 
 
 @attr.define(auto_attribs=True, weakref_slot=False)
@@ -79,6 +79,7 @@ class AOMTwoDViewer(QWidget):
         pw: PlotItem = gl.addPlot()
         pw.setLabels(bottom="Probe Freq", left="Pump Freq")
         cmap = colormap.get("CET-D1")
+        pw.setAspectLocked(lock=True, ratio=1)
 
         self.spec_img = ImageItem()
         rect = (
@@ -109,6 +110,15 @@ class AOMTwoDViewer(QWidget):
         self.spec_plot.setLabels(bottom="Probe Freq", left="Signal")
         self.spec_cut_line = self.spec_plot.plot(pen="b")
         self.spec_mean_line = self.spec_plot.plot(pen="r")
+
+        self.diag_plot = gl.ci.addPlot()
+        names = ["Probe1", "Probe2", "Ref"]
+        self.diag_lines = {}
+        for i in range(3):
+            self.diag_lines[names[i]] = self.diag_plot.plot(
+                pen=mkPen(color=col[i], width=3)
+            )
+
         gl.ci.nextRow()
         self.info_label = gl.ci.addLabel("Hallo", colspan=4)
 
@@ -117,6 +127,7 @@ class AOMTwoDViewer(QWidget):
         self.plan.sigStepDone.connect(self.update_data)
         self.plan.sigStepDone.connect(self.update_plots)
         self.plan.sigStepDone.connect(self.update_label)
+        self.plan.sigNewSpectra.connect(self.update_diag_plots)
         self.time_str = ""
         self.plan.time_tracker.sigTimesUpdated.connect(self.set_time_str)
         self.pr_1_pb = QRadioButton("Probe1")
@@ -153,6 +164,11 @@ class AOMTwoDViewer(QWidget):
             self.spec_mean_line.setData(
                 self.probe_freq, self.plan.last_2d[self.pr_idx].mean(1)
             )
+
+    @Slot(dict)
+    def update_diag_plots(self, spectra: dict[str, Spectrum]):
+        for i, (name, spec) in enumerate(spectra.items()):
+            self.diag_lines[name].setData(spec.mean)
 
     @Slot()
     def update_spec_lines(self, *args):

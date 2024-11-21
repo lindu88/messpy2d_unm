@@ -31,11 +31,21 @@ params = [
     {"name": "Record BG", "type": "action"},
     {"name": "Delete BG", "type": "action"},
     {"name": "Mode", "type": "list", "limits": ("norm", "rel_std", "abs_std")},
+    {"name": "Dark Level", "type": "int", "value": 0, "min": 0, "max": 255, "step": 1},
+    {
+        "name": "Amp",
+        "type": "int",
+        "value": 0,
+        "min": 0,
+        "max": 7,
+        "step": 1,
+    },
 ]
 
 x = np.arange(128)
 y = np.arange(128)
 cmap = colormap.get("CET-L9")
+assert cmap is not None
 lut = cmap.getLookupTable()
 MAX_VAL = 1 << 14
 

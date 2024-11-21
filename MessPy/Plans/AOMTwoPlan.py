@@ -70,6 +70,7 @@ class AOMTwoDPlan(ScanPlan):
 
     # Signals
     sigStepDone: ClassVar[Signal] = Signal()
+    sigNewSpectra: ClassVar[Signal] = Signal(dict)
 
     @functools.cached_property
     def probe_freqs(self) -> np.ndarray:
@@ -183,12 +184,14 @@ class AOMTwoDPlan(ScanPlan):
             )
 
         ret = future.result()
+        self.last_spectra = ret[1]
+        self.sigNewSpectra.emit(ret[1])
         self.time_tracker.point_ending()
         yield
         thr = threading.Thread(
             target=self.save_data,
             args=(
-                ret,
+                ret[0],
                 self.t2_idx,
                 self.cur_scan,
             ),
