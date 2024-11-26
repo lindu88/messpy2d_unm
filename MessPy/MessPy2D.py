@@ -1,7 +1,7 @@
 from functools import partial
 
 
-from PySide6.QtCore import QTimer, Qt, Slot, QThread
+from PySide6.QtCore import QTimer, Qt, Slot, QThread, QSettings
 from PySide6.QtGui import QIntValidator
 from PySide6.QtWidgets import (
     QMainWindow,
@@ -43,7 +43,6 @@ setConfigOptions(
     useOpenGL=False,
 )
 
-
 class MainWindow(QMainWindow):
     def __init__(self, controller: Controller):
         super(MainWindow, self).__init__()
@@ -76,7 +75,7 @@ class MainWindow(QMainWindow):
             self.xaxis[c] = c.wavelengths.copy()
 
             obs = [lambda i=i, c=c: c.last_read.lines[i, :] for i in range(c.cam.lines)]
-            op = ObserverPlotWithControls(c.cam.line_names, obs, lf, x=c.disp_axis)
+            op = ObserverPlotWithControls(c.cam.line_names, obs, lf, x=c.disp_axis, plot_name="Readings")
             dw = QDockWidget("Readings")
             dw.setWidget(op)
             dock_wigdets.append(dw)
@@ -84,7 +83,7 @@ class MainWindow(QMainWindow):
             obs = [
                 lambda i=i, c=c: c.last_read.stds[i, :] for i in range(c.cam.std_lines)
             ]
-            op2 = ObserverPlotWithControls(c.cam.std_names, obs, lf, x=c.disp_axis)
+            op2 = ObserverPlotWithControls(c.cam.std_names, obs, lf, x=c.disp_axis, plot_name="Readings - stddev")
             op2.obs_plot.setYRange(0, 8)
             dw = QDockWidget("Readings - stddev")
             dw.setWidget(op2)
@@ -94,7 +93,7 @@ class MainWindow(QMainWindow):
                 lambda i=i, c=c: c.last_read.signals[i, :]
                 for i in range(c.cam.sig_lines)
             ]
-            op3 = ObserverPlotWithControls(c.cam.sig_names, obs, lf, x=c.disp_axis)
+            op3 = ObserverPlotWithControls(c.cam.sig_names, obs, lf, x=c.disp_axis, plot_name="Signals")
             dw = QDockWidget("Pump-probe signal")
             dw.setWidget(op3)
             dock_wigdets.append(dw)
@@ -235,15 +234,14 @@ class CommandMenu(QWidget):
         self.controller = c
         self.add_plan_controls()
 
-        gb = CamControls(c)
-        self._layout.addWidget(gb)
-        c.starting_plan.connect(gb.setDisabled)
-        c.stopping_plan.connect(gb.setEnabled)
+        gb1 = CamControls(c)
+        self._layout.addWidget(gb1)
+        gb2 = DelayLineControl(c)
+        self._layout.addWidget(gb2)
 
-        gb = DelayLineControl(c)
-        c.starting_plan.connect(gb.setDisabled)
-        c.stopping_plan.connect(gb.setEnabled)
-        self._layout.addWidget(gb)
+        for control in [gb1, gb2]:
+            c.starting_plan.connect(control.setDisabled)
+            c.stopping_plan.connect(control.setEnabled)
 
         for cam in c.cam_list:
             if cam.changeable_wavelength:
@@ -355,6 +353,9 @@ class CamControls(QGroupBox):
             bg_buttons.append(
                 ("Delete valid pix", c.cam.cam.delete_valid_pixel, "fa5s.times")
             )
+        if w := c.cam.cam.get_extra_widgets():
+            self._extra_widget = w
+            bg_buttons.append(("Extra", w.show, "fa5s.plus"))
         sc = ControlFactory(
             "Shots",
             c.cam.set_shots,
@@ -370,6 +371,15 @@ class CamControls(QGroupBox):
 
 class SpectrometerControls(QGroupBox):
     def __init__(self, cam: ICam, *args):
+        """
+        Controls for the spectrometer. This includes wavelength, slit, grating and wavenumber controls.
+        Latter is only available if the spectrometer supports it.
+
+        Parameters
+        ----------
+        cam : ICam
+            The camera object to control, here we assume it has a spectrometer object.
+        """
         super(SpectrometerControls, self).__init__()
         spec = cam.cam.spectrograph
 
@@ -409,6 +419,10 @@ class SpectrometerControls(QGroupBox):
             l.append(slit_control)
 
         cb = QCheckBox("Use Wavenumbers")
+        checked = QSettings().value("use_wavenumbers", False, type=bool)
+        cb.setChecked(checked)
+        cb.clicked.connect(cam.set_disp_wavelengths)
+        cb.clicked.connect(lambda x: QSettings().setValue("use_wavenumbers", x))
         l[-1].layout().addRow(cb)
         if len(spec.gratings) > 1:
             gratings = spec.gratings
@@ -425,10 +439,13 @@ class SpectrometerControls(QGroupBox):
         spec.sigGratingChanged.connect(lambda g: lbl.setText("G: %s" % gratings[g]))
         self.setTitle(f"Spec: {cam.cam.name}")
         self.setLayout(vlay(*l))
-        cb.clicked.connect(cam.set_disp_wavelengths)
 
 
 class DelayLineControl(QGroupBox):
+    """
+    Controls for the delay lines. This includes the delay line and the optional second delay line.
+    """
+
     def __init__(self, c: Controller):
         super(DelayLineControl, self).__init__()
         dl = c.delay_line
@@ -470,7 +487,6 @@ def start_app():
 
     app.setOrganizationName("USD")
     app.setApplicationName("MessPy3")
-
     sys._excepthook = sys.excepthook
 
     def exception_hook(exctype, value, tb):
@@ -481,7 +497,8 @@ def start_app():
         while tb and (tb := tb.tb_next):
             s += traceback.format_tb(tb, limit=4)
         emsg.setText("Exception raised")
-        emsg.setInformativeText("".join(s))
+        emsg.setInformativeText("".join(s[-5:]))
+        emsg.setMaximumHeight(1000)
         emsg.setStandardButtons(QMessageBox.Abort | QMessageBox.Ignore)  # type: ignore
         result = emsg.exec_()
         if not result == QMessageBox.Ignore:

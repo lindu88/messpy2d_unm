@@ -88,6 +88,9 @@ class CamMock(ICam):
     background: Optional[np.ndarray] = None
     spectrograph: Optional[ISpectrograph] = attr.Factory(MockSpectrograph)
 
+    noise_scale: float = 0.1
+    peak_width: float = 20
+
     def get_state(self) -> dict:
         return {"shots": self.shots}
 
@@ -97,14 +100,16 @@ class CamMock(ICam):
     def read_cam(self):
         t0 = time.time()
         x = self.get_wavelength_array()
-        y = 300 * np.exp(-((x - 250) ** 2) / 50**2 / 2)
+        y = 300 * np.exp(-((x - 250) ** 2) / self.peak_width**2 / 2)
 
         knife_amp = state.knife_amp()
         y = y * (knife_amp / 4)
 
         a = np.random.normal(loc=y, scale=3, size=(self.shots, self.channels))
         b = np.random.normal(loc=y / 2, scale=3, size=(self.shots, self.channels))
-        common_noise = np.random.normal(loc=1, scale=0.015, size=(self.shots, 1))
+        common_noise = np.random.normal(
+            loc=1, scale=self.noise_scale, size=(self.shots, 1)
+        )
 
         a *= common_noise
         b *= common_noise
@@ -162,9 +167,11 @@ class CamMock(ICam):
         x = np.arange(self.channels) - self.channels // 2
         return x * 0.5 + center_wl
 
-    def get_extra_widgets(self) -> typing.List[QWidget]:
-        from MessPy2D.Instruments.mock_widget import MockWidget
-        return 
+    def get_extra_widgets(self) -> QWidget:
+        from MessPy.Instruments.mock_widget import MockWidget
+
+        return MockWidget(self)
+
 
 @attr.s(auto_attribs=True)
 class DelayLineMock(IDelayLine):

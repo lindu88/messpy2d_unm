@@ -135,7 +135,7 @@ class PhaseTecCam(ICam):
                 )
             else:
                 means[name] = self._cam.lines[:, i, :]
-                #means[name] = np.nanmean(arr[lower:upper, :, :], 0)
+                # means[name] = np.nanmean(arr[lower:upper, :, :], 0)
 
             if get_max and name == "Probe1":
                 probemax = np.nanmax(arr[:10, :, :], 0).T
@@ -215,7 +215,7 @@ class PhaseTecCam(ICam):
         rot_frame: float,
         repetitions: int = 1,
         save_frames: bool = False,
-    ) -> Dict[str, Reading2D]:
+    ) -> tuple[Dict[str, Reading2D], Dict[str, Spectrum]]:
         spectra, ch = self.get_spectra(frames=self.shots // repetitions, get_max=False)
 
         two_d_data = {}
@@ -229,7 +229,7 @@ class PhaseTecCam(ICam):
                 two_d_data[name] = two_d_data[name].result()
             two_d_data["Ref"] = spectra["Ref"]
         self.two_d_data_ = two_d_data
-        return two_d_data
+        return two_d_data, spectra
 
     def calibrate_ref(self):
         tmp_shots = self.shots

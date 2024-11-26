@@ -123,7 +123,15 @@ class Plan(QObject):
             raise IOError("Data path in config not existing")
         if (p / name).with_suffix(".json").exists():
             name = name + "_0"
-        return (p / name).with_suffix(".messpy"), (p / name).with_suffix(".json")
+        return (p / name).with_suffix(".h5"), (p / name).with_suffix(".json")
+
+    @property
+    def data_file(self) -> h5py.File:
+        return h5py.File(self.get_file_name()[0], "a", track_order=True)
+
+    @property
+    def meta_file(self) -> Path:
+        return self.get_file_name()[1]
 
     def save_meta(self):
         """Saves the metadata in the metafile"""

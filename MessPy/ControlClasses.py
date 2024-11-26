@@ -30,23 +30,22 @@ if T.TYPE_CHECKING:
 Reading = I.Reading
 
 
-@attrs(cmp=False)
+@attrs(cmp=False, auto_attribs=True)
 class Cam(QObject):
-    cam: I.ICam = attrib(_cam)
+    cam: I.ICam = _cam
+
+    disp_wavelengths: bool = True
+
     shots: int = attrib(init=False)
 
-    back: T.Any = attrib((0, 0))
-    has_ref: bool = attrib(init=False)
     last_read: T.Optional[I.Reading] = attrib(init=False)
-
     wavelengths: np.ndarray = attrib(init=False)
     wavenumbers: np.ndarray = attrib(init=False)
     disp_axis: np.ndarray = attrib(init=False)
-    disp_wavelengths: bool = attrib(True)
 
-    sigShotsChanged: Signal = Signal(int)
-    sigReadCompleted: Signal = Signal()
-    sigRefCalibrationFinished = Signal(object, object)
+    sigShotsChanged: T.ClassVar[Signal] = Signal(int)
+    sigReadCompleted: T.ClassVar[Signal] = Signal()
+    sigRefCalibrationFinished : T.ClassVar[Signal] = Signal(object, object)
 
     def __attrs_post_init__(self):
         QObject.__init__(self)
@@ -54,7 +53,7 @@ class Cam(QObject):
         if self.shots > 1000:
             self.set_shots(20)
         self.read_cam()
-        c = self.cam
+        c : I.ICAm =  self.cam
         self.channels = c.channels
         self.lines = c.lines
         self.sig_lines = c.sig_lines
@@ -64,7 +63,7 @@ class Cam(QObject):
         if c.spectrograph is not None:
             self.changeable_wavelength = c.spectrograph.changeable_wavelength
             c.spectrograph.sigWavelengthChanged.connect(self._update_wl_arrays)
-
+            c.spectrograph.sigGratingChanged.connect(self._update_wl_arrays)
         else:
             self.changeable_wavelength = False
 

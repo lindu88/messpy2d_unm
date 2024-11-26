@@ -1,6 +1,5 @@
-import pyqtgraph.functions as fn
 from typing import Protocol
-from abc import ABCMeta, abstractmethod
+from abc import abstractmethod
 import datetime
 import math
 import typing as T
@@ -9,7 +8,7 @@ from itertools import cycle
 import pyqtgraph as pg
 import pyqtgraph.parametertree as pt
 from pyqtgraph import PlotItem
-from PySide6.QtCore import Qt, Slot, QTimer, QObject
+from PySide6.QtCore import Qt, Slot, QTimer, QObject, QSettings
 from PySide6.QtGui import QPalette, QColor, QIcon
 from PySide6.QtWidgets import (
     QWidget,
@@ -26,8 +25,9 @@ from PySide6.QtWidgets import (
     QErrorMessage,
     QSizePolicy,
     QCheckBox,
+    QLayout,
 )
-from qtpy.QtWidgets import QLayout
+
 
 from MessPy.Config import config
 from qtawesome import icon
@@ -172,14 +172,14 @@ class ControlFactory(QWidget):
         self.edit_box.returnPressed.connect(lambda: apply_fn(self.edit_box.text()))
         self.apply_button.clicked.connect(lambda: apply_fn(self.edit_box.text()))
 
-        self._layout = QFormLayout(self)
-        self._layout.setLabelAlignment(Qt.AlignmentFlag.AlignRight)
+        _layout = QFormLayout(self)
+        _layout.setLabelAlignment(Qt.AlignmentFlag.AlignRight)
 
         for w in [
             (QLabel("<b>%s</b>" % name), self.cur_value_label),
             (self.apply_button, self.edit_box),
         ]:
-            self._layout.addRow(*w)
+            _layout.addRow(*w)
 
         l = []
         if preset_func is None:
@@ -220,10 +220,10 @@ class ControlFactory(QWidget):
             hlay.setSpacing(10)
             len_row += 1
             if len_row >= self.presets_per_row:
-                self._layout.addRow(hlay)
+                self.layout().addRow(hlay)
                 hlay = QHBoxLayout()
                 len_row = 0
-        self._layout.addRow(hlay)
+        self.layout().addRow(hlay)
 
     def setup_extra_buttons(
         self,
@@ -231,20 +231,20 @@ class ControlFactory(QWidget):
     ):
         row_cnt = 0
         hlay = QHBoxLayout()
-        self._layout.addRow(hlay)
-        for l in extra_buttons:
-            if len(l) == 2:
-                (s, fn) = l
+        self.layout().addRow(hlay)
+        for button_tuple in extra_buttons:
+            if len(button_tuple) == 2:
+                (s, fn) = button_tuple
                 but = QPushButton(s)
             else:
-                (s, fn, ic) = l
+                (s, fn, ic) = button_tuple
                 but = QPushButton(text=s, icon=icon(ic))
             but.clicked.connect(fn)
             hlay.addWidget(but)
             row_cnt += 1
             if row_cnt == 2:
                 hlay = QHBoxLayout()
-                self._layout.addRow(hlay)
+                self.layout().addRow(hlay)
                 row_cnt = 0
 
 
@@ -310,11 +310,11 @@ class PlanStartDialog(QDialog, metaclass=QProtocolMetaMeta):
 
     @abstractmethod
     def setup_paras(self):
-        raise NotImplemented
+        raise NotImplementedError
 
     @abstractmethod
     def create_plan(self, controller: "Controller"):
-        raise NotImplemented
+        raise NotImplementedError
 
     def load_defaults(self, fname=None):
         pass
@@ -467,21 +467,26 @@ class ObserverPlot(pg.PlotWidget):
 
 
 class ObserverPlotWithControls(QWidget):
-    def __init__(self, names, obs, signal, x=None, parent=None, **kwargs):
+    def __init__(self, names, obs, signal, plot_name: str, x=None, parent=None, **kwargs):
         super(ObserverPlotWithControls, self).__init__()
         self.obs_plot = ObserverPlot(obs, signal, x, parent)
         line_controls = QWidget()
         line_controls.setSizePolicy(QSizePolicy.Minimum, QSizePolicy.Minimum)
         form_layout = QFormLayout()
         line_controls.setLayout(form_layout)
+        settings = QSettings()
+
         for i, n in enumerate(names):
             line = self.obs_plot.lines[self.obs_plot.observed[i]]
             col = line.opts["pen"].color()
             lb = QLabel('<font color="%s">%s</font>' % (col.name(), n))
             cb = QCheckBox()
-            cb.setChecked(True)
+            checked = settings.value(f"{plot_name}/{n}", True, type=bool)
+            cb.setChecked(checked)
             form_layout.addRow(lb, cb)
             cb.toggled.connect(line.setVisible)
+            cb.toggled.connect(lambda _, n=n: QSettings().setValue(f"{plot_name}/{n}", _))
+
         self.line_controls = line_controls
         self.setLayout(QHBoxLayout())
         self.layout().addWidget(self.obs_plot)
@@ -527,11 +532,11 @@ def make_groupbox(widgets, title="") -> QGroupBox:
 def create_layout(
     layout_class, *widgets, pre_stretch=False, post_stretch=False
 ) -> QLayout:
-    """Create a layout with the given class and widgets, with optional stretch at the start or end."""
+    """Create a layout with the given class and widgets,
+    with optional stretch at the start or end."""
     lay = layout_class()
     if len(widgets) == 1 and isinstance(widgets[0], (list, tuple)):
         widgets = widgets[0]
-
     if pre_stretch:
         lay.addStretch(1)
     for w in widgets:
@@ -539,6 +544,8 @@ def create_layout(
             lay.addWidget(w)
         elif isinstance(w, QLayout):
             lay.addLayout(w)
+        elif isinstance(w, str):
+            lay.addWidget(QLabel(w))
     if post_stretch:
         lay.addStretch(1)
     return lay
@@ -585,3 +592,40 @@ def remove_nodes(a):
 def make_entry(paras):
     plan_settings = remove_nodes(paras.getValues())
     return {"Plan Settings": plan_settings}
+
+
+def float_param(
+    name: str,
+    default: float,
+    step: float,
+    min_val: float | None = None,
+    max_val: float | None = None,
+    **kwargs,
+):
+    "Helper function to create a float parameter using type hints"
+    return pt.Parameter.create(
+        name=name,
+        type="float",
+        value=default,
+        step=step,
+        limits=(min_val, max_val),
+        **kwargs,
+    )
+
+def int_params(
+    name: str,
+    default: int,
+    step: int,
+    min_val: int | None = None,
+    max_val: int | None = None,
+    **kwargs,
+):
+    "Helper function to create a float parameter using type hints"
+    return pt.Parameter.create(
+        name=name,
+        type="int",
+        value=default,
+        step=step,
+        limits=(min_val, max_val),
+        **kwargs,
+    )
