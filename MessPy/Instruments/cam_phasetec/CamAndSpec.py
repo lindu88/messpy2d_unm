@@ -117,9 +117,6 @@ class PhaseTecCam(ICam):
     def get_spectra(
         self, frames=None, **kwargs
     ) -> Tuple[Dict[str, Spectrum], np.ndarray]:
-        import time
-
-        t = time.time()
 
         arr, ch = self._cam.read_cam(back=self.background, lines=self.rows)
 

@@ -146,6 +146,10 @@ class Cam:
         l = ffi.new("uint32_t[1]", [4])
         lib.imgSessionSerialReadBytes(self.s, out_buf, l, 200)
         return ffi.buffer(out_buf)
+    
+    def check_if_initialized(self):
+        """Here we check if the MCT is turned on and is initialized."""
+        self.send_cmd()
 
     def send_cmd(self, cmd: bytes | tuple[int, int, int, int]) -> bytes:
         """Send a command to the camera and return the response"""
@@ -290,25 +294,33 @@ if __name__ == "__main__":
     app = pg.mkQApp()
     timer = pg.Qt.QtCore.QTimer()
     win = pg.PlotWidget()
-    l = win.plotItem.plot()
     img = pg.ImageItem()
+    wid = pg.QtWidgets.QWidget()
     win.addItem(img)
-    win.show()
+    wid.setLayout(pg.QtWidgets.QHBoxLayout())
+    wid.layout().addWidget(win)
+    win2 = pg.PlotWidget()
+    wid.layout().addWidget(win2)
+    l = win2.plotItem.plot()
+    take_bg = pg.QtWidgets.QPushButton("BG")
+    wid.layout().addWidget(take_bg)
+    wid.show()
     
     import threading
     import time
 
     cam = Cam()
-    cam.set_shots(500)
+    cam.set_shots(20)
     
     cam.read_cam()
-    cnt = 100
+    cnt = 161
     save = False
     import numpy as np
     lines = {"a": (50, 60)}
+    bg = np.zeros((128, 128))
     def up():
         global cnt
-        cam.set_amp_and_dark(7, cnt)
+        #cam.set_amp_and_dark(6, cnt)
         t = time.time()
         thr = threading.Thread(
             target=cam.read_cam,
@@ -320,7 +332,7 @@ if __name__ == "__main__":
             app.processEvents()
         #print(time.time() - t)
         print(cnt, cam.data[0].mean(), cam.data[0].std())
-        img.setImage(cam.data[0].T)
+        img.setImage(cam.data[0].T-bg)
         #print(cam.lines.shape)
         y, x = np.histogram(cam.data[-1], 128)
         l.setData(x[:-1], y)
@@ -328,6 +340,11 @@ if __name__ == "__main__":
             np.save('%d testread' % cnt, cam.data)
         cnt = (cnt + 1) % 255
 
+    def take_bg_func():
+        global bg 
+        bg = cam.data.mean(0).T
+    
+    take_bg.clicked.connect(take_bg_func)
     timer.timeout.connect(up)
     timer.start(0)
     timer.setSingleShot(False)

@@ -41,8 +41,7 @@ class AdaptiveTimeZeroPlan(AsyncPlan):
     cam: Cam
     delay_line: DelayLine
     mode: Literal["mean", "max"] = "mean"
-    is_running: bool = True
-    min_diff: float = 1
+    is_running: bool = True    
     max_diff: float = 4
     auto_scale: bool = True
     start: float = -5
@@ -81,8 +80,8 @@ class AdaptiveTimeZeroPlan(AsyncPlan):
     def check_for_holes(self):
         x, y = self.get_data()
         xd = np.diff(x)
-        yd = np.diff(y) / np.ptp(y)
-        i = (np.abs(yd) > self.max_diff) & (xd > self.min_step)
+        yd = abs(np.diff(y) / np.ptp(y))        
+        i = (np.abs(yd) > self.max_diff) & (xd > self.min_step)        
         if np.any(i):
             first = np.argmax(i)
             return (x[first + 1] + x[first]) / 2
