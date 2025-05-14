@@ -4,6 +4,7 @@ import threading
 import json
 from pathlib import Path
 from numpy._typing import NDArray
+from datetime import datetime
 from typing import (
     TYPE_CHECKING,
     Callable,
@@ -139,7 +140,7 @@ class AOMTwoDPlan(ScanPlan):
         )
         yield
 
-    def calculate_scan_means(self):
+    def calculate_scan_means(self):        
         with h5py.File(self.data_file_name, mode="a", track_order=True) as f:
             f: h5py.File
             for line in f["ifr_data"]:  # type: ignore
@@ -199,6 +200,7 @@ class AOMTwoDPlan(ScanPlan):
         thr.start()
 
     def save_data(self, ret, t2_idx, cur_scan):
+        cur_date = datetime.now().isoformat()
         with h5py.File(self.data_file_name, mode="a", track_order=True) as f:
             data_ops = dict(
                 dtype="float64", scaleoffset=2, compression="gzip", compression_opts=3
@@ -213,6 +215,8 @@ class AOMTwoDPlan(ScanPlan):
                             **data_ops,
                             chunks=chunks,
                         )
+                        ds.attrs['creation date'] = cur_date 
+                        ds.attrs["time"] = self.cur_t2
                 else:
                     ds = f.create_dataset(
                         f"ifr_data/{line}/{t2_idx}/{cur_scan}",
@@ -220,12 +224,14 @@ class AOMTwoDPlan(ScanPlan):
                         dtype="float32",
                     )
                     ds.attrs["time"] = self.cur_t2
+                    ds.attrs['creation date'] = cur_date 
                     ds = f.create_dataset(
                         f"2d_data/{line}/{t2_idx}/{cur_scan}",
                         data=data.signal_2D,
                         dtype="float32",
                     )
                     ds.attrs["time"] = self.cur_t2
+                    ds.attrs['creation date'] = cur_date 
                     if self.save_frames_enabled:
                         chunks = (1, data.frames.shape[1])
                         ds = f.create_dataset(
@@ -234,6 +240,7 @@ class AOMTwoDPlan(ScanPlan):
                             **data_ops,
                             chunks=chunks,
                         )
+                        ds.attrs['creation date'] = cur_date 
                     disp_2d = f.get(f"2d_data/{line}/{t2_idx}/mean", data.signal_2D)
                     disp_ifr = f.get(
                         f"ifr_data/{line}/{t2_idx}/mean", data.interferogram

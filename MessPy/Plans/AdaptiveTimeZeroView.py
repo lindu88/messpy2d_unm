@@ -146,8 +146,7 @@ class AdaptiveTZStarter(PlanStartDialog):
     def setup_paras(self):
         params = [
             dict(name="Filename", type="str", value="temp_tz"),
-            dict(name="Max. Diff", type="float", value=3),
-            dict(name="Min. Diff", type="float", value=0.5),
+            dict(name="Max. Diff", type="float", value=3),            
             dict(name="Start", type="float", value=-5),
             dict(name="Stop", type="float", value=5),
             dict(name="Initial Step", type="float", value=1),
@@ -168,8 +167,7 @@ class AdaptiveTZStarter(PlanStartDialog):
         plan = AdaptiveTimeZeroPlan(
             cam=controller.cam,
             delay_line=controller.delay_line,
-            max_diff=p["Max. Diff"],
-            min_diff=p["Min. Diff"],
+            max_diff=p["Max. Diff"],            
             name=p["Filename"],
             meta=make_entry(self.paras),
             start=p["Start"],
