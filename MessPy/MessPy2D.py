@@ -47,7 +47,7 @@ class MainWindow(QMainWindow):
     def __init__(self, controller: Controller):
         super(MainWindow, self).__init__()
         self.setWindowTitle("Messpy-2D Edition")
-        self.setWindowIcon(qta.icon("fa.play"))
+        self.setWindowIcon(qta.icon("mdi.play"))
         self.controller = controller  # controller
         logger.info("Creating loop thread")
         self.controller_thread = QThread()
@@ -266,10 +266,10 @@ class CommandMenu(QWidget):
             if result == QMessageBox.Yes:
                 c.stop_plan()
 
-        stop_plan_but = QPushButton(qta.icon("fa.stop"), "Stop")
+        stop_plan_but = QPushButton(qta.icon("mdi.stop"), "Stop")
         stop_plan_but.clicked.connect(ask_stop)
 
-        pause_plan_but = QPushButton(text="Pause plan", icon=qta.icon("fa.pause"))
+        pause_plan_but = QPushButton(text="Pause plan", icon=qta.icon("mdi.pause"))
         pause_plan_but.clicked.connect(lambda: setattr(c, "pause_plan", True))
 
         reopen_planview_but = QPushButton(
@@ -283,7 +283,7 @@ class CommandMenu(QWidget):
             but.setDisabled(True)
 
         cb_running = QPushButton(
-            text="Running", icon=qta.icon("fa.play", color="white")
+            text="Running", icon=qta.icon("mdi.play", color="white")
         )
         cb_running.setCheckable(True)
         cb_running.setChecked(True)

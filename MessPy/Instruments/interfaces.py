@@ -436,3 +436,28 @@ class IPowerMeter(IDevice):
     @abc.abstractmethod
     def read_power(self) -> float:
         raise NotImplementedError
+
+@attr.s(kw_only=True, auto_attribs=True)
+class IChopper(IDevice):
+    interface_type: T.ClassVar[str] = "Chopper"
+
+    @abc.abstractmethod
+    def get_frequency(self) -> bool:
+        raise NotImplementedError
+
+    @abc.abstractmethod
+    def set_frequency(self, f: float):
+        pass
+
+    @abc.abstractmethod
+    def set_phase(self, pd: float):
+        pass
+
+    @abc.abstractmethod
+    def get_phase(self) -> bool:
+        raise NotImplementedError
+
+    @abc.abstractmethod
+    def set_sync(self, sync: int):
+        pass
+

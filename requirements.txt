@@ -16,7 +16,9 @@ nidaqmx
 cffi
 numba
 skultrafast
-
+pySide6
+qtawesome
 h5py
+pythonnet
 lmfit
 pytest-qt
