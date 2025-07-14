@@ -422,7 +422,6 @@ class ObserverPlot(pg.PlotWidget):
         pen = pg.mkPen(color=next(self.color_cycle), width=self.linewidth)
         curve = self.plotItem.plot(pen=pen, antialias=self.antialias)
         self.lines[single_obs] = curve
-
     @Slot()
     def request_update(self):
         self.do_update = True

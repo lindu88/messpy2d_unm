@@ -24,6 +24,7 @@ from MessPy.Config import config
 from MessPy.ControlClasses import Controller
 from MessPy.Instruments.interfaces import ICam
 from MessPy.Plans import *
+from MessPy.Plans.PumpProbeViewer import PumpProbeTasStarter
 
 from MessPy.QtHelpers import (
     ControlFactory,
@@ -129,10 +130,12 @@ class MainWindow(QMainWindow):
 
             return f
 
+        #add plan
         plans = [
             ("Pump Probe", "ei.graph", PumpProbeStarter),
             ("Scan Spectrum", "ei.barcode", ScanSpectrumStarter),
             ("Adaptive TZ", "ei.car", AdaptiveTZStarter),
+            ("test_plan", "ei.car", PumpProbeTasStarter)
         ]
 
         if self.controller.sample_holder is not None:

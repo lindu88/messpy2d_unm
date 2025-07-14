@@ -6,7 +6,7 @@ from loguru import logger
 
 logger.info("Init HwRegistry")
 TESTING = config.testing
-_cam = None  # CamMock()
+_cam = CamMock()
 _cam2 = None  # CamMock(name="Mock2")
 _dl = None
 _dl2 = None

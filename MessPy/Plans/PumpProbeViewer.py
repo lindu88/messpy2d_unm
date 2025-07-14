@@ -23,7 +23,7 @@ from PySide6.QtWidgets import (
 
 from MessPy.Config import config
 from MessPy.ControlClasses import Cam, Controller
-from MessPy.Plans.PumpProbe import PumpProbeData, PumpProbePlan
+from MessPy.Plans.PumpProbe import PumpProbeData, PumpProbePlan, PumpProbeTasPlan
 from MessPy.QtHelpers import ObserverPlot, PlanStartDialog, make_entry, vlay
 
 from .PlanBase import sample_parameters
@@ -281,6 +281,86 @@ class PumpProbeDataViewer(QWidget):
         self.pp_plan.sigWavelengthChanged.disconnect(self.handle_wl_change)
         super().closeEvent(a0)
 
+class PumpProbeTasStarter(PlanStartDialog):
+    title = "New Pump-probe-tas Experiment"
+    viewer = PumpProbeViewer
+    experiment_type = "Pump-Probe"
+
+    def setup_paras(self):
+        tmp = [
+            {"name": "Filename", "type": "str", "value": "temp"},
+            {"name": "Operator", "type": "str", "value": ""},
+            {
+                "name": "Shots",
+                "type": "int",
+                "max": 4000,
+                "decimals": 5,
+                "step": 500,
+                "value": 1000,
+            },
+            DelayParameter(),
+            dict(name="Save Full Data", type="bool", value=False),
+        ]
+
+        for c in self.controller.cam_list:
+            if c.cam.spectrograph:
+                name = c.cam.name
+                tmp.append(dict(name=f"{name} center wls", type="str", value="0"))
+
+        if len(self.controller.shutter) > 0 and False:
+            # names = {self.controller.shutter}
+            tmp.append(
+                dict(
+                    name="Pump Shutter",
+                    type="list",
+                    values=self.controller.shutter,
+                    value=self.controller.shutter[0],
+                )
+            )
+
+        two_d = {"name": "Exp. Settings", "type": "group", "children": tmp}
+
+        params = [sample_parameters, two_d]
+        self.paras = Parameter.create(name="Pump Probe", type="group", children=params)
+        config.last_pump_probe = self.paras.saveState()
+
+    def create_plan(self, controller: Controller):
+        p = self.paras.child("Exp. Settings")
+        s = self.paras.child("Sample")
+
+        t_list = p.child("Delay Times").generate_values()
+
+        cwls = []
+        for c in self.controller.cam_list:
+            if c.cam.spectrograph:
+                name = c.name
+                l = p[f"{name} center wls"].split(",")
+                cam_cwls = []
+                for s in l:
+                    if s[-1] == "c":
+                        cam_cwls.append(1e7 / float(s[:-1]))
+                    else:
+                        cam_cwls.append(float(s))
+                cwls.append(cam_cwls)
+            else:
+                cwls.append([0.0])
+
+        self.save_defaults()
+        if "Pump Shutter" in p:
+            p_shutter = p["Pump Shutter"]
+        else:
+            p_shutter = None
+        p = PumpProbeTasPlan(
+            name=p["Filename"],
+            meta=make_entry(self.paras),
+            t_list=np.asarray(t_list),
+            shots=p["Shots"],
+            controller=controller,
+            center_wl_list=cwls,
+            pump_shutter=p_shutter,
+            save_full_data=p["Save Full Data"],
+        )
+        return p
 
 class PumpProbeStarter(PlanStartDialog):
     title = "New Pump-probe Experiment"

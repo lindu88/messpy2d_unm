@@ -218,6 +218,7 @@ arr_factory = Factory(lambda: np.zeros(16))
 class Controller(QObject):
     """Class which controls the main loop."""
 
+    #will need to add chopper
     cam: Cam = attrib(init=False)
     delay_line: DelayLine = Factory(lambda: DelayLine(_dl))
     delay_line_second: T.Optional[DelayLine] = None
