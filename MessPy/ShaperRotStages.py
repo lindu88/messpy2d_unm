@@ -3,8 +3,8 @@ from MessPy.Instruments.RotationStage import RotationStage
 from MessPy.Instruments.dac_px import AOM
 
 import attr
-from PySide6.QtCore import Qt, Slot
-from PySide6 import QtWidgets
+from PyQt5.QtCore import Qt, pyqtSlot
+from PyQt5 import QtWidgets
 from MessPy.QtHelpers import ControlFactory, vlay, hlay
 
 from pyqtgraph.parametertree import Parameter, ParameterTree
@@ -134,14 +134,14 @@ class ShaperControl(QtWidgets.QWidget):
             )
         )
 
-    @Slot()
+    @pyqtSlot()
     def update_disp(self):
         for i in ["gvd", "tod", "fod"]:
             setattr(self.aom, i, self.disp_param[i] * 1000)
         self.aom.nu0_THz = cm2THz(self.disp_param["center"])
         self.aom.update_dispersion_compensation()
 
-    @Slot()
+    @pyqtSlot()
     def update_chop(self):
         self.aom.chop_window = (
             self.chop_params["lower wn"],

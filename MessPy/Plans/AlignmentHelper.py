@@ -1,10 +1,10 @@
 import pyqtgraph as pg
 import time
-from PySide6.QtWidgets import (
+from PyQt5.QtWidgets import (
     QWidget,
     QCheckBox,
 )
-from PySide6.QtCore import Slot
+from PyQt5.QtCore import pyqtSlot
 import MessPy.QtHelpers as qh
 from MessPy.ControlClasses import Controller
 
@@ -52,7 +52,7 @@ class AlignmentHelper(QWidget):
                                 qh.vlay(self.check_boxes, add_stretch=True)]))
         controller.loop_finished.connect(self.update_plots)
 
-    @Slot()
+    @pyqtSlot()
     def update_plots(self):
         t = time.time()
         self.times.append(t - self.t0)

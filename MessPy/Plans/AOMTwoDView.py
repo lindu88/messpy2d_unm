@@ -12,7 +12,7 @@ from pyqtgraph import (
     mkPen,
     PlotDataItem,
 )
-from PySide6.QtWidgets import (
+from PyQt5.QtWidgets import (
     QWidget,
     QLabel,
     QTabWidget,
@@ -20,7 +20,7 @@ from PySide6.QtWidgets import (
     QCheckBox,
     QRadioButton,
 )
-from PySide6.QtCore import Slot
+from PyQt5.QtCore import pyqtSlot
 from ..ControlClasses import Controller
 from ..QtHelpers import vlay, PlanStartDialog, hlay, remove_nodes, make_entry, col
 from .PlanParameters import DelayParameter
@@ -53,7 +53,7 @@ class TwoDMap(GraphicsLayoutWidget):
         self.spec_plot.addItem(self.cur_spec)
         self.spec_plot.addItem(self.mean_spec)
 
-    @Slot(object)
+    @pyqtSlot(object)
     def update_image(self, image):
         rect = (
             self.probe_wn.max(),
@@ -148,7 +148,7 @@ class AOMTwoDViewer(QWidget):
         else:
             return 1
 
-    @Slot()
+    @pyqtSlot()
     def update_data(self, al=True):
         if self.pr_1_pb.isChecked():
             i = 0
@@ -158,19 +158,19 @@ class AOMTwoDViewer(QWidget):
             al = self.cb_auto_levels.isChecked()
             self.spec_img.setImage(self.plan.last_2d[i][::, ::-1], autoLevels=True)
 
-    @Slot()
+    @pyqtSlot()
     def update_plots(self):
         if self.plan.last_2d is not None:
             self.spec_mean_line.setData(
                 self.probe_freq, self.plan.last_2d[self.pr_idx].mean(1)
             )
 
-    @Slot(dict)
+    @pyqtSlot(dict)
     def update_diag_plots(self, spectra: dict[str, Spectrum]):
         for i, (name, spec) in enumerate(spectra.items()):
             self.diag_lines[name].setData(spec.mean)
 
-    @Slot()
+    @pyqtSlot()
     def update_spec_lines(self, *args):
         idx = np.argmin(abs(self.pump_freqs - self.spec_line.pos()[1]))
         if self.plan.last_2d is not None:
@@ -181,7 +181,7 @@ class AOMTwoDViewer(QWidget):
     def set_time_str(self, s):
         self.time_str = s
 
-    @Slot()
+    @pyqtSlot()
     def update_label(self):
         p = self.plan
         s = f"""
@@ -269,8 +269,8 @@ class AOMTwoDStarter(PlanStartDialog):
 
 
 if __name__ == "__main__":
-    from PySide6.QtWidgets import QApplication
-    from ControlClasses import Controller
+    from PyQt5.QtWidgets import QApplication
+    #from ControlClasses import Controller
 
     app = QApplication([])
     p = AOMTwoDPlan(controller=Controller(), shaper=None, t3_list=[1, 2])

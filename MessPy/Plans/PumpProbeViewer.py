@@ -7,9 +7,9 @@ import numpy as np
 import pyqtgraph as pg
 from loguru import logger
 from pyqtgraph.parametertree import Parameter, ParameterTree
-from PySide6.QtCore import Qt, QTimer, Slot
-from PySide6.QtGui import QFont, QPalette
-from PySide6.QtWidgets import (
+from PyQt5.QtCore import Qt, QTimer, pyqtSlot
+from PyQt5.QtGui import QFont, QPalette
+from PyQt5.QtWidgets import (
     QApplication,
     QCheckBox,
     QHBoxLayout,
@@ -171,7 +171,7 @@ class PumpProbeDataViewer(QWidget):
 
         lbl.mouseReleaseEvent = remove_line
 
-    @Slot()
+    @pyqtSlot()
     def update_info(self):
         p = self.pp
         s = self.pp_plan
@@ -235,7 +235,7 @@ class PumpProbeDataViewer(QWidget):
     def update_spec(self):
         pass
 
-    @Slot()
+    @pyqtSlot()
     def update_trans(self):
         pp = self.pp_plan
         if pp.t_idx == 0:
@@ -268,7 +268,7 @@ class PumpProbeDataViewer(QWidget):
         else:
             return wl
 
-    @Slot()
+    @pyqtSlot()
     def update_indicator_line_pos(self):
         for lsts in self.inf_lines:
             for l in lsts:

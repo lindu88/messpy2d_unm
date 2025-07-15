@@ -2,8 +2,8 @@ import numpy as np
 import pyqtgraph.parametertree as pt
 from pyqtgraph import ImageItem, PlotWidget, InfiniteLine, mkPen
 
-from PySide6.QtCore import Slot, Qt
-from PySide6.QtWidgets import QCheckBox, QWidget, QLabel, QSpinBox
+from PyQt5.QtCore import pyqtSlot, Qt
+from PyQt5.QtWidgets import QCheckBox, QWidget, QLabel, QSpinBox
 from qtawesome import icon
 
 from MessPy.ControlClasses import Controller
@@ -50,7 +50,7 @@ class SignalImageView(QWidget):
         self.setWindowIcon(icon("fa5s.tired"))
         self.cb_use_wavenumbers.stateChanged.connect(self.x_units_changed)
 
-    @Slot()
+    @pyqtSlot()
     def update_view(self):
         pos = self.ch_line.pos().x()
         if self.cb_use_wavenumbers.isChecked():
@@ -81,7 +81,7 @@ class SignalImageView(QWidget):
             )
         self.signal_line.setData(x, p.cur_signal.signals[self.signal_index, :])
 
-    @Slot()
+    @pyqtSlot()
     def update_image(self):
         p = self.plan
         col = p.cur_image[..., self.signal_index, self.ch_index]
@@ -96,7 +96,7 @@ class SignalImageView(QWidget):
             x0 -= 1.1 * w
             self.mean_image.setRect(x0, y0, w, b)
 
-    @Slot()
+    @pyqtSlot()
     def x_units_changed(self):
         self.ch_line.setPos(1e7 / self.ch_line.pos().x())
 

@@ -2,7 +2,7 @@ import concurrent
 import concurrent.futures
 
 from attr import define, attrib
-from PySide6.QtCore import Signal
+from PyQt5.QtCore import pyqtSignal
 from loguru import logger
 from MessPy.ControlClasses import Cam, Reading
 from MessPy.Instruments.interfaces import ICam, ILissajousScanner
@@ -27,7 +27,7 @@ class SignalImagePlan(ScanPlan):
 
     shots: int = 150
     plan_shorthand: ClassVar[str] = "SignalImage"
-    sigPointRead: ClassVar[Signal] = Signal()
+    sigPointRead: ClassVar[pyqtSignal] = pyqtSignal()
 
     def setup_plan(self):
         image_shape = (

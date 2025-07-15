@@ -3,8 +3,8 @@ import lmfit
 import numpy as np
 import pyqtgraph.parametertree as pt
 from pyqtgraph import PlotItem, PlotWidget, TextItem, mkPen
-from PySide6.QtCore import Qt, Slot
-from PySide6.QtWidgets import QLabel, QMessageBox, QPushButton, QWidget, QComboBox
+from PyQt5.QtCore import Qt, pyqtSlot
+from PyQt5.QtWidgets import QLabel, QMessageBox, QPushButton, QWidget, QComboBox
 from scipy.special import erfc
 
 from MessPy.ControlClasses import Controller
@@ -88,12 +88,12 @@ class AdaptiveTZViewer(QWidget):
 
         self.fit_model_combo.addItems(["Folded Exp.", "Folded Exp. + Gaussian"])
 
-    @Slot(object)
+    @pyqtSlot()
     def update_line(self, obj):
         x, y = obj
         self.line.setData(x, y)
 
-    @Slot()
+    @pyqtSlot()
     def show_stop_options(self):
         self.stop_button.setDisabled(True)
         self.set_zero_btn = QPushButton("Set t0")
@@ -110,7 +110,7 @@ class AdaptiveTZViewer(QWidget):
         self.layout().addWidget(save_button)
         self.fit_data()
 
-    @Slot()
+    @pyqtSlot()
     def fit_data(self):
         x, y = self.plan.get_data()
         if self.fit_model_combo.currentText() == "Folded Exp.":

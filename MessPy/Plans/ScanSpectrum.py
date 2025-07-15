@@ -4,8 +4,7 @@ import typing as T
 import attr
 
 import numpy as np
-from PySide6.QtCore import QObject, Signal
-
+from PyQt5.QtCore import QObject, pyqtSignal
 from MessPy.ControlClasses import Cam
 from MessPy.Plans.PlanBase import Plan
 
@@ -18,7 +17,7 @@ class ScanSpectrum(Plan):
     wl_list: np.ndarray = attr.ib()
     wl_idx: int = -1
     timeout: float = 3
-    sigPointRead: T.ClassVar[Signal] = Signal()
+    sigPointRead: T.ClassVar[pyqtSignal] = pyqtSignal()
 
     def __attrs_post_init__(self):
         super(ScanSpectrum, self).__attrs_post_init__()

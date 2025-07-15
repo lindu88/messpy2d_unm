@@ -1,8 +1,8 @@
 from pytest import fixture
 from MessPy.Plans import ScanSpectrum
 from MessPy.ControlClasses import Controller
-from PySide6.QtWidgets import QApplication
-from PySide6.QtCore import QTimer
+from PyQt5.QtWidgets import QApplication
+from PyQt5.QtCore import QTimer
 from pytestqt import qtbot
 
 from MessPy.Config import config

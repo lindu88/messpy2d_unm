@@ -1,9 +1,11 @@
 import typing
 from typing import Dict, Optional
 
-from PySide6.QtWidgets import QWidget
+from PyQt5.QtWidgets import QWidget
 import numpy as np
 import attr
+from skultrafast.unit_conversions import names
+
 from MessPy.Instruments.interfaces import (
     ICam,
     IDelayLine,
@@ -102,14 +104,17 @@ class CamMock(ICam):
         x = self.get_wavelength_array()
         y = 300 * np.exp(-((x - 250) ** 2) / self.peak_width**2 / 2)
 
+
         knife_amp = state.knife_amp()
         y = y * (knife_amp / 4)
+        knife_amp = np.clip(knife_amp, 0.5, 3)
 
         a = np.random.normal(loc=y, scale=3, size=(self.shots, self.channels))
         b = np.random.normal(loc=y / 2, scale=3, size=(self.shots, self.channels))
         common_noise = np.random.normal(
             loc=1, scale=self.noise_scale, size=(self.shots, 1)
         )
+        common_noise = np.clip(common_noise, 0.8, 1.2)  # mild fluctuations
 
         a *= common_noise
         b *= common_noise
@@ -270,3 +275,11 @@ class PowerMeterMock(IPowerMeter):
         y = state.knife_amp() / 4
         y += np.random.normal(loc=0, scale=0.1)
         return y
+
+def get_max_reading(reading):
+    return np.max(reading.full_data)
+if __name__ == "__main__":
+    camtest = CamMock()
+    shot = camtest.make_reading()
+    print(shot)
+    print(get_max_reading(shot))

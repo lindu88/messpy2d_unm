@@ -209,7 +209,7 @@ class AvantesSpec:
 
 
 if __name__ == "__main__":
-    from PySide6.QtCore import QTimer
+    from PyQt5.QtCore import QTimer
 
     spec = AvantesSpec.take_nth(0)
 

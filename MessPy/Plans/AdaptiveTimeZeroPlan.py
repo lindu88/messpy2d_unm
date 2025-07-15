@@ -5,7 +5,7 @@ import attr
 import lmfit
 import numpy as np
 from lmfit.model import ModelResult
-from PySide6.QtCore import Signal
+from PyQt5.QtCore import pyqtSignal
 from scipy.special import erf
 
 from MessPy.ControlClasses import Cam, DelayLine
@@ -54,7 +54,7 @@ class AdaptiveTimeZeroPlan(AsyncPlan):
     positions: list[float] = attr.Factory(list)
     values: list[float] = attr.Factory(list)
 
-    sigStepDone: ClassVar[Signal] = Signal(object)
+    sigStepDone: ClassVar[pyqtSignal] = pyqtSignal(object)
 
     async def plan(self):
         dl = self.delay_line

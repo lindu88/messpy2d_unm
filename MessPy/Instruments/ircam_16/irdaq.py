@@ -17,9 +17,9 @@ import PyDAQmx, struct
 from PyDAQmx.DAQmxTypes import *
 from PyDAQmx.DAQmxConstants import *
 
-from PySide6.QtCore import QThread, QTimer, QMutex
+from PyQt5.QtCore import QThread, QTimer, QMutex
 from threading import Thread, Lock
-from PySide6.QtWidgets import QApplication
+from PyQt5.QtWidgets import QApplication
 import time, os
 
 sleep = time.sleep

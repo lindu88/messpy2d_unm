@@ -5,7 +5,7 @@ from typing import Any, ClassVar, Generator, Optional
 import numpy as np
 from attr import attr, attrib, attrs, field
 from numpy.typing import NDArray
-from PySide6.QtCore import QThread, Signal  # type: ignore
+from PyQt5.QtCore import QThread, pyqtSignal  # type: ignore
 import h5py
 
 
@@ -40,7 +40,7 @@ class NewPumpProbePlan(ScanPlan):
 
     center_wavelengths: NDArray[np.float64] = np.array([0.0])
     reader_thread: Optional[QThread] = None
-    sigStepDone: ClassVar[Signal] = Signal()
+    sigStepDone: ClassVar[pyqtSignal] = pyqtSignal()
 
     @cached_property
     def wl_cycle(self) -> cycle:

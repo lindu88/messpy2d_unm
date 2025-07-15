@@ -1,4 +1,4 @@
-from PySide6.QtWidgets import (
+from PyQt5.QtWidgets import (
     QWidget,
     QSpinBox,
     QPushButton,
@@ -10,7 +10,7 @@ from PySide6.QtWidgets import (
     QApplication,
     QCheckBox,
 )
-from PySide6.QtCore import Signal
+from PyQt5.QtCore import pyqtSignal
 from typing import Optional
 
 
@@ -74,8 +74,8 @@ class CalibView(QWidget):
 
     coeff: Optional[np.ndarray] = None
 
-    sigCalibrationAccepted = Signal(object)
-    sigCalibrationCanceled = Signal()
+    sigCalibrationAccepted = pyqtSignal(object)
+    sigCalibrationCanceled = pyqtSignal()
 
     def __attrs_post_init__(self):
         super().__init__()

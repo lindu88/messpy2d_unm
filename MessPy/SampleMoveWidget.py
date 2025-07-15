@@ -1,8 +1,8 @@
 # from Config import config
 import attr
-from PySide6.QtCore import QTimer, Qt, QObject, Slot
-from PySide6.QtGui import QKeyEvent, QPixmap, QFocusEvent
-from PySide6.QtWidgets import (
+from PyQt5.QtCore import QTimer, Qt, QObject, pyqtSlot
+from PyQt5.QtGui import QKeyEvent, QPixmap, QFocusEvent
+from PyQt5.QtWidgets import (
     QApplication,
     QWidget,
     QLineEdit,
@@ -17,19 +17,19 @@ from MessPy.Instruments.interfaces import ILissajousScanner
 
 @attr.define(slots=False)
 class ScannerMover(QObject):
-    @Slot()
+    @pyqtSlot()
     def move_left(self):
         pass
 
-    @Slot()
+    @pyqtSlot()
     def move_right(self):
         pass
 
-    @Slot()
+    @pyqtSlot()
     def move_up(self):
         pass
 
-    @Slot()
+    @pyqtSlot()
     def move_down(self):
         pass
 

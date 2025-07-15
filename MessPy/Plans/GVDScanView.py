@@ -1,6 +1,6 @@
 import numpy as np
 import pyqtgraph.parametertree as pt
-from PySide6.QtWidgets import QWidget, QLabel, QVBoxLayout
+from PyQt5.QtWidgets import QWidget, QLabel, QVBoxLayout
 from qtawesome import icon
 
 from MessPy.ControlClasses import Controller

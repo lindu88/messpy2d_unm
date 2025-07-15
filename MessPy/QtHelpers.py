@@ -1,6 +1,7 @@
 from typing import Protocol
 from abc import abstractmethod
 import datetime
+import numpy as np
 import math
 import typing as T
 from itertools import cycle
@@ -8,9 +9,9 @@ from itertools import cycle
 import pyqtgraph as pg
 import pyqtgraph.parametertree as pt
 from pyqtgraph import PlotItem
-from PySide6.QtCore import Qt, Slot, QTimer, QObject, QSettings
-from PySide6.QtGui import QPalette, QColor, QIcon
-from PySide6.QtWidgets import (
+from PyQt5.QtCore import Qt, pyqtSlot, QTimer, QObject, QSettings
+from PyQt5.QtGui import QPalette, QColor, QIcon
+from PyQt5.QtWidgets import (
     QWidget,
     QLineEdit,
     QLabel,
@@ -196,8 +197,8 @@ class ControlFactory(QWidget):
         if update_signal is not None:
             update_signal.connect(self.update_value)
 
-    @Slot(int)
-    @Slot(float)
+    @pyqtSlot(int)
+    @pyqtSlot(float)
     def update_value(self, value):
         """updates value of the control widget"""
         if not isinstance(value, str):
@@ -365,7 +366,6 @@ class PlanStartDialog(QDialog, metaclass=QProtocolMetaMeta):
             result = QDialog.Rejected
         return plan, result == QDialog.Accepted
 
-
 class ObserverPlot(pg.PlotWidget):
     def __init__(
         self, obs, signal, x=None, parent=None, aa=False, linewidth=2, **kwargs
@@ -398,6 +398,10 @@ class ObserverPlot(pg.PlotWidget):
         self.color_cycle = make_default_cycle()
         self.plotItem: PlotItem
         self.plotItem.showGrid(x=True, y=True, alpha=1)
+
+        #to avoid scaling issues
+        self.plotItem.getViewBox().setAspectLocked(False)
+
         self.lines = {}
         self.observed = []
         if isinstance(obs, tuple):
@@ -411,6 +415,9 @@ class ObserverPlot(pg.PlotWidget):
         self.click_func = None
         self.x = x
         self.use_inverse = False
+
+        #test
+
         self.timer = QTimer()
         self.timer.setSingleShot(True)
         self.timer.timeout.connect(self.update_data)
@@ -422,13 +429,12 @@ class ObserverPlot(pg.PlotWidget):
         pen = pg.mkPen(color=next(self.color_cycle), width=self.linewidth)
         curve = self.plotItem.plot(pen=pen, antialias=self.antialias)
         self.lines[single_obs] = curve
-    @Slot()
+    @pyqtSlot()
     def request_update(self):
         self.do_update = True
         if not self.timer.isActive():
             self.timer.start(1000 // 60)
-
-    @Slot()
+    @pyqtSlot()
     def update_data(self):
         if not self.do_update:
             return
@@ -444,14 +450,14 @@ class ObserverPlot(pg.PlotWidget):
         for o in self.observed:
             if callable(o):
                 y = o()
-                self.lines[o].setData(x=x, y=y)
+                #skip NANs
+                self.lines[o].setData(x=x, y=y, connect='finite')
             else:
                 y = getattr(*o)
                 if y is not None:
-                    self.lines[o].setData(x=x, y=y)
+                    self.lines[o].setData(x=x, y=y, connect='finite')
         self.do_update = False
-
-    @Slot(object)
+    @pyqtSlot(object)
     def click(self, ev):
         if self.click_func is not None and ev.button() == Qt.MouseButton.LeftButton:
             coords = self.plotItem.vb.mapSceneToView(ev.pos())

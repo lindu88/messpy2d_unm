@@ -200,7 +200,7 @@ class Cam(ICam):
 # plt.plot(a.ravel())
 # plt.xlim(0, 5000)
 if __name__ == "__main__":
-    # import PySide6.QtGui as g
+    # import PyQt5.QtGui as g
     cam = Cam()
     cam.start_ring_thread()
     # cam.read_ring()
@@ -212,9 +212,9 @@ if __name__ == "__main__":
 
     app = pg.mkQApp()
 
-    import PySide6.QtWidgets as qw
+    import PyQt5.QtWidgets as qw
 
-    import PySide6.QtCore as qtc
+    import PyQt5.QtCore as qtc
 
     win = qw.QWidget()
     lay = qw.QHBoxLayout(win)

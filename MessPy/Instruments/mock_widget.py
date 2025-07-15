@@ -1,4 +1,4 @@
-from PySide6.QtWidgets import QWidget, QVBoxLayout
+from PyQt5.QtWidgets import QWidget, QVBoxLayout
 from pyqtgraph.parametertree import ParameterTree, Parameter
 
 from typing import TYPE_CHECKING

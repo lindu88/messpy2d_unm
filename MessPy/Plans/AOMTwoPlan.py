@@ -20,8 +20,7 @@ import attr
 import h5py
 import numpy as np
 from attr import attrib, attrs
-from PySide6.QtCore import Signal
-
+from PyQt5.QtCore import pyqtSignal
 from MessPy.ControlClasses import Controller
 from MessPy.Instruments.dac_px import AOM
 from MessPy.Instruments.signal_processing import THz2cm, cm2THz
@@ -70,8 +69,8 @@ class AOMTwoDPlan(ScanPlan):
     last_2d: Optional[Tuple[np.ndarray, np.ndarray]] = None
 
     # Signals
-    sigStepDone: ClassVar[Signal] = Signal()
-    sigNewSpectra: ClassVar[Signal] = Signal(dict)
+    sigStepDone: ClassVar[pyqtSignal] = pyqtSignal()
+    sigNewSpectra: ClassVar[pyqtSignal] = pyqtSignal(dict)
 
     @functools.cached_property
     def probe_freqs(self) -> np.ndarray:

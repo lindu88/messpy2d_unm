@@ -3,7 +3,7 @@ import matplotlib.pyplot as plt
 
 from pyqtgraph.widgets.PlotWidget import PlotWidget
 from qasync import asyncSlot
-from PySide6.QtWidgets import (
+from PyQt5.QtWidgets import (
     QWidget,
     QApplication,
     QHBoxLayout,
@@ -16,7 +16,7 @@ from PySide6.QtWidgets import (
     QSlider,
     QMessageBox,
 )
-from PySide6.QtCore import Qt, Signal
+from PyQt5.QtCore import Qt, pyqtSignal
 from matplotlib.figure import Figure
 from matplotlib import rcParams, style
 from matplotlib.backends.backend_qt5agg import (
@@ -47,7 +47,7 @@ class CalibScanView(QWidget):
     dac: AOM
     plan: Optional[CalibPlan] = None
 
-    sigPlanCreated: ClassVar[Signal] = Signal(object)
+    sigPlanCreated: ClassVar[pyqtSignal] = pyqtSignal(object)
 
     def __attrs_post_init__(self):
         super().__init__()
@@ -169,8 +169,8 @@ class CalibView(QWidget):
 
     coeff: Optional[np.ndarray] = None
 
-    sigCalibrationAccepted = Signal(object)
-    sigCalibrationCanceled = Signal()
+    sigCalibrationAccepted = pyqtSignal(object)
+    sigCalibrationCanceled = pyqtSignal()
 
     def __attrs_post_init__(self):
         super().__init__()

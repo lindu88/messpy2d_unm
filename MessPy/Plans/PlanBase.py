@@ -10,7 +10,7 @@ from typing import ClassVar, Tuple, Optional, Callable, Generator, Any
 
 import h5py
 import attr
-from PySide6.QtCore import QObject, Signal, Slot, QThread
+from PyQt5.QtCore import QObject, pyqtSignal, pyqtSlot, QThread
 from numpy import ndarray
 
 from MessPy.Config import config
@@ -42,7 +42,7 @@ class TimeTracker(QObject):
     point_end_time: Optional[float] = None
     point_duration: Optional[float] = None
 
-    sigTimesUpdated: ClassVar[Signal] = Signal(str)
+    sigTimesUpdated: ClassVar[pyqtSignal] = pyqtSignal(str)
 
     def __attrs_post_init__(self):
         super(TimeTracker, self).__init__()
@@ -52,24 +52,24 @@ class TimeTracker(QObject):
         """Time elapsed since start of scan."""
         return time.time() - self.start_time
 
-    @Slot()
+    @pyqtSlot()
     def scan_starting(self):
         """Record start time of scan."""
         self.scan_start_time = time.time()
         self.scan_end_time = None
 
-    @Slot()
+    @pyqtSlot()
     def scan_ending(self):
         """Record end time of scan."""
         self.scan_end_time = time.time()
         self.scan_duration = self.scan_end_time - self.scan_start_time
 
-    @Slot()
+    @pyqtSlot()
     def point_starting(self):
         """Record start time of point."""
         self.point_start_time = time.time()
 
-    @Slot()
+    @pyqtSlot()
     def point_ending(self):
         """Record end time of point."""
         self.point_end_time = time.time()
@@ -102,9 +102,9 @@ class Plan(QObject):
     time_tracker: TimeTracker = attr.Factory(TimeTracker)
     file_name: Tuple[Path, Path] | None = None
 
-    sigPlanFinished: ClassVar[Signal] = Signal()
-    sigPlanStarted: ClassVar[Signal] = Signal()
-    sigPlanStopped: ClassVar[Signal] = Signal()
+    sigPlanFinished: ClassVar[pyqtSignal] = pyqtSignal()
+    sigPlanStarted: ClassVar[pyqtSignal] = pyqtSignal()
+    sigPlanStopped: ClassVar[pyqtSignal] = pyqtSignal()
 
     def __attrs_post_init__(self):
         super(Plan, self).__init__()
@@ -153,7 +153,7 @@ class Plan(QObject):
     def restore_state(self):
         pass
 
-    @Slot()
+    @pyqtSlot()
     def stop_plan(self):
         self.restore_state()
         self.sigPlanStopped.emit()
@@ -175,8 +175,8 @@ class H5PySaver:
 
 @attr.s(auto_attribs=True, kw_only=True)
 class ScanPlan(Plan):
-    sigScanStarted: ClassVar[Signal] = Signal()
-    sigScanFinished: ClassVar[Signal] = Signal()
+    sigScanStarted: ClassVar[pyqtSignal] = pyqtSignal()
+    sigScanFinished: ClassVar[pyqtSignal] = pyqtSignal()
 
     cur_scan: int = 0
     max_scan: int = 1_000_000
@@ -262,7 +262,7 @@ class AsyncPlan(Plan):
     is_async: bool = True
     task: Task = attr.ib(init=False)
 
-    sigTaskCreated: ClassVar[Signal] = Signal()
+    sigTaskCreated: ClassVar[pyqtSignal] = pyqtSignal()
 
     async def plan(self):
         raise NotImplementedError

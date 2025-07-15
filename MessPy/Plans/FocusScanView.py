@@ -2,12 +2,12 @@ from typing import Optional
 import numpy as np
 import pyqtgraph as pg
 import pyqtgraph.parametertree as pt
-from PySide6.QtWidgets import QWidget, QPushButton
+from PyQt5.QtWidgets import QWidget, QPushButton
 
 from .FocusScan import FocusScan, Scan
 
-from PySide6.QtWidgets import QVBoxLayout, QMessageBox, QTabWidget
-from PySide6.QtCore import QTimer
+from PyQt5.QtWidgets import QVBoxLayout, QMessageBox, QTabWidget
+from PyQt5.QtCore import QTimer
 from MessPy.ControlClasses import Controller
 from MessPy.QtHelpers import vlay, hlay, PlanStartDialog, ObserverPlot, make_entry
 from .PlanBase import sample_parameters

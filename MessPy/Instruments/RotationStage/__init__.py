@@ -15,7 +15,7 @@ Created on Tue Jun 03 15:41:22 2014
 
 from functools import cached_property
 from MessPy.Instruments.interfaces import IRotationStage
-from PySide6.QtCore import QObject, Signal, QTimer
+from PyQt5.QtCore import QObject, Signal, QTimer
 
 import serial
 import attr
@@ -53,9 +53,9 @@ controller_states = {
 
 
 class RotSignals(QObject):
-    sigDegreesChanged = Signal(float)
-    sigMovementStarted = Signal(float, float)
-    sigMovementFinished = Signal()
+    sigDegreesChanged = pyqtSignal(float)
+    sigMovementStarted = pyqtSignal(float, float)
+    sigMovementFinished = pyqtSignal()
 
 
 @attr.s(auto_attribs=True)

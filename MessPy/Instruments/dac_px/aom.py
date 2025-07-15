@@ -1,5 +1,5 @@
 from MessPy.Instruments.interfaces import IDevice
-from PySide6.QtCore import Signal, QMutex
+from PyQt5.QtCore import pyqtSignal, QMutex
 from loguru import logger
 from pathlib import Path
 from typing import Optional, Literal
@@ -63,9 +63,9 @@ class AOM(IDevice):
     tod: float = 0
     fod: float = 0
 
-    sigCalibChanged = Signal(object)
-    sigDispersionChanged = Signal(tuple)
-    sigModeChanged = Signal(str)
+    sigCalibChanged = pyqtSignal(object)
+    sigDispersionChanged = pyqtSignal(tuple)
+    sigModeChanged = pyqtSignal(str)
 
     def __attrs_post_init__(self):
         super(AOM, self).__attrs_post_init__()

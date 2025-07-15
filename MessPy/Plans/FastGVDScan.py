@@ -4,8 +4,7 @@ from pathlib import Path
 import attr
 
 import numpy as np
-from PySide6.QtCore import Signal, Slot
-
+from PyQt5.QtCore import pyqtSignal, pyqtSlot
 
 from MessPy.ControlClasses import Cam
 from MessPy.Instruments.dac_px import AOM
@@ -33,7 +32,7 @@ class FastGVDScan(Plan):
     observed_channel: T.Optional[int] = None
     settings_before: dict = attr.Factory(dict)
 
-    sigPointRead: T.ClassVar[Signal] = Signal()
+    sigPointRead: T.ClassVar[pyqtSignal] = pyqtSignal()
 
     plan_shorthand: T.ClassVar[str] = "FastGVDscan"
 
@@ -118,7 +117,7 @@ class FastGVDScan(Plan):
     def save(self):
         return
 
-    @Slot()
+    @pyqtSlot()
     def stop_plan(self):
         self.status = "stopped"
         self.sigPlanStopped.emit()

@@ -6,7 +6,8 @@ from asyncio import Task
 import numpy as np
 from attr import Factory, attrib, attrs, define
 from loguru import logger
-from PySide6.QtCore import QObject, QTimer, Signal, Slot
+from PyQt5.QtCore import QObject, QTimer, pyqtSignal, pyqtSlot
+
 from qasync import Slot
 
 import MessPy.Instruments.interfaces as I
@@ -43,9 +44,9 @@ class Cam(QObject):
     wavenumbers: np.ndarray = attrib(init=False)
     disp_axis: np.ndarray = attrib(init=False)
 
-    sigShotsChanged: T.ClassVar[Signal] = Signal(int)
-    sigReadCompleted: T.ClassVar[Signal] = Signal()
-    sigRefCalibrationFinished : T.ClassVar[Signal] = Signal(object, object)
+    sigShotsChanged: T.ClassVar[pyqtSignal] = pyqtSignal(int)
+    sigReadCompleted: T.ClassVar[pyqtSignal] = pyqtSignal()
+    sigRefCalibrationFinished : T.ClassVar[pyqtSignal] = pyqtSignal(object, object)
 
     def __attrs_post_init__(self):
         QObject.__init__(self)
@@ -96,7 +97,7 @@ class Cam(QObject):
         except ValueError:
             pass
 
-    @Slot()
+    @pyqtSlot()
     def read_cam(self, two_dim=False):
         logger.trace("Reading cam")
         rd = self.cam.make_reading()
@@ -107,7 +108,7 @@ class Cam(QObject):
     def start_two_reading(self):
         pass
 
-    @Slot(float)
+    @pyqtSlot()
     def set_wavelength(self, wl, timeout=5):
         logger.info(f"Setting wavelength to {wl}")
         assert self.cam.spectrograph is not None
@@ -121,17 +122,17 @@ class Cam(QObject):
     def get_wavelengths(self, center_wl=None):
         return self.cam.get_wavelength_array(center_wl)
 
-    @Slot()
+    @pyqtSlot()
     def get_bg(self):
         logger.info("Getting new background")
         self.cam.set_background(self.shots)
 
-    @Slot()
+    @pyqtSlot()
     def remove_bg(self):
         logger.info("Removing background")
         self.cam.remove_background()
 
-    @Slot(float)
+    @pyqtSlot(float)
     def set_slit(self, slit):
         if self.cam.spectrograph is not None:
             logger.info(f"Setting slit to {slit}")
@@ -144,7 +145,7 @@ class Cam(QObject):
     def get_slit(self) -> float:
         return self.cam.spectrograph.get_slit()
 
-    @Slot()
+    @pyqtSlot()
     def calibrate_ref(self):
         try:
             logger.info("Calibrating reference to probe")
@@ -161,7 +162,7 @@ class DelayLine(QObject):
     moving: bool = False
     _thread: T.Optional[object] = None
 
-    sigPosChanged: T.ClassVar[Signal] = Signal(float)
+    sigPosChanged: T.ClassVar[pyqtSignal] = pyqtSignal(float)
 
     def __attrs_post_init__(self):
         QObject.__init__(self)
@@ -200,7 +201,7 @@ class DelayLine(QObject):
     def get_pos(self) -> float:
         return self._dl.get_pos_fs()
 
-    @Slot()
+    @pyqtSlot()
     def set_home(self):
         logger.info("Old home position: {self._dl.home_pos}")
         logger.info(
@@ -233,9 +234,9 @@ class Controller(QObject):
     plan: T.Optional["Plan"] = None
     pause_plan: bool = False
 
-    loop_finished: T.ClassVar[Signal] = Signal()
-    stopping_plan: T.ClassVar[Signal] = Signal(bool)
-    starting_plan: T.ClassVar[Signal] = Signal(bool)
+    loop_finished: T.ClassVar[pyqtSignal] = pyqtSignal()
+    stopping_plan: T.ClassVar[pyqtSignal] = pyqtSignal(bool)
+    starting_plan: T.ClassVar[pyqtSignal] = pyqtSignal(bool)
 
     def __attrs_post_init__(self):
         super().__init__()
@@ -250,7 +251,7 @@ class Controller(QObject):
             self.cam2 = None
         self.t1 = None
 
-    @Slot()
+    @pyqtSlot()
     def start_standard_read(self):
         # t0 = time.time()
         self.t1 = threading.Thread(target=self.cam.read_cam)
@@ -272,7 +273,7 @@ class Controller(QObject):
             self.cam2.sigReadCompleted.emit()
         self.t1 = None
 
-    @Slot()
+    @pyqtSlot()
     def loop(self):
         import sys
 
@@ -320,7 +321,7 @@ class Controller(QObject):
         self.plan.sigPlanFinished.connect(self.stop_plan)
         self.starting_plan.emit(True)
 
-    @Slot()
+    @pyqtSlot()
     def stop_plan(self):
         logger.info("Stopping plan")
         if self.plan:

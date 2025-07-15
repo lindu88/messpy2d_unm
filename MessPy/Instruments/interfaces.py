@@ -14,7 +14,7 @@ from pathlib import Path
 import attr
 import numpy as np
 from loguru import logger
-from PySide6.QtCore import QThread, Signal, QObject  # type: ignore
+from PyQt5.QtCore import QThread, pyqtSignal, QObject  # type: ignore
 from scipy.constants import c
 
 from .signal_processing import Reading, Reading2D, Spectrum
@@ -24,7 +24,7 @@ QObjectType = type(QObject)
 T = typing
 
 if typing.TYPE_CHECKING:
-    from PySide6.QtWidgets import QWidget
+    from PyQt5.QtWidgets import QWidget
 
 conf_path = Path(__file__).parent / "config"
 conf_path_new = Path.home() / ".messpy" / "config"
@@ -126,9 +126,9 @@ class ISpectrograph(IDevice):
     changeable_slit: bool = False
     center_wl: typing.Optional[float] = None
 
-    sigWavelengthChanged: T.ClassVar[Signal] = Signal(float)
-    sigSlitChanged: T.ClassVar[Signal] = Signal(float)
-    sigGratingChanged: T.ClassVar[Signal] = Signal(int)
+    sigWavelengthChanged: T.ClassVar[pyqtSignal] = pyqtSignal(float)
+    sigSlitChanged: T.ClassVar[pyqtSignal] = pyqtSignal(float)
+    sigGratingChanged: T.ClassVar[pyqtSignal] = pyqtSignal(int)
 
     interface_type: T.ClassVar[str] = "Spectrograph"
 
@@ -318,7 +318,7 @@ class IDelayLine(IDevice):
 
 @attr.s(auto_attribs=True)
 class IShutter(IDevice):
-    sigShutterToggled: typing.ClassVar[Signal] = Signal(bool)
+    sigShutterToggled: typing.ClassVar[pyqtSignal] = pyqtSignal(bool)
 
     @abc.abstractmethod
     def toggle(self):
@@ -352,8 +352,8 @@ class IShutter(IDevice):
 
 @attr.s
 class IRotationStage(IDevice):
-    sigDegreesChanged: typing.ClassVar[Signal] = Signal(float)
-    sigMovementCompleted: typing.ClassVar[Signal] = Signal()
+    sigDegreesChanged: typing.ClassVar[pyqtSignal] = pyqtSignal(float)
+    sigMovementCompleted: typing.ClassVar[pyqtSignal] = pyqtSignal()
 
     interface_type: T.ClassVar[str] = "RotationStage"
 
@@ -390,7 +390,7 @@ class ILissajousScanner(IDevice):
     has_zaxis: bool = False
 
     interface_type: T.ClassVar[str] = "LissajousScanner"
-    sigPositionChanged: T.ClassVar[Signal] = Signal(float, float)
+    sigPositionChanged: T.ClassVar[pyqtSignal] = pyqtSignal(float, float)
 
     def init_motor(self):
         pass

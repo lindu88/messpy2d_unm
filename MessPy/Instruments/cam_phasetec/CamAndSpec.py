@@ -6,8 +6,7 @@ from typing import ClassVar, Dict, List, Optional, Tuple
 
 import attr
 import numpy as np
-from PySide6.QtCore import Signal, Slot
-from scipy.stats import trim_mean
+from PyQt5.QtCore import Signal, .pyqtslotfrom scipy.stats import trim_mean
 
 from MessPy.Instruments.cam_phasetec.imaq_newcffi import Cam
 from MessPy.Instruments.cam_phasetec.spec_sp2500i import SP2150i
@@ -73,7 +72,7 @@ class PhaseTecCam(ICam):
     darklevel: int = 0
     amplification: int = 7
 
-    sigRowsChanged: ClassVar[Signal] = Signal()
+    sigRowsChanged: ClassVar[Signal] = pyqtSignal()
 
     def get_state(self):
         # The following state is saved an restored after a restart

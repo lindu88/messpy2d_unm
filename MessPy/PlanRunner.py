@@ -2,8 +2,7 @@ from typing import ClassVar, Literal, Optional
 
 from attr import Factory, define
 from loguru import logger
-from PySide6.QtCore import QObject, Signal, Slot
-
+from PyQt5.QtCore import QObject, pyqtSignal, pyqtSlot
 from MessPy.Plans.PlanBase import Plan
 
 
@@ -12,14 +11,14 @@ class PlanRunner(QObject):
     plan: Optional[Plan] = None
     state: Literal["running", "paused", "no_plan"] = "no_plan"
 
-    sigPlanStopped: ClassVar[Signal] = Signal(bool)
-    sigPlanStarted: ClassVar[Signal] = Signal(bool)
-    sigPlanPaused: ClassVar[Signal] = Signal(bool)
+    sigPlanStopped: ClassVar[pyqtSignal] = pyqtSignal(bool)
+    sigPlanStarted: ClassVar[pyqtSignal] = pyqtSignal(bool)
+    sigPlanPaused: ClassVar[pyqtSignal] = pyqtSignal(bool)
 
     def __attr_post_init__(self):
         super().__attr_post_init__()
 
-    @Slot(Plan)
+    @pyqtSlot(plan)
     def start_plan(self, plan: Plan):
         self.plan = plan
         self.state = "running"
@@ -27,19 +26,19 @@ class PlanRunner(QObject):
         if not plan.is_async:
             pass
 
-    @Slot()
+    @pyqtSlot()
     def pause_plan(self):
         if self.plan:
             self.state = "paused"
             self.sigPlanPaused.emit(True)
 
-    @Slot()
+    @pyqtSlot()
     def resume_plan(self):
         if self.plan:
             self.state = "running"
             self.sigPlanPaused.emit(False)
 
-    @Slot
+    @pyqtSlot()
     def stop_plan(self):
         if self.plan:
             self.plan.stop_plan()

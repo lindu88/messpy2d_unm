@@ -11,8 +11,8 @@ from pyqtgraph import (
     mkBrush,
     colormap,
 )
-from PySide6.QtCore import QTimer, QObject, Signal, QThread
-from PySide6.QtWidgets import QApplication, QWidget
+from PyQt5.QtCore import QTimer, QObject, Signal, QThread
+from PyQt5.QtWidgets import QApplication, QWidget
 
 from MessPy.QtHelpers import hlay, vlay
 
@@ -51,7 +51,7 @@ MAX_VAL = 1 << 14
 
 
 class Worker(QObject):
-    sigReadFinished = Signal()
+    sigReadFinished = pyqtSignal()
 
     def __init__(self, cam: PhaseTecCam):
         super(Worker, self).__init__()

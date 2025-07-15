@@ -4,8 +4,6 @@ from MessPy.Instruments.interfaces import IRotationStage, IShutter, ILissajousSc
 from wrapt import synchronized
 import typing
 import attr
-from Signal import Signal
-
 config.rot_server = 'http://130.133.30.223:8003'
 rot = ServerProxy(config.rot_server)
 

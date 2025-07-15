@@ -1,9 +1,9 @@
 from functools import partial
 
 
-from PySide6.QtCore import QTimer, Qt, Slot, QThread, QSettings
-from PySide6.QtGui import QIntValidator
-from PySide6.QtWidgets import (
+from PyQt5.QtCore import QTimer, Qt, pyqtSlot, QThread, QSettings
+from PyQt5.QtGui import QIntValidator
+from PyQt5.QtWidgets import (
     QMainWindow,
     QApplication,
     QWidget,
@@ -170,12 +170,11 @@ class MainWindow(QMainWindow):
         pp.clicked.connect(self.show_alignment_helper)
         tb.addWidget(pp)
 
-    @Slot(int)
+    @pyqtSlot(int)
     def set_update_time(self, ms: int):
         self.update_time = ms
 
-    @Slot()
-    @Slot(bool)
+    @pyqtSlot(bool)
     def toggle_run(self, bool=True):
         if bool:
             self.timer.setSingleShot(True)
@@ -188,14 +187,14 @@ class MainWindow(QMainWindow):
     def toggle_wl(self, c):
         self.xaxis[c][:] = 1e7 / self.xaxis[c][:]
 
-    @Slot()
+    @pyqtSlot()
     def show_planview(self):
         if self.viewer is not None:
             self.viewer.show()
         else:
             self.viewer = self.plan_class.viewer(self.controller.plan)
 
-    @Slot()
+    @pyqtSlot()
     def show_alignment_helper(self):
         self._ah = AlignmentHelper(self.controller)
         self._ah.show()

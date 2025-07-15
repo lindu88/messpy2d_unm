@@ -16,7 +16,7 @@ Created on Tue Jun 03 15:41:22 2014
 import time
 import attr
 import serial
-from PySide6.QtCore import QObject, Signal, QTimer
+from PyQt5.QtCore import QObject, Signal, QTimer
 from MessPy.Instruments.interfaces import IDelayLine
 
 controller_states = {
@@ -45,9 +45,9 @@ controller_states = {
 
 
 class DSignals(QObject):
-    sigDegreesChanged = Signal(float)
-    sigMovementStarted = Signal()
-    sigMovementFinished = Signal()
+    sigDegreesChanged = pyqtSignal(float)
+    sigMovementStarted = pyqtSignal()
+    sigMovementFinished = pyqtSignal()
 
 
 @attr.s(auto_attribs=True)

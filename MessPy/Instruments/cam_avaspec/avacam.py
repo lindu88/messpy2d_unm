@@ -3,7 +3,7 @@ from threading import Lock
 import attr
 import numpy as np
 
-from PySide6.QtCore import Signal, QObject
+from PyQt5.QtCore import Signal, QObject
 from typing import Optional
 
 from MessPy.Instruments.interfaces import ICam, T
@@ -12,7 +12,7 @@ from MessPy.Instruments.cam_avaspec.avaspec import AvantesSpec
 
 
 class Reader(QObject):
-    dataReady = Signal()
+    dataReady = pyqtSignal()
 
     def __init__(self, device, parent: Optional["QObject"] = None) -> None:
         super().__init__(parent)

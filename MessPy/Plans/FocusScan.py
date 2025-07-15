@@ -5,8 +5,7 @@ import attr
 import numpy as np
 import scipy.optimize as opt
 import scipy.special as spec
-from PySide6.QtCore import Signal
-
+from PyQt5.QtCore import pyqtSignal
 from MessPy.ControlClasses import Cam
 from MessPy.Instruments.interfaces import ILissajousScanner, IPowerMeter
 from MessPy.Plans.PlanBase import Plan
@@ -147,8 +146,8 @@ class FocusScan(Plan):
     max_rel_change: float = 0.1
     min_step: float = 0.005
     shots: int = 100
-    sigStepDone: T.ClassVar[Signal] = Signal()
-    sigFitDone: T.ClassVar[Signal] = Signal(int)
+    sigStepDone: T.ClassVar[pyqtSignal] = pyqtSignal()
+    sigFitDone: T.ClassVar[pyqtSignal] = pyqtSignal(int)
 
     scan_x: T.Optional[Scan] = None
     scan_y: T.Optional[Scan] = None

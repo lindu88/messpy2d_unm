@@ -7,8 +7,7 @@ from pathlib import Path
 import attr
 
 import numpy as np
-from PySide6.QtCore import Signal
-
+from PyQt5.QtCore import pyqtSignal
 from MessPy.Config import config
 from MessPy.ControlClasses import Cam
 from MessPy.Instruments.dac_px import AOM
@@ -31,7 +30,7 @@ class GVDScan(Plan):
     observed_channel: T.Optional[int] = None
     settings_before: dict = attr.Factory(dict)
 
-    sigPointRead: T.ClassVar[Signal] = Signal()
+    sigPointRead: T.ClassVar[pyqtSignal] = pyqtSignal()
 
     plan_shorthand: T.ClassVar[str] = "GVDscan"
 

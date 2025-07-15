@@ -1,7 +1,7 @@
 import pyqtgraph.parametertree.parameterTypes as pTypes
 import numpy as np
 import pyqtgraph.parametertree as pt
-from PySide6.QtWidgets import QWidget
+from PyQt5.QtWidgets import QWidget
 
 from MessPy.ControlClasses import Controller
 from MessPy.QtHelpers import vlay, PlanStartDialog, ObserverPlot, make_entry

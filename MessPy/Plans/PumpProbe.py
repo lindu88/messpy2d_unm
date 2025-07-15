@@ -7,8 +7,7 @@ from attr import Factory, attrib, attrs
 from numpy._typing import NDArray
 import h5py
 
-from PySide6.QtCore import QObject, Signal
-
+from PyQt5.QtCore import QObject, pyqtSignal
 from .PlanBase import Plan
 
 if TYPE_CHECKING:
@@ -39,7 +38,7 @@ class PumpProbePlan(Plan):
     probe_shutter: Optional["IShutter"] = None
     save_full_data: bool = False
 
-    sigStepDone: ClassVar[Signal] = Signal()
+    sigStepDone: ClassVar[pyqtSignal] = pyqtSignal()
 
     @property
     def common_mulitple_cwls(self):
@@ -199,7 +198,7 @@ class PumpProbeTasPlan(Plan):
     probe_shutter: Optional["IShutter"] = None
     save_full_data: bool = False
 
-    sigStepDone: ClassVar[Signal] = Signal()
+    sigStepDone: ClassVar[pyqtSignal] = pyqtSignal()
 
     @property
     def common_mulitple_cwls(self):
@@ -348,8 +347,8 @@ class PumpProbeData(QObject):
     wavelengths: np.ndarray = attrib(init=False)
     save_full_data: bool = False
 
-    sigWavelengthChanged = Signal()
-    sigStepDone = Signal()
+    sigWavelengthChanged = pyqtSignal()
+    sigStepDone = pyqtSignal()
 
     def __attrs_post_init__(self):
         super(PumpProbeData, self).__init__()

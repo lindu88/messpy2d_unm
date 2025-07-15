@@ -4,8 +4,8 @@ from MessPy.Instruments.dac_px import AOM
 import numpy as np
 from pyqtgraph.parametertree import Parameter, ParameterTree
 import pyqtgraph as pg
-from PySide6.QtCore import QObject, Signal
-from PySide6.QtWidgets import *
+from PyQt5.QtCore import QObject, pyqtSignal
+from PyQt5.QtWidgets import *
 from qasync import QEventLoop, asyncSlot
 from typing import List, Callable, Tuple, ClassVar
 from MessPy.Instruments.interfaces import ICam
@@ -34,7 +34,7 @@ class CalibPlan(AsyncPlan):
     channel: int = 67
     is_async: bool = True
 
-    sigStepDone = Signal()
+    sigStepDone = pyqtSignal()
     plan_shorthand: ClassVar[str] = "Calibration"
 
     def __attrs_post_init__(self):

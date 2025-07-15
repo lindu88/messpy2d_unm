@@ -22,7 +22,7 @@ if TYPE_CHECKING:
     pass
 from MessPy.Instruments.dac_px import AOM
 
-from PySide6.QtCore import Signal
+from PyQt5.QtCore import pyqtSignal
 import h5py
 
 
@@ -39,7 +39,7 @@ class PumpProbeShaperPlan(Plan):
     data: list[np.ndarray] = field(factory=list)
     mean_sig: Optional[np.ndarray] = None
     make_step: Callable = field()
-    sigStepDone: ClassVar[Signal] = Signal()
+    sigStepDone: ClassVar[Signal] = pyqtSignal()
 
     def setup(self):
         amps, phases = self.aom.delay_scan(self.delays.repeat(2))
