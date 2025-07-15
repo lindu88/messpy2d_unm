@@ -416,8 +416,6 @@ class ObserverPlot(pg.PlotWidget):
         self.x = x
         self.use_inverse = False
 
-        #test
-
         self.timer = QTimer()
         self.timer.setSingleShot(True)
         self.timer.timeout.connect(self.update_data)
@@ -451,11 +449,11 @@ class ObserverPlot(pg.PlotWidget):
             if callable(o):
                 y = o()
                 #skip NANs
-                self.lines[o].setData(x=x, y=y, connect='finite')
+                self.lines[o].setData(x=x, y=y)
             else:
                 y = getattr(*o)
                 if y is not None:
-                    self.lines[o].setData(x=x, y=y, connect='finite')
+                    self.lines[o].setData(x=x, y=y)
         self.do_update = False
     @pyqtSlot(object)
     def click(self, ev):
