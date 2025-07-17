@@ -14,10 +14,8 @@ from NewFocus.ChopperApp import *
 class newport3502(IChopper):
     name: str = "Newport Chopper"
     comport: str = "com3"
-    driver: CmdLib3502 = attr.ib(factory=lambda: CmdLib3502(False))
+    driver: CmdLib3502 = attr
     devicekey: str = attr.ib(init=False, default=None)
-    currentFreq: float = attr.ib(init=False, default=None)
-    currentPhaseOffset: float = attr.ib(init=False, default=None)
 
     def __attrs_post_init__(self):
         # Setup device key
@@ -34,8 +32,9 @@ class newport3502(IChopper):
             print("unable to close chopper device\n")
         return suc
     
-    def get_phase(self) -> bool:
-        return self.driver.getPhase(self.devicekey, self.currentPhaseOffset)
+    def get_phase(self) -> float
+        self.driver.getPhase(self.devicekey, self.currentPhase)
+        return self.currentPhase
 
     def set_phase(self, pd):
         self.driver.setPhaseDelay(self.devicekey, pd)
@@ -44,8 +43,9 @@ class newport3502(IChopper):
         # 1-3 for sync but
         self.driver.SetSync(self.devicekey, sync)
 
-    def get_frequency(self) -> bool:
-        return self.driver.getFrequency(self.devicekey, 1, self.currentFreq)
+    def get_frequency(self):
+        self.driver.getFrequency(self.devicekey, 1, self.currentFreq)
+        return self.currentFreq
 
     def set_frequency(self, f: float):
         self.driver.setFrequency(self.devicekey, self.currentFreq)

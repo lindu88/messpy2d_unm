@@ -201,6 +201,16 @@ class DelayLine(QObject):
     def get_pos(self) -> float:
         return self._dl.get_pos_fs()
 
+    def raster(self, pos1 : float, pos2: float, cycles):
+        if cycles is None:
+            while True:
+                self.set_pos(pos1)
+                self.set_pos(pos2)
+        else:
+            for i in range(0, cycles):
+                self.set_pos(pos1)
+                self.set_pos(pos2)
+
     @pyqtSlot()
     def set_home(self):
         logger.info("Old home position: {self._dl.home_pos}")

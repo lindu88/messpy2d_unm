@@ -1,4 +1,5 @@
 import abc
+from abc import ABCMeta, ABC
 import asyncio
 import atexit
 import contextlib
@@ -440,9 +441,11 @@ class IPowerMeter(IDevice):
 @attr.s(kw_only=True, auto_attribs=True)
 class IChopper(IDevice):
     interface_type: T.ClassVar[str] = "Chopper"
+    currentFreq : float = None
+    currentPhase : float = None
 
     @abc.abstractmethod
-    def get_frequency(self) -> bool:
+    def get_frequency(self) -> float:
         raise NotImplementedError
 
     @abc.abstractmethod
@@ -454,10 +457,9 @@ class IChopper(IDevice):
         pass
 
     @abc.abstractmethod
-    def get_phase(self) -> bool:
+    def get_phase(self) -> float:
         raise NotImplementedError
 
     @abc.abstractmethod
     def set_sync(self, sync: int):
         pass
-

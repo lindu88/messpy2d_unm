@@ -79,6 +79,7 @@ class AvaCam(ICam):
         if self.background is not None:
             self._spec.data -= self.background[:, None]
         self.lock.release()
+
         ff = int(self._spec.analog_in[0] < 100)
 
         spec = Spectrum.create(

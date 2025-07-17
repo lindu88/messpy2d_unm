@@ -14,7 +14,7 @@ from MessPy.Instruments.interfaces import (
     Reading,
     ISpectrograph,
     ILissajousScanner,
-    IPowerMeter,
+    IPowerMeter, IChopper,
 )
 import time
 
@@ -114,6 +114,7 @@ class CamMock(ICam):
         common_noise = np.random.normal(
             loc=1, scale=self.noise_scale, size=(self.shots, 1)
         )
+        #clip for testing
         common_noise = np.clip(common_noise, 0.8, 1.2)  # mild fluctuations
 
         a *= common_noise
@@ -283,3 +284,25 @@ if __name__ == "__main__":
     shot = camtest.make_reading()
     print(shot)
     print(get_max_reading(shot))
+
+@attr.s(auto_attribs=True)
+class chopperMock(IChopper):
+    name = "chopperMock"
+    currentFreqH : float = 500
+    currentPhase : float = 2 * np.pi
+    syncNum : int = 3
+
+    def get_frequency(self):
+        return self.currentFreqH
+
+    def set_frequency(self, f: float):
+        self.currentFreqH = f
+
+    def set_phase(self, pd: float):
+        self.currentPhase = pd
+
+    def get_phase(self):
+        return self.currentPhase
+
+    def set_sync(self, sync: int):
+        self.sync = sync
