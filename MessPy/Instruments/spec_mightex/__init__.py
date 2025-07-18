@@ -10,8 +10,8 @@ import numpy as np
 from MessPy.Instruments.interfaces import ICam, T
 from MessPy.Instruments.signal_processing import Reading, Spectrum
 
-dll_path = os.getcwd() + "/x64/MT_Spectrometer_SDK.dll"
-sdk = ct.CDLL(dll_path)
+dll_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "x64", "MT_Spectrometer_SDK.dll")
+sdk = ctypes.WinDLL(dll_path)
 
 class TFrameDataProperty(ctypes.Structure):
     _fields_ = [
@@ -31,45 +31,22 @@ class tFrameRecord(ctypes.Structure):
         ("AbsInten", ctypes.POINTER(ctypes.c_double)),
     ]
 
-def get_dict(frame_record, frames=1, pixels_per_frame=3648):
-    result = {}
-
-    for field, _ in frame_record._fields_:
-        value = getattr(frame_record, field)
-
-        # Handle NULL pointers
-        if value is None or (hasattr(value, "value") and value.value is None):
-            result[field] = None
-            continue
-
-        # Special handling for your pointer fields
-        if field in ['RawData', 'CalibData', 'AbsInten']:
-            n = frames * pixels_per_frame
-            ArrayType = ctypes.c_double * n
-            # cast the pointer to an array of doubles of length n
-            arr_ptr = ctypes.cast(value, ctypes.POINTER(ArrayType))
-            arr = np.ctypeslib.as_array(arr_ptr.contents)
-            result[field] = arr
-            continue
-
-        # Fixed size ctypes arrays (unlikely here)
-        if hasattr(value, "_length_") and hasattr(value, "_type_"):
-            result[field] = np.ctypeslib.as_array(value)
-
-        # Nested structs
-        elif hasattr(value, "_fields_"):
-            result[field] = get_dict(value, frames=frames, pixels_per_frame=pixels_per_frame)
-
-        # Basic types
+def make_array(frame_record, frames=1, pixels=3648):
+    out = {}
+    n = frames * pixels
+    for name, _ in frame_record._fields_:
+        ptr = getattr(frame_record, name)
+        if name in ['RawData', 'CalibData', 'AbsInten'] and ptr:
+            arr = ctypes.cast(ptr, ctypes.POINTER(ctypes.c_double * n)).contents
+            out[name] = np.frombuffer(arr, dtype=np.float64)
         else:
-            result[field] = value
-
-    return result
+            out[name] = None
+    return out
 
 @attr.s(auto_attribs=True)
 class MightexSpectrometer(ICam):
     name : str = "Mightex Spec"
-    shots: int = 20
+    shots: int = 1
     line_names: list = ["Probe"]
     sig_names: list = ["Probe"]
     std_names: list = ["Probe"]
@@ -91,54 +68,104 @@ class MightexSpectrometer(ICam):
     def set_background(self, shots):
         pass
 
-    def set_shots(self, shots):
-        pass
-
     def get_spectra(self, frames: T.Optional[int]) -> T.Tuple[T.Dict[str, Spectrum], T.Any]:
+        frames = frames or self.shots
 
-        frame_record = tFrameRecord()
+        # Set SDK call types
+        sdk.MTSSE_SetDeviceActiveStatus.argtypes = [ctypes.c_int, ctypes.c_int]
+        sdk.MTSSE_SetDeviceActiveStatus.restype = ctypes.c_int
 
-        #set types
-        sdk.MTSSE_GetDeviceSpectrometerFrameData.argTypes = [ctypes.c_int, ctypes.c_int, ctypes.c_int, ctypes.POINTER(tFrameRecord)]
-        sdk.MTSSE_GetDeviceSpectrometerFrameData.resType = ctypes.c_int
+        sdk.MTSSE_SetDeviceWorkMode.argtypes = [ctypes.c_int, ctypes.c_int]
+        sdk.MTSSE_SetDeviceWorkMode.restype = ctypes.c_int
 
-        sdk.MTSSE_StartFrameGrab.argTypes = [ctypes.c_int]
-        sdk.MTSSE_StartFrameGrab.resType = ctypes.c_int
+        sdk.MTSSE_SetDeviceExposureTime.argtypes = [ctypes.c_int, ctypes.c_int]
+        sdk.MTSSE_SetDeviceExposureTime.restype = ctypes.c_int
 
-        #grab frames
-        #maybe make multiple frame grabs
-        sdk.MTSSE_StartFrameGrab(1)
+        sdk.MTSSE_SetDeviceAverageFrameNum.argtypes = [ctypes.c_int, ctypes.c_int]
+        sdk.MTSSE_SetDeviceAverageFrameNum.restype = ctypes.c_int
 
-        while sdk.MTSSE_GetDeviceSpectrometerFrameData(self.device_ID, 1, 0, ctypes.byref(frame_record)) == -1:
-                #may need to change
-                time.sleep(0.010)
+        sdk.MTSSE_SetDeviceSpectrometerAutoDarkStatus.argtypes = [ctypes.c_int, ctypes.c_int, ctypes.c_int]
+        sdk.MTSSE_SetDeviceSpectrometerAutoDarkStatus.restype = ctypes.c_int
 
-        if not frame_record.AbsInten:
-            raise RuntimeError("AbsInten pointer is NULL after SDK call")
+        sdk.MTSSE_StartFrameGrab.argtypes = [ctypes.c_int]
+        sdk.MTSSE_StartFrameGrab.restype = ctypes.c_int
 
-        data_dict = get_dict(frame_record)
-        #TODO: change for better implementation
-        spec = Spectrum.create(
-            data_dict.get('AbsInten'), name="Probe", frames=frames, first_frame=0
-        )
-        #TODO: Add physical chopper support
-        chop = np.zeros(self.shots, "bool")
+        sdk.MTSSE_GetDeviceSpectrometerFrameData.argtypes = [ctypes.c_int, ctypes.c_int, ctypes.c_int,
+                                                             ctypes.POINTER(ctypes.POINTER(tFrameRecord))]
+        sdk.MTSSE_GetDeviceSpectrometerFrameData.restype = ctypes.c_int
+
+        """__________________________________________________________________________________________________________________________________________"""
+
+        # Setup
+        sdk.MTSSE_SetDeviceActiveStatus(self.device_ID, 1)
+        sdk.MTSSE_SetDeviceWorkMode(self.device_ID, 0)
+        sdk.MTSSE_SetDeviceExposureTime(self.device_ID, 10000)
+        sdk.MTSSE_SetDeviceAverageFrameNum(self.device_ID, 1)
+        sdk.MTSSE_SetDeviceSpectrometerAutoDarkStatus(self.device_ID, 1, 0)
+
+        all_raw_data = []
+
+        for i in range(frames):
+            sdk.MTSSE_StartFrameGrab(1)
+
+            frame_record_ptr = ctypes.POINTER(tFrameRecord)()
+            success = sdk.MTSSE_GetDeviceSpectrometerFrameData(self.device_ID, 1, 1, ctypes.byref(frame_record_ptr))
+            if success != 1:
+                raise RuntimeError(f"Failed to get frame data for frame {i + 1}/{frames}")
+
+            frame_record = frame_record_ptr.contents
+            if not frame_record.AbsInten:
+                raise RuntimeError(f"RawData pointer is NULL for frame {i + 1}")
+
+            raw_data = make_array(frame_record)['RawData']
+            if raw_data.ndim != 1:
+                raise ValueError(f"Expected 1D data, got {raw_data.shape}")
+
+            all_raw_data.append(raw_data)
+
+        # Stack to (frames, 3648)
+        raw_data_stack = np.stack(all_raw_data, axis=0)
+
+        spec = Spectrum.create(raw_data_stack, name="Probe", frames=frames, first_frame=0)
+
+        chop = np.zeros(frames, dtype=bool)
         chop[::2] = True
 
         return {"Probe": spec}, chop
 
     def make_reading(self) -> Reading:
-        reading = self.get_spectra(None)
-        data_dict = get_dict(reading)
+        spectra, chopper = self.get_spectra(frames=self.shots)
+        data = spectra["Probe"].data  # shape: (shots, 3648)
+
+        if data.shape != (self.shots, 3648):
+            raise ValueError(f"Expected ({self.shots}, 3648), got {data.shape}")
+
+        # Transpose to (3648, shots) for stacking into (3, 3648, shots)
+        a = data.T  # shape: (3648, shots)
+        b = a.copy()  # same shape
+        ratio = a / b  # should be all ones
+
+        # Stack into full_data with shape: (3, 3648, shots)
+        full_data = np.stack((a, b, ratio), axis=0)  # shape: (3, 3648, shots)
+
+        # Mean and std over shots
+        tm = full_data.mean(axis=2)  # shape: (3, 3648)
+        ts = 100 * full_data.std(axis=2) / tm  # shape: (3, 3648)
+
+        with np.errstate(all="ignore"):
+            signal = np.zeros(3648)  # dummy signals
+            signal2 = signal.copy()
+
         return Reading(
-            lines=np.mean(data_dict.get('AbsInten')),
-            stds=np.zeros_like(data_dict.get('AbsInten')),
-            signals=data_dict.get('AbsInten'),
+            lines=tm[:2],  # shape: (2, 3648)
+            stds=ts,  # shape: (3, 3648)
+            signals=np.stack((signal2, signal)),  # shape: (2, 3648)
             valid=True,
-            full_data=data_dict.get('RawData'),
-            shots=self.shots,
+            full_data=full_data,  # shape: (3, 3648, shots)
+            shots=self.shots
         )
 
+    #maybe switch over get_spectra() to read_cam()
     def read_cam(self):
         pass
 
@@ -153,7 +180,40 @@ class MightexSpectrometer(ICam):
         sdk.MTSSE_SetDeviceAverageFrameNum.resType = ctypes.c_int
         sdk.MTSSE_SetDeviceAverageFrameNum(cnt)
 
+    def get_wavelength_array(self, center_wl=None):
+        if center_wl is None:
+            center_wl = 250  #will need to change
+
+        pixels = 3648
+        x = np.arange(pixels) - pixels // 2  # Center at pixel 1824
+        return x * 0.5 + center_wl  # Assume 0.5 nm/pixel dispersion -- will need to change
+
+    def set_shots(self, shots):
+        self.shots = shots
 
 if __name__ == "__main__":
     test = MightexSpectrometer()
     print(test.make_reading())
+
+"""
+data	(1, 3648)	1 frame of spectral data
+a, b	(1, 3648)	single-frame data - a copied to b - supposed to be probe on / probe off i think
+ratio	(1, 3648)	element-wise ratio of a / b
+tmp	(3, 1, 3648)	stack of a, b, ratio
+tm, ts	(3, 3648)	mean and std across shots
+signal	(3648,)	dummy signal
+signal2 (3648,) dummy signal
+signals	(2, 3648)	two dummy signal layers
+"""
+
+"""
+class Reading:
+    Each array has the shape (n_type, pixel), except for full_data which has the shape (n_type, pixel, shots)
+
+    lines: np.ndarray
+    stds: np.ndarray
+    signals: np.ndarray
+    full_data: np.ndarray
+    shots: int
+    valid: bool
+"""
