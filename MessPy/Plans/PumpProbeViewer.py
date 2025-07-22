@@ -77,6 +77,14 @@ class PumpProbeViewer(QTabWidget):
                 PumpProbeDataViewer(ppd, pp_plan, parent=self), ppd.cam.cam.name
             )
 
+class RawViewer(QTabWidget):
+    def __init__(self, pp_plan: PumpProbeTasPlan, parent=None):
+        super(RawViewer, self).__init__(parent=parent)
+        for ppd in pp_plan.cam_data:
+            self.addTab(
+                RawDataViewer(ppd, pp_plan, parent=self), ppd.cam.cam.name
+            )
+
 
 class PumpProbeDataViewer(QWidget):
     def __init__(self, pp_plan: PumpProbeData, pp: PumpProbePlan, parent=None):
@@ -281,9 +289,75 @@ class PumpProbeDataViewer(QWidget):
         self.pp_plan.sigWavelengthChanged.disconnect(self.handle_wl_change)
         super().closeEvent(a0)
 
+class RawDataViewer(QWidget):
+    def __init__(self, pp_plan: PumpProbeData, pp: PumpProbePlan, parent=None):
+        super().__init__(parent)
+        self.pp = pp
+        self.pp_plan = pp_plan
+        self._layout = QHBoxLayout(self)
+
+        self.signal_channel = 0
+
+        # UI elements
+        self.info_label = QLabel()
+        self.signal_ch_selector = QSpinBox()
+        self.signal_ch_selector.setMinimum(0)
+        self.signal_ch_selector.setMaximum(self.pp_plan.cam.sig_lines - 1)
+        self.signal_ch_selector.valueChanged.connect(self.update_signal)
+
+        self.use_wavenumbers = QCheckBox("Use Wavenumbers")
+        self.use_wavenumbers.stateChanged.connect(self.update_signal)
+
+        # Layouts
+        control_layout = QVBoxLayout()
+        control_layout.addWidget(self.info_label)
+        control_layout.addWidget(self.signal_ch_selector)
+        control_layout.addWidget(self.use_wavenumbers)
+        control_layout.addStretch(1)
+
+        # Signal Plot
+        self.sig_plot = ObserverPlot([], self.pp_plan.sigStepDone, x=self.get_x)
+        self.last_signal = np.zeros_like(self.get_x())
+        self.mean_signal = np.zeros_like(self.last_signal)
+        self.sig_plot.add_observed((self, "last_signal"))
+        #self.sig_plot.add_observed((self, "mean_signal"))
+
+        plot_layout = QVBoxLayout()
+        plot_layout.addWidget(self.sig_plot)
+
+        self._layout.addLayout(control_layout)
+        self._layout.addLayout(plot_layout)
+
+        self.update_info()
+        self.pp_plan.sigStepDone.connect(self.update_signal)
+
+    def get_x(self):
+        return self.pp_plan.cam.get_wavelengths()
+
+    @pyqtSlot()
+    def update_info(self):
+        p = self.pp
+        s = self.pp_plan
+        self.info_label.setText(f"Name: {p.name}, Shots: {p.shots}, WL Pos: {s.wl_idx + 1}/{len(s.cwl)}")
+
+    @pyqtSlot()
+    def update_signal(self):
+        sig_ch = self.signal_ch_selector.value()
+        if self.pp_plan.t_idx == 0:
+            return
+        self.last_signal = self.pp_plan.last_signal[sig_ch, :]
+        if self.pp_plan.mean_signal is not None:
+            self.mean_signal = self.pp_plan.mean_signal[sig_ch, :]
+
+    def closeEvent(self, a0) -> None:
+        try:
+            self.pp_plan.sigStepDone.disconnect(self.update_signal)
+        except Exception:
+            pass
+        super().closeEvent(a0)
 class PumpProbeTasStarter(PlanStartDialog):
     title = "New Pump-probe-tas Experiment"
-    viewer = PumpProbeViewer
+    viewer = RawViewer
     experiment_type = "Pump-Probe"
 
     def setup_paras(self):
@@ -455,12 +529,14 @@ class PumpProbeStarter(PlanStartDialog):
                 cwls.append(cam_cwls)
             else:
                 cwls.append([0.0])
-
         self.save_defaults()
+
         if "Pump Shutter" in p:
             p_shutter = p["Pump Shutter"]
         else:
             p_shutter = None
+
+        #failing here
         p = PumpProbePlan(
             name=p["Filename"],
             meta=make_entry(self.paras),

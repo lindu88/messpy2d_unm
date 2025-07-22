@@ -56,6 +56,7 @@ class PumpProbePlan(Plan):
         self.pre_state = dict(
             shots=self.controller.cam.shots, delay=self.controller.delay_line.get_pos()
         )
+
         for c, cwl in zip(self.controller.cam_list, self.center_wl_list):
             self.cam_data.append(
                 PumpProbeData(
@@ -66,6 +67,7 @@ class PumpProbePlan(Plan):
                     save_full_data=self.save_full_data,
                 )
             )
+
             c.set_shots(self.shots)
 
     def move_rot_stage(self, angle):
@@ -399,8 +401,12 @@ class PumpProbeData(QObject):
                     shuffle=True,
                     scaleoffset=2,
                 )
-
-        self.current_scan[self.wl_idx, t_idx, :, :] = lr.signals[...]
+        if np.shape(lr.signals)[0] == 1:
+            self.current_scan[self.wl_idx, t_idx, :, :] = lr.signals[...]
+        elif np.shape(lr.signals)[0] == 2:
+            self.current_scan[self.wl_idx, t_idx, :, :] = lr.signals[0, :]
+        else:
+            print("Shape of lr.signal not matching current scan shape\n")
         if self.mean_scans is not None:
             self.mean_signal = self.mean_scans[self.wl_idx, t_idx, :, :]
         self.last_signal = lr.signals[:, :]

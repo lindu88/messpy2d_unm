@@ -50,7 +50,8 @@ class MightexSpectrometer(ICam):
     line_names: list = ["Probe"]
     sig_names: list = ["Probe"]
     std_names: list = ["Probe"]
-    channels: int = 200
+    channels: int = 3648
+    center_wl : int = 620
     ext_channels: int = 0
     device_ID : int = None
     chopper: np.ndarray = attr.field(init=False)
@@ -99,7 +100,7 @@ class MightexSpectrometer(ICam):
         # Setup
         sdk.MTSSE_SetDeviceActiveStatus(self.device_ID, 1)
         sdk.MTSSE_SetDeviceWorkMode(self.device_ID, 0)
-        sdk.MTSSE_SetDeviceExposureTime(self.device_ID, 10000)
+        sdk.MTSSE_SetDeviceExposureTime(self.device_ID, 10000) #exposure time
         sdk.MTSSE_SetDeviceAverageFrameNum(self.device_ID, 1)
         sdk.MTSSE_SetDeviceSpectrometerAutoDarkStatus(self.device_ID, 1, 0)
 
@@ -153,13 +154,12 @@ class MightexSpectrometer(ICam):
         ts = 100 * full_data.std(axis=2) / tm  # shape: (3, 3648)
 
         with np.errstate(all="ignore"):
-            signal = np.zeros(3648)  # dummy signals
-            signal2 = signal.copy()
-
+            signal = a.flatten() # copy of raw data
+            signal2 = np.zeros_like(signal)
         return Reading(
-            lines=tm[:2],  # shape: (2, 3648)
+            lines=tm[:2, :],  # shape: (2, 3648)
             stds=ts,  # shape: (3, 3648)
-            signals=np.stack((signal2, signal)),  # shape: (2, 3648)
+            signals=np.stack((signal, signal2)),  # shape: (2, 3648)
             valid=True,
             full_data=full_data,  # shape: (3, 3648, shots)
             shots=self.shots
@@ -182,17 +182,18 @@ class MightexSpectrometer(ICam):
 
     def get_wavelength_array(self, center_wl=None):
         if center_wl is None:
-            center_wl = 250  #will need to change
+            center_wl = self.center_wl  #will need to change
 
-        pixels = 3648
+        pixels = self.channels
         x = np.arange(pixels) - pixels // 2  # Center at pixel 1824
-        return x * 0.5 + center_wl  # Assume 0.5 nm/pixel dispersion -- will need to change
+        return x * 0.2055921052631579 + center_wl  # pixel dispersion -- will need to change
 
     def set_shots(self, shots):
         self.shots = shots
 
 if __name__ == "__main__":
     test = MightexSpectrometer()
+    test.close()
     print(test.make_reading())
 
 """
