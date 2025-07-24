@@ -7,6 +7,7 @@ import numpy as np
 from attr import Factory, attrib, attrs, define
 from loguru import logger
 from PyQt5.QtCore import QObject, QTimer, pyqtSignal, pyqtSlot
+import asyncio as aio
 
 from qasync import Slot
 

@@ -1,3 +1,4 @@
+import os
 import threading, json
 from typing import Optional, List, Iterable, TYPE_CHECKING, Generator, ClassVar
 
@@ -6,6 +7,7 @@ import numpy as np
 from attr import Factory, attrib, attrs
 from numpy._typing import NDArray
 import h5py
+import pandas as pd
 
 from PyQt5.QtCore import QObject, pyqtSignal
 from .PlanBase import Plan
@@ -230,10 +232,12 @@ class PumpProbeTasPlan(Plan):
             )
             c.set_shots(self.shots)
 
+    #no delay line for test
     def move_delay_line(self, t):
-        self.controller.delay_line.set_pos(t, do_wait=False)
-        while self.controller.delay_line.moving:
-            yield
+        #self.controller.delay_line.set_pos(t, do_wait=False)
+        #while self.controller.delay_line.moving:
+            #yield
+        yield
 
     def pre_scan(self) -> Generator:
         rs = self.controller.rot_stage
@@ -321,6 +325,33 @@ class PumpProbeTasPlan(Plan):
                 f[name] = ppd.completed_scans
                 f.create_dataset("rot", data=self.rot_at_scan)
             f.attrs["meta"] = json.dumps(self.meta)
+
+        #save csv -- avg of all scans as a wavelength / y data pair
+        for idx, ppd in enumerate(self.cam_data):
+            try:
+                wavelengths = np.array(ppd.wavelengths).flatten()
+                scans = np.array(ppd.completed_scans)  # shape: (scans, 1, times, 1, pixels)
+
+                # Just averages all intensities for all results at pixel/wavelength even though for this test plan there is no time delay change
+                avg_signal = scans.mean(axis=(0, 1, 2, 3)).flatten()
+
+                if wavelengths.shape != avg_signal.shape:
+                    raise ValueError("Wavelength/signal shape mismatch.")
+
+                # Save with Pandas
+                df = pd.DataFrame({
+                    "Wavelength (nm)": wavelengths,
+                    "Averaged Signal": avg_signal
+                })
+
+                base = os.path.splitext(self.data_file.filename)[0]
+                csv_filename = f"{base}_cam{idx}_{ppd.cam.name.replace(' ', '_')}_avg.csv"
+
+                df.to_csv(csv_filename, index=False)
+                logger.info(f"Saved averaged signal CSV to {csv_filename}")
+
+            except Exception as e:
+                logger.error(f"Error saving averaged signal CSV for cam[{idx}]: {e}")
 
     def restore_state(self):
         super().restore_state()

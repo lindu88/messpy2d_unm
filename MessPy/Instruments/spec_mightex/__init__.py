@@ -43,25 +43,26 @@ def make_array(frame_record, frames=1, pixels=3648):
             out[name] = None
     return out
 
-@attr.s(auto_attribs=True)
+@attr.s(auto_attribs=True, kw_only=True)
 class MightexSpectrometer(ICam):
-    name : str = "Mightex Spec"
+    name: str = "Mightex Spec"
     shots: int = 1
-    line_names: list = ["Probe"]
-    sig_names: list = ["Probe"]
-    std_names: list = ["Probe"]
+    line_names: list = attr.Factory(lambda: ["Probe"])
+    sig_names: list = attr.Factory(lambda: ["Probe"])
+    std_names: list = attr.Factory(lambda: ["Probe"])
     channels: int = 3648
-    center_wl : int = 620
+    center_wl: int = 620
     ext_channels: int = 0
-    device_ID : int = None
-    chopper: np.ndarray = attr.field(init=False)
+    device_ID: int = None
+    chopper: np.ndarray = attr.field(init=False, default=None)
 
     def __attrs_post_init__(self):
         sdk.MTSSE_InitDevice.argTypes = [None]
         sdk.MTSSE_InitDevice.resType = ctypes.c_int
         dev = sdk.MTSSE_InitDevice(None)
+
         if dev == 0:
-            print("No mightex device found\n")
+            print("No Mightex device found\n")
         else:
             print(f"Mightex device has device number {dev}\n")
             self.device_ID = dev
@@ -141,25 +142,24 @@ class MightexSpectrometer(ICam):
         if data.shape != (self.shots, 3648):
             raise ValueError(f"Expected ({self.shots}, 3648), got {data.shape}")
 
-        # Transpose to (3648, shots) for stacking into (3, 3648, shots)
         a = data.T  # shape: (3648, shots)
-        b = a.copy()  # same shape
-        ratio = a / b  # should be all ones
+        b = a.copy()  # placeholder; in real use, would be another type of data
+        ratio = a / b  # shape: (3648, shots), all ones if a == b
 
-        # Stack into full_data with shape: (3, 3648, shots)
         full_data = np.stack((a, b, ratio), axis=0)  # shape: (3, 3648, shots)
 
-        # Mean and std over shots
         tm = full_data.mean(axis=2)  # shape: (3, 3648)
-        ts = 100 * full_data.std(axis=2) / tm  # shape: (3, 3648)
+        ts = 100 * full_data.std(axis=2) / tm  # shape: (3, 3648), % standard deviation
 
         with np.errstate(all="ignore"):
-            signal = a.flatten() # copy of raw data
-            signal2 = np.zeros_like(signal)
+            signal = np.mean(a, axis=1)  # shape: (3648,)
+            signal2 = np.zeros_like(signal)  # shape: (3648,)
+        signals = np.stack((signal, signal2))  # shape: (2, 3648)
+
         return Reading(
             lines=tm[:2, :],  # shape: (2, 3648)
             stds=ts,  # shape: (3, 3648)
-            signals=np.stack((signal, signal2)),  # shape: (2, 3648)
+            signals=signals,  # shape: (2, 3648)
             valid=True,
             full_data=full_data,  # shape: (3, 3648, shots)
             shots=self.shots
@@ -195,6 +195,7 @@ if __name__ == "__main__":
     test = MightexSpectrometer()
     test.close()
     print(test.make_reading())
+    test.close()
 
 """
 data	(1, 3648)	1 frame of spectral data

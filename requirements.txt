@@ -21,3 +21,4 @@ h5py
 pythonnet
 lmfit
 pytest-qt
+asyncio
